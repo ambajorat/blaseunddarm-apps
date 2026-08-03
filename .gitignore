@@ -1,0 +1,48 @@
+# ─── Geheimnisse / Signierung (NIEMALS eintragen) ────────────────────────────
+*.jks
+*.keystore
+keystore.properties
+*.p12
+*.pfx
+*.cer
+*.mobileprovision
+*.provisionprofile
+GoogleService-Info.plist
+google-services.json
+.env
+secrets.properties
+
+# ─── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── iOS / Xcode / Swift ─────────────────────────────────────────────────────
+# .xcodeproj wird per XcodeGen aus project.yml erzeugt und daher nicht eingecheckt
+*.xcodeproj/
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+.swiftpm/
+Pods/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ─── Android / Gradle / Kotlin ───────────────────────────────────────────────
+.gradle/
+local.properties
+**/build/
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+.cxx/
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
