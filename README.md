@@ -1,164 +1,105 @@
-# statt-Tipex — Digitaler Schichtplaner für Zahnarztpraxen
+# Blase & Darm Manager
 
-Web-App zur Schicht- und Personalplanung in Zahnarztpraxen. Ersetzt Papierpläne
-und Excel durch einen digitalen Wochenplan mit automatischer Planung,
-Abwesenheitsverwaltung und WhatsApp-Versand.
+Eine barrierefreie App zur Protokollierung von Blasen- und Darmentleerung –
+gedacht für Menschen mit neurogener Blase/Darm (z. B. nach Querschnittlähmung),
+für Angehörige und Pflegende.
 
-Live: <https://statt-tipex.de>
+Website: <https://blaseunddarm.de> · Hintergrund: <https://ploetzlich-querschnitt.de>
 
-## Überblick
+> **Lizenz: PolyForm Noncommercial 1.0.0** – der Quelltext ist offen einsehbar
+> und darf privat/nicht-kommerziell genutzt und verändert werden, aber **nicht
+> kommerziell verwertet oder verkauft** werden. Details unten und in [`LICENSE`](LICENSE).
 
-- **Single-File-App:** Die komplette Anwendung steckt in `server/index.html`
-  (vorkompiliertes React über `React.createElement`, kein Build-Schritt).
-  Zum Ändern wird direkt diese Datei bearbeitet und deployt.
-- **Backend:** Firebase Realtime Database (Daten) + Firebase Authentication
-  (Login). Kein eigener Server-Code — nur statisches Hosting via Nginx.
-- **Mandantenfähig:** Jede Praxis hat einen Code; die Daten liegen unter
-  `tenants/{CODE}/…`.
+---
 
-## Funktionen
+## Was ist das?
 
-- Wochenplan mit Stationen (Empfang, Büro, Behandlungszimmer, Steri, Prophylaxe,
-  Springer) und automatischem Vorschlag (Arzt-Assistenz-Paarung, faire Verteilung).
-- Team-Verwaltung mit Rollen (Arzt, ZFA, ZMP, ZMV, Azubi), Verfügbarkeiten pro
-  Wochentag und **Ausnahmen** (z. B. Berufsschule: pro Wochentag andere Zeit oder frei).
-- **Abwesenheiten** (Urlaub, Krank, Fortbildung, Überstunden-Abbau, Sonstiges);
-  nur „Urlaub" zählt gegen die Urlaubstage.
-- **Sonderöffnungszeiten** als Datumsbereich oder einzelner Sondertag; Knopf
-  „Außerh. Öffnungszeiten räumen" entfernt Schichten außerhalb der Öffnungszeiten,
-  ohne den ganzen Plan neu zu generieren.
-- WhatsApp-Versand persönlicher Wochenpläne, Urlaubsanträge mit Freigabe,
-  Echtzeit-Sync über alle Geräte.
+Der Blase & Darm Manager hilft dabei, Miktion und Stuhlgang festzuhalten,
+Erinnerungen zu setzen und Verläufe auszuwerten – mit Fokus auf Bedienbarkeit
+(VoiceOver, Dynamic Type, große Tap-Ziele, Dunkelmodus).
 
-## Login & Rollen
+Gemeinsame Funktionen beider Plattformen: Erinnerungstimer, Ruhezeiten,
+Statistiken, PDF-Bericht, CSV-Import/-Export, Datensicherung, Deutsch/Englisch.
 
-Der Zugang pro Praxis erfolgt über **Praxis-Code + Name + Passwort**
-(Firebase Authentication; intern wird eine synthetische E-Mail
-`name@praxiscode.stattipex.local` verwendet).
+Die Daten bleiben auf dem Gerät bzw. in der persönlichen iCloud – es gibt keine
+Server-Konten und kein Tracking. Wer das nachprüfen möchte, kann genau dafür
+in diesen Quelltext schauen.
 
-Drei Rollen:
+## Repo-Struktur
 
-- **Admin** — Vollzugriff, kann Nutzer verwalten (Einstellungen → „Zugang & Nutzer").
-- **Nutzer** — kann den Plan bearbeiten.
-- **Nur ansehen** — reiner Lesezugriff, Bearbeiten ist gesperrt.
+```
+.
+├── ios/       SwiftUI-App (iPhone, Apple Watch, Widget, CarPlay, Siri, iCloud)
+├── android/   Kotlin/Jetpack-Compose-App
+├── LICENSE
+└── README.md
+```
 
-Wer eine Praxis absichert, wird ihr erster Admin. Ein Banner in der App führt
-unabgesicherte Praxen einmalig durch das Einrichten.
+## Bauen
 
-## Deployment
-
-Statisches Hosting via Nginx, Web-Root `/var/www/statt-tipex/`.
-Host, SSH-User und Zugangsdaten stehen bewusst **nicht** im Repo — unten die
-Platzhalter `<user>` und `<server>` durch die echten Werte ersetzen.
-
-Auf dem Mac hochladen:
+**iOS** (`ios/`) – das Xcode-Projekt wird per [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+aus `project.yml` erzeugt (die `.xcodeproj` ist bewusst nicht eingecheckt):
 
 ```bash
-scp ~/Downloads/index.html <user>@<server>:~/index.html
+cd ios
+xcodegen generate
+open BlaseUndDarm.xcodeproj
 ```
 
-Auf dem Server an ihren Platz verschieben (braucht sudo, da `/var/www` root gehört):
+**Android** (`android/`):
 
 ```bash
-ssh <user>@<server>
-sudo mv ~/index.html /var/www/statt-tipex/index.html
+cd android
+./gradlew assembleRelease
 ```
 
-Danach im Browser mit `Cmd+Shift+R` hart neu laden.
+Signierschlüssel (`keystore.properties`, `*.jks`) sind **nicht** Teil des
+Repos und müssen lokal ergänzt werden.
 
-## Firebase Security Rules
+## Lizenz – was erlaubt ist und was nicht
 
-Die Rules regeln die eigentliche Zugriffskontrolle. Sie liegen **nicht** im Git,
-sondern werden in der Firebase Console (Realtime Database → Regeln) gepflegt.
-Aktueller Stand:
+Dieses Projekt steht unter der **PolyForm Noncommercial License 1.0.0**. Das ist
+eine *source-available*-Lizenz, kein klassisches OSI-Open-Source. Kurz gefasst:
 
-```json
-{
-  "rules": {
-    "tenants": {
-      "DEMO": { ".read": true, ".write": true },
-      "$tid": {
-        ".read": "auth != null && root.child('tenantMembers').child($tid).child(auth.uid).exists()",
-        ".write": "auth != null && root.child('tenantMembers').child($tid).child(auth.uid).exists() && root.child('tenantMembers').child($tid).child(auth.uid).child('role').val() != 'viewer'"
-      }
-    },
-    "tenantMembers": {
-      "$tid": {
-        ".read": "auth != null && data.child(auth.uid).exists()",
-        "$uid": {
-          ".write": "auth != null && ( root.child('tenantMembers').child($tid).child(auth.uid).child('role').val() == 'admin' || ( !data.parent().exists() && $uid == auth.uid ) )"
-        }
-      }
-    },
-    "tenantSecured": {
-      ".read": true,
-      "$tid": {
-        ".write": "auth != null && ( !data.exists() || root.child('tenantMembers').child($tid).child(auth.uid).child('role').val() == 'admin' )"
-      }
-    },
-    "feedback": { ".read": true, ".write": true }
-  }
-}
-```
+- ✅ Ansehen, ausprobieren, lernen, für private Zwecke nutzen und anpassen
+- ✅ Nutzung durch gemeinnützige, Bildungs-, Gesundheits- und öffentliche Einrichtungen
+- ❌ **Kommerzielle Verwertung**, insbesondere die App (ganz oder in Teilen) zu
+  verkaufen oder als kostenpflichtiges bzw. werbefinanziertes Produkt anzubieten
 
-Hinweise:
+Der vollständige Text steht in [`LICENSE`](LICENSE).
 
-- `DEMO` und `feedback` bleiben bewusst offen (öffentliche Demo bzw. Beta-Feedback).
-- `tenantSecured/{CODE}` ist ein öffentlich lesbares Boolean, damit der Client vor
-  dem Login weiß, ob eine Praxis Anmeldung verlangt.
-- Beim Ausrollen neuer Rules gilt: **erst** alle aktiven Praxen absichern
-  (Admin-Konto anlegen), **dann** die Rules scharf schalten — sonst sperren sich
-  bestehende Praxen aus, bis sie ein Konto haben.
+Die offiziellen Fassungen im App Store und in Google Play werden ausschließlich
+vom Rechteinhaber herausgegeben.
 
-## Datenstruktur (Realtime Database)
+## Name, Logo und Screenshots
 
-```
-tenants/{CODE}/
-  praxis-staff          Team (Array von Mitarbeiter-Objekten)
-  praxis-hours          Sonderöffnungszeiten
-  praxis-standard-week  Standardwoche
-  praxis-station-reqs   Stationen-Bedarf
-  praxis-vacations      Abwesenheiten
-  praxis-wk-YYYY-MM-DD   Wochenplan je Woche
-  praxis-pin / praxis-unlocked
-tenantMembers/{CODE}/{uid}   { name, role, created }
-tenantSecured/{CODE}         true
-feedback/{ts}                Beta-Feedback
-```
+Der Name „Blase & Darm Manager", das App-Icon, das Erscheinungsbild und die
+Screenshots sind **nicht** Teil dieser Lizenz. Sie dürfen nicht verwendet
+werden, um den Eindruck einer offiziellen oder verbundenen App zu erwecken.
 
-## Bekannte offene Punkte
+*Apple, App Store, Apple Watch und CarPlay sind Marken von Apple Inc.
+Google Play ist eine Marke von Google LLC. Android ist eine Marke von Google LLC.*
 
-- Rollen-Wechsel eines bestehenden Nutzers geht nur über Entfernen + Neu-Anlegen.
-- Admin kann Passwörter anderer nicht zurücksetzen (bräuchte eine Cloud Function).
-- Für Nur-Lese-Nutzer sind Bearbeiten-Knöpfe noch sichtbar, aber wirkungslos
-  (nichts wird gespeichert; serverseitig ohnehin blockiert).
+## Kein Medizinprodukt
 
-## Changelog
+Diese App ist **kein Medizinprodukt** und ersetzt keine ärztliche oder
+pflegerische Beratung, Diagnose oder Behandlung. Sie dient ausschließlich der
+persönlichen Dokumentation. Bei gesundheitlichen Fragen oder Warnzeichen bitte
+ärztlichen Rat einholen. Die Nutzung erfolgt auf eigene Verantwortung; es wird
+keine Gewähr für Richtigkeit oder Eignung übernommen.
 
-### 2026-08
-- **Login & Rollen:** Anmeldung pro Praxis über Firebase Authentication
-  (Praxis-Code + Name + Passwort), Nutzerverwaltung, „Praxis absichern"-Banner.
-  Rollen **Admin / Nutzer / Nur ansehen**.
-- **Nur-Lese-Rolle:** Viewer sieht alles, kann aber nichts ändern
-  (Client-Sperre + Security Rule).
-- **Abwesenheiten:** neuer Typ **Überstunden-Abbau** (eigene Farbe; zählt nicht
-  gegen die Urlaubstage).
-- **Sonderöffnungszeiten:** einzelner **Sondertag** (offen mit Zeit oder
-  geschlossen) mit Vorrang vor Datumsbereichen; Knopf **„Außerh.
-  Öffnungszeiten räumen"** zum Aufräumen ohne Neu-Generieren.
-- **Wochenarbeitszeit:** Übersicht der verplanten Wochenstunden pro Person im
-  Team-Tab (läuft runter, „+X“ bei Überschreitung); Warn-Banner im Plan, wenn
-  manuell über die Wochenarbeitszeit geplant wird; der Auto-Vorschlag hält die
-  Wochenarbeitszeit ein.
-- **Mitarbeiter-Ausnahmen:** pro Wochentag abweichende Zeit oder frei
-  (z. B. Berufsschule) — nur gesetzte Tage werden überschrieben.
-- **Kleinkram:** Team-Ansicht alphabetisch nach Vorname; Rollenbezeichnung
-  **ZMP** korrigiert (vorher ZNP); Enter/Return in Login- und Code-Feldern.
+## Mitwirken
 
-## Lizenz
+Rückmeldungen und Pull Requests sind willkommen, aber es gibt **kein
+Support-Versprechen** und keine Zusage, Beiträge zu übernehmen.
 
-[MIT](LICENSE) © 2026 André Bajorat.
+Wenn du einen Beitrag einreichst (Pull Request, Patch o. Ä.), räumst du André
+Bajorat das dauerhafte, unwiderrufliche Recht ein, deinen Beitrag zu nutzen, zu
+verändern und zu verbreiten – auch in den offiziellen App-Store- und
+Google-Play-Fassungen, unabhängig von der Noncommercial-Beschränkung dieser
+Lizenz. So bleibt sichergestellt, dass eingereichte Verbesserungen auch in den
+Store-Versionen ausgeliefert werden können.
 
-Frei nutz-, änder- und weiterverteilbar unter den Bedingungen der MIT-Lizenz;
-Details in der `LICENSE`-Datei. Wer den Code weiterverwendet, muss lediglich
-den Copyright- und Lizenzhinweis beibehalten.
+## Kontakt
+
+Über das Feedback-Formular bzw. den Kontakt auf <https://blaseunddarm.de>.
