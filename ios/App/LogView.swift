@@ -33,6 +33,7 @@ struct LogView: View {
                 .padding(.bottom, 40)
             }
             .scrollDismissesKeyboard(.interactively)
+            .scrollBounceBehavior(.basedOnSize)
             .background(Color.pageBg)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -48,9 +49,6 @@ struct LogView: View {
                 startTimer()
             }
             .onChange(of: scenePhase) { _, phase in
-                // Beim Zurückkehren in die App: veralteten Formular-Zeitpunkt
-                // auf "jetzt" setzen — sonst erbt der nächste Eintrag den
-                // Zeitstempel von gestern und die Live Activity rechnet falsch.
                 if phase == .active { entryTime = .now }
             }
             .onDisappear { timer?.invalidate() }

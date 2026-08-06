@@ -15,9 +15,12 @@ struct ContentView: View {
             StatsView()
                 .tabItem { Label(String(localized: "tab_stats"), systemImage: "chart.bar.fill") }
                 .tag(2)
+            AlertsView()
+                .tabItem { Label("Hinweise", systemImage: "bell.badge.fill") }
+                .tag(3)
             SettingsView()
                 .tabItem { Label(String(localized: "tab_settings"), systemImage: "gearshape.fill") }
-                .tag(3)
+                .tag(4)
         }
         .tint(Color.accent)
     }

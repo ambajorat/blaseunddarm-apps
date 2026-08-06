@@ -39,6 +39,9 @@ final class DataStore {
     func add(_ entry: ToiletEntry) {
         entries.insert(entry, at: 0)
         saveEntries()
+        // Hinweise: Sofort-Check des Eintrags + Tages-Checks
+        AlertEngine.checkEntry(entry)
+        AlertEngine.checkDay(entries: entries)
     }
 
     func delete(_ entry: ToiletEntry) {

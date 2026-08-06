@@ -54,6 +54,8 @@ struct LogEntryIntent: LiveActivityIntent {
             bowel: bowel
         )
         store.addEntry(entry)
+        AlertEngine.checkEntry(entry)
+        AlertEngine.checkDay(entries: store.entries)
         NotificationManager.rescheduleReminder(
             afterMinutes: store.settings.intervalMinutes,
             settings: store.settings
@@ -98,6 +100,8 @@ struct QuickUrineIntent: LiveActivityIntent {
         let store = SharedDataStore.shared
         let entry = ToiletEntry(urineMl: amount, urineColor: color.toUrineColor)
         store.addEntry(entry)
+        AlertEngine.checkEntry(entry)
+        AlertEngine.checkDay(entries: store.entries)
         NotificationManager.rescheduleReminder(
             afterMinutes: store.settings.intervalMinutes,
             settings: store.settings
@@ -124,6 +128,8 @@ struct QuickBowelIntent: LiveActivityIntent {
         let store = SharedDataStore.shared
         let entry = ToiletEntry(bowel: true)
         store.addEntry(entry)
+        AlertEngine.checkEntry(entry)
+        AlertEngine.checkDay(entries: store.entries)
         NotificationManager.rescheduleReminder(
             afterMinutes: store.settings.intervalMinutes,
             settings: store.settings

@@ -17,6 +17,7 @@ struct BladderBowelManagerApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.reload()
                     store.syncToWatch()
+                    AlertEngine.checkDay(entries: store.entries)
                     // Kein Timer-NEUSTART beim Öffnen — nur Wiederaufnahme,
                     // falls gar keine Activity läuft (z. B. von iOS beendet).
                     if let last = store.lastEntry {

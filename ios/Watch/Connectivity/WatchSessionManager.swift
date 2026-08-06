@@ -40,6 +40,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
     @Published var quietHoursEnabled: Bool = false
     @Published var quietFrom: Int = 22
     @Published var quietTo: Int = 6
+    @Published var lastEntryDate: Date? = nil
 
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -81,6 +82,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         todayMl += entry.urineMl
         todayCount += 1
         if entry.bowel { todayBowel += 1 }
+        lastEntryDate = entry.timestamp
         writeWidgetData()
     }
 
@@ -130,6 +132,38 @@ final class WatchSessionManager: NSObject, ObservableObject {
         center.add(request)
     }
 
+    // MARK: - Fälligkeit (gleiche Logik wie iPhone-Header/Live Activity)
+
+    /// Körperliche Fälligkeit + optionales Ruhezeitende (wenn die Fälligkeit
+    /// in die Ruhezeit fällt). nil, solange kein Eintrag bekannt ist.
+    func currentDue() -> (due: Date, quietEnd: Date?)? {
+        guard let last = lastEntryDate else { return nil }
+        let due = last.addingTimeInterval(TimeInterval(intervalMinutes * 60))
+        guard quietHoursEnabled else { return (due, nil) }
+
+        let cal = Calendar.current
+        let dueHour = cal.component(.hour, from: due)
+        let inQuiet: Bool
+        if quietFrom < quietTo {
+            inQuiet = dueHour >= quietFrom && dueHour < quietTo
+        } else {
+            inQuiet = dueHour >= quietFrom || dueHour < quietTo
+        }
+        guard inQuiet else { return (due, nil) }
+
+        var components = cal.dateComponents([.year, .month, .day], from: due)
+        components.hour = quietTo
+        components.minute = 0
+        components.second = 0
+        if let quietEnd = cal.date(from: components) {
+            let shifted = quietEnd <= due
+                ? cal.date(byAdding: .day, value: 1, to: quietEnd)!
+                : quietEnd
+            return (due, shifted)
+        }
+        return (due, nil)
+    }
+
     // MARK: - Empfangenen Stand übernehmen
 
     private func apply(entries: [ToiletEntry]) {
@@ -142,6 +176,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
 
         // iPhone-Eintrag verschiebt auch die Watch-Erinnerung nach hinten
         if let last = entries.first {
+            lastEntryDate = last.timestamp
             scheduleWatchReminder(from: last.timestamp)
         }
     }
@@ -160,7 +195,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
             todayMl: todayMl,
             todayBowel: todayBowel,
             todayCount: todayCount,
-            lastEntryDate: Date(),
+            lastEntryDate: lastEntryDate ?? Date(),
             intervalMinutes: intervalMinutes,
             reminderEnabled: true,
             quietHoursEnabled: quietHoursEnabled,

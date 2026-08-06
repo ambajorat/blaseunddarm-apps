@@ -46,6 +46,30 @@ final class LiveActivityManager {
         }
     }
 
+    /// iOS beendet jede Live Activity spätestens 8 Stunden nach dem Start —
+    /// die beendete Karte bleibt aber noch sichtbar auf dem Sperrbildschirm.
+    /// Ohne Aufräumen liegen morgens zwei da: die abgelaufene alte und die neue.
+    private func endInactiveRemnants() async {
+        for activity in Activity<ToiletTimerAttributes>.activities
+        where activity.activityState != .active && activity.activityState != .stale {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+        if let current = currentActivity,
+           current.activityState != .active, current.activityState != .stale {
+            currentActivity = nil
+        }
+    }
+
+    /// Zeitpunkt des nächsten sichtbaren Zustandswechsels — dort fordert das
+    /// System per staleDate ein Re-Rendering an (Live-Activity-Views sind
+    /// sonst eingefrorene Snapshots; nur Timer-Texte laufen live).
+    private static func nextStateChange(physDue: Date, quietEnd: Date?) -> Date? {
+        let now = Date.now
+        if physDue > now { return physDue }
+        if let q = quietEnd, q > now { return q }
+        return nil
+    }
+
     // MARK: - Start / Update (async: Aufrufer warten, damit Hintergrund-
     // prozesse wie Siri-Intents nicht enden, bevor das Update raus ist)
 
@@ -53,6 +77,8 @@ final class LiveActivityManager {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             print(">>> LA nicht erlaubt"); return
         }
+
+        await endInactiveRemnants()
 
         let physDue = startTime.addingTimeInterval(TimeInterval(intervalMinutes * 60))
         let shifted = Self.quietAdjustedDueDate(start: startTime, intervalMinutes: intervalMinutes, settings: settings)
@@ -71,14 +97,14 @@ final class LiveActivityManager {
         adoptActiveActivity()
 
         if let activity = currentActivity {
-            await activity.update(.init(state: state, staleDate: nil))
+            await activity.update(.init(state: state, staleDate: Self.nextStateChange(physDue: physDue, quietEnd: state.quietEnd)))
             return
         }
 
         do {
             currentActivity = try Activity.request(
                 attributes: ToiletTimerAttributes(),
-                content: .init(state: state, staleDate: nil),
+                content: .init(state: state, staleDate: Self.nextStateChange(physDue: physDue, quietEnd: state.quietEnd)),
                 pushType: nil
             )
         } catch {
@@ -87,6 +113,7 @@ final class LiveActivityManager {
     }
 
     func updateStats(startTime: Date, todayMl: Int, todayCount: Int, intervalMinutes: Int, settings: AppSettings?) async {
+        await endInactiveRemnants()
         adoptActiveActivity()
         guard let activity = currentActivity else { return }
         let physDue = startTime.addingTimeInterval(TimeInterval(intervalMinutes * 60))
@@ -99,14 +126,19 @@ final class LiveActivityManager {
             dueDate: physDue,
             quietEnd: shifted > physDue ? shifted : nil
         )
-        await activity.update(.init(state: state, staleDate: nil))
+        await activity.update(.init(state: state, staleDate: Self.nextStateChange(physDue: physDue, quietEnd: state.quietEnd)))
     }
 
     func ensureRunning(from startTime: Date, intervalMinutes: Int, todayMl: Int, todayCount: Int, settings: AppSettings?) async {
+        await endInactiveRemnants()
         adoptActiveActivity()
         if currentActivity == nil {
             await startTimer(from: startTime, intervalMinutes: intervalMinutes,
                              todayMl: todayMl, todayCount: todayCount, settings: settings)
+        } else {
+            await updateStats(startTime: startTime, todayMl: todayMl,
+                              todayCount: todayCount, intervalMinutes: intervalMinutes,
+                              settings: settings)
         }
     }
 

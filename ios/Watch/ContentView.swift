@@ -24,6 +24,7 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 10) {
                     todayCard
+                    timerCard
 
                     NavigationLink {
                         BladderEntryView()
@@ -62,6 +63,51 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
+    }
+
+    /// Countdown zur nächsten Erinnerung — gleiche Logik wie iPhone-Header
+    /// und Live Activity: orange bis zur körperlichen Fälligkeit, Mond in der
+    /// Ruhezeit, rot ab Ruhezeitende. TimelineView sorgt für den Zustandswechsel.
+    @ViewBuilder
+    private var timerCard: some View {
+        if let info = session.currentDue() {
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                let now = context.date
+                let inQuietWindow = info.due <= now && (info.quietEnd.map { now < $0 } ?? false)
+                let overdue = info.due <= now && !inQuietWindow
+                let overdueAnchor = info.quietEnd ?? info.due
+
+                VStack(spacing: 2) {
+                    if inQuietWindow, let quietEnd = info.quietEnd {
+                        Label("Ruhezeit", systemImage: "moon.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(quietEnd, style: .timer)
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else if overdue {
+                        Text(overdueAnchor, style: .timer)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.red)
+                        Text("überfällig")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    } else {
+                        Text(info.due, style: .timer)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(Farbe.blase)
+                        Text("nächste Erinnerung")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+            }
+        }
     }
 
     private func actionLabel(title: String, icon: String, color: Color) -> some View {
@@ -106,16 +152,17 @@ struct BladderEntryView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var ml: Double = 200
+    @State private var color: UrineColor = .none
     @FocusState private var crownFocused: Bool
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             Text("\(Int(ml)) ml")
-                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(Farbe.blase)
                 .focusable()
                 .focused($crownFocused)
-                .digitalCrownRotation($ml, from: 0, through: 1000, by: 25,
+                .digitalCrownRotation($ml, from: 0, through: 1000, by: 5,
                                       sensitivity: .medium, isContinuous: false)
 
             if !session.quickValues.isEmpty {
@@ -126,6 +173,31 @@ struct BladderEntryView: View {
                             .buttonStyle(.bordered)
                             .tint(Farbe.blase)
                     }
+                }
+            }
+
+            HStack(spacing: 8) {
+                ForEach(UrineColor.allCases.filter { $0 != .none }) { c in
+                    Button {
+                        color = color == c ? .none : c
+                        WKInterfaceDevice.current().play(.click)
+                    } label: {
+                        Text(c.emoji)
+                            .font(.system(size: 18))
+                            .padding(5)
+                            .background(
+                                color == c ? Farbe.blase.opacity(0.25) : Color.clear,
+                                in: Circle()
+                            )
+                            .overlay(
+                                Circle().strokeBorder(
+                                    color == c ? Farbe.blase : Color.clear,
+                                    lineWidth: 1.5
+                                )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(c.rawValue)
                 }
             }
 
@@ -143,7 +215,7 @@ struct BladderEntryView: View {
     }
 
     private func save() {
-        let entry = ToiletEntry(urineMl: Int(ml))
+        let entry = ToiletEntry(urineMl: Int(ml), urineColor: color)
         session.applyLocally(entry)
         session.send(entry, label: "Blase")
         WKInterfaceDevice.current().play(.success)
