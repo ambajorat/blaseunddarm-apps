@@ -21,14 +21,13 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.ui.platform.LocalContext
 import de.bajorat.blaseunddarm.data.*
-import de.bajorat.blaseunddarm.data.BillingManager
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.LocalDateTime
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LogScreen(dataStore: BDMDataStore, billingManager: BillingManager, onScheduleReminder: () -> Unit) {
+fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
     val entries by dataStore.entries.collectAsState()
     val settings by dataStore.settings.collectAsState()
 
@@ -43,10 +42,10 @@ fun LogScreen(dataStore: BDMDataStore, billingManager: BillingManager, onSchedul
     var showAlarm by remember { mutableStateOf(false) }
     val alarmContext = LocalContext.current
     var showPaywall by remember { mutableStateOf(false) }
-    val hasAccess = billingManager.hasAccess
-    val isTrialActive by billingManager.isTrialActive.collectAsState()
-    val trialDaysLeft by billingManager.trialDaysLeft.collectAsState()
-    val isPremium by billingManager.isPremium.collectAsState()
+    val hasAccess = true
+    val isTrialActive = false
+    val trialDaysLeft = 0
+    val isPremium = true
     var timeRemaining by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(entries, settings) {
@@ -267,10 +266,6 @@ fun LogScreen(dataStore: BDMDataStore, billingManager: BillingManager, onSchedul
 
     if (showBristolInfo) {
         BristolInfoDialog(onDismiss = { showBristolInfo = false })
-    }
-
-    if (showPaywall) {
-        PaywallDialog(billingManager = billingManager, onDismiss = { showPaywall = false })
     }
 
     if (showAlarm) {

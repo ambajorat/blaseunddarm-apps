@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import de.bajorat.blaseunddarm.data.*
-import de.bajorat.blaseunddarm.data.BillingManager
 import de.bajorat.blaseunddarm.notification.ReminderManager
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -33,7 +32,7 @@ import java.time.format.DateTimeFormatter
 // ==================== HISTORY ====================
 
 @Composable
-fun HistoryScreen(dataStore: BDMDataStore, billingManager: BillingManager) {
+fun HistoryScreen(dataStore: BDMDataStore) {
     val entries by dataStore.entries.collectAsState()
     val grouped = entries.groupBy { it.dateTime.toLocalDate() }.toSortedMap(compareByDescending { it })
     var editEntry by remember { mutableStateOf<ToiletEntry?>(null) }
@@ -64,7 +63,7 @@ fun HistoryScreen(dataStore: BDMDataStore, billingManager: BillingManager) {
                 items(dayEntries) { entry ->
                     Card(
                         onClick = {
-                            if (billingManager.hasAccess) editEntry = entry
+                            if (true) editEntry = entry
                             else showPaywall = true
                         },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
@@ -97,7 +96,6 @@ fun HistoryScreen(dataStore: BDMDataStore, billingManager: BillingManager) {
             confirmButton = { TextButton(onClick = { dataStore.deleteEntry(entry); deleteEntry = null }) { Text("Löschen", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { deleteEntry = null }) { Text("Abbrechen") } })
     }
-    if (showPaywall) PaywallDialog(billingManager = billingManager, onDismiss = { showPaywall = false })
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -148,7 +146,7 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun StatsScreen(dataStore: BDMDataStore, billingManager: BillingManager) {
+fun StatsScreen(dataStore: BDMDataStore) {
     val entries by dataStore.entries.collectAsState()
     var range by remember { mutableIntStateOf(7) }
     val ranges = listOf(7 to "7 Tage", 30 to "30 Tage", 90 to "3 Monate", 365 to "1 Jahr")
@@ -215,7 +213,7 @@ fun StatsScreen(dataStore: BDMDataStore, billingManager: BillingManager) {
 
             Spacer(Modifier.height(16.dp))
 
-            if (billingManager.hasAccess) {
+            if (true) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     // CSV Export
                     Button(onClick = {
@@ -286,10 +284,8 @@ fun StatsScreen(dataStore: BDMDataStore, billingManager: BillingManager) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("📤 Export (CSV / PDF)", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.weight(1f))
-                        Text("Premium", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Orange)
                     }
                 }
-                if (showPaywall) PaywallDialog(billingManager = billingManager, onDismiss = { showPaywall = false })
             }
 
             Spacer(Modifier.height(100.dp))
@@ -300,7 +296,7 @@ fun StatsScreen(dataStore: BDMDataStore, billingManager: BillingManager) {
 // ==================== SETTINGS ====================
 
 @Composable
-fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager, billingManager: BillingManager) {
+fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
     val settings by dataStore.settings.collectAsState()
     val entries by dataStore.entries.collectAsState()
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -357,7 +353,7 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager, bi
         Spacer(Modifier.height(16.dp))
 
         // Quick values
-        if (billingManager.hasAccess) {
+        if (true) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Schnellwahl-Mengen (ml)", fontWeight = FontWeight.SemiBold)
@@ -378,26 +374,6 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager, bi
                 }
             }
             Spacer(Modifier.height(16.dp))
-        }
-
-        // Premium
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Premium", fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(8.dp))
-                val isPremium by billingManager.isPremium.collectAsState()
-                val isTrialActive by billingManager.isTrialActive.collectAsState()
-                val trialDaysLeft by billingManager.trialDaysLeft.collectAsState()
-                var showPaywall by remember { mutableStateOf(false) }
-                if (isPremium) {
-                    Text("⭐ Premium aktiv", color = Orange, fontWeight = FontWeight.SemiBold)
-                } else {
-                    Button(onClick = { showPaywall = true }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Orange)) {
-                        Text(if (isTrialActive) "Premium freischalten (noch $trialDaysLeft Tage Trial)" else "Premium freischalten", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-                if (showPaywall) PaywallDialog(billingManager = billingManager, onDismiss = { showPaywall = false })
-            }
         }
 
         Spacer(Modifier.height(16.dp))

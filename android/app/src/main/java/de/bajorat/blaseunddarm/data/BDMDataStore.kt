@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-class BDMDataStore(context: Context) {
+class BDMDataStore(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("bb_data", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -27,6 +27,8 @@ class BDMDataStore(context: Context) {
     fun addEntry(entry: ToiletEntry) {
         _entries.value = listOf(entry) + _entries.value
         saveEntries()
+        AlertEngine.checkEntry(context, entry)
+        AlertEngine.checkDay(context, _entries.value)
     }
 
     fun updateEntry(entry: ToiletEntry) {

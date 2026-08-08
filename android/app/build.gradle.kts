@@ -16,8 +16,8 @@ android {
         applicationId = "de.bajorat.blaseunddarm"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     signingConfigs {
@@ -58,6 +58,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     // Compose
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
@@ -74,8 +75,6 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 
-    // Billing
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
