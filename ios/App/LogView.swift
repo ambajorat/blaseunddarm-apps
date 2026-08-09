@@ -11,6 +11,8 @@ struct LogView: View {
     @State private var bristolType: BristolType = .none
     @State private var showBristolInfo = false
     @State private var note = ""
+    @State private var drinkText = ""
+    @State private var drinkSettings = DrinkSettings.load()
     @State private var entryTime: Date = .now
     @State private var showSaved = false
     @State private var timer: Timer?
@@ -46,10 +48,14 @@ struct LogView: View {
             }
             .onAppear {
                 entryTime = .now
+                drinkSettings = DrinkSettings.load()
                 startTimer()
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { entryTime = .now }
+                if phase == .active {
+                    entryTime = .now
+                    drinkSettings = DrinkSettings.load()
+                }
             }
             .onDisappear { timer?.invalidate() }
             .overlay {
@@ -153,6 +159,10 @@ struct LogView: View {
                 Rectangle().fill(Color.pillBorder).frame(width: 0.5, height: 30)
                 summaryItem(value: "\(store.todayBowel)×", unit: nil, label: String(localized: "stool"), color: Color.bowel)
                 Rectangle().fill(Color.pillBorder).frame(width: 0.5, height: 30)
+                if drinkSettings.enabled {
+                    summaryItem(value: "\(store.todayDrink)", unit: "ml", label: "Getrunken", color: Color.teal)
+                    Rectangle().fill(Color.pillBorder).frame(width: 0.5, height: 30)
+                }
                 summaryItem(value: "\(store.todayCount)", unit: nil, label: String(localized: "entries"), color: Color.subtleText)
             }
             .padding(.vertical, 12)
@@ -210,6 +220,28 @@ struct LogView: View {
                     ForEach(UrineColor.allCases.filter { $0 != .none }) { color in
                         AccessibleColorButton(color: color, isSelected: urineColor == color) {
                             urineColor = urineColor == color ? .none : color
+                        }
+                    }
+                }
+            }
+
+            // Getrunken (optional, per Einstellungen aktivierbar)
+            if drinkSettings.enabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Getrunken (ml)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.subtleText)
+                    TextField("ml", text: $drinkText)
+                        .keyboardType(.numberPad)
+                        .font(.body)
+                        .padding(10)
+                        .background(Color.pageBg, in: .rect(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
+                    HStack(spacing: 6) {
+                        ForEach(drinkSettings.presets, id: \.self) { val in
+                            AccessibleQuickValueButton(value: val, isSelected: drinkText == String(val)) {
+                                drinkText = String(val)
+                            }
                         }
                     }
                 }
@@ -296,23 +328,25 @@ struct LogView: View {
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
     }
 
-    private var canSave: Bool { (Int(urineMl) ?? 0) > 0 || bowel }
+    private var canSave: Bool { (Int(urineMl) ?? 0) > 0 || bowel || (Int(drinkText) ?? 0) > 0 }
 
     private func saveEntry() {
         guard canSave else { return }
+        let drinkVal = Int(drinkText).flatMap { $0 > 0 ? $0 : nil }
         store.add(ToiletEntry(
             timestamp: entryTime,
             urineMl: Int(urineMl) ?? 0,
             bowel: bowel,
             bristolType: bristolType,
             urineColor: urineColor,
-            note: note
+            note: note,
+            drinkMl: drinkVal
         ))
         // store.add(...) startet die Live Activity bereits selbst.
         if store.settings.reminderEnabled {
             notifications.scheduleReminder(afterMinutes: store.settings.intervalMinutes, settings: store.settings)
         }
-        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; entryTime = .now; showSaved = true
+        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; entryTime = .now; showSaved = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { showSaved = false }
     }
 

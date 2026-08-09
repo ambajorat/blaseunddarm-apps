@@ -13,17 +13,21 @@ struct SettingsView: View {
     @State private var showImportResult = false
     @State private var showRestoreConfirm = false
     @State private var newQuickValue = ""
+    @State private var drink = DrinkSettings.load()
+    @State private var newDrinkValue = ""
 
     var body: some View {
         NavigationStack {
             List {
                 reminderSection
                 quickValuesSection
+                drinkSection
                 cloudSection
                 dataSection
                 aboutSection
             }
             .navigationTitle(String(localized: "tab_settings"))
+            .onChange(of: drink) { _, new in new.save() }
             .alert("Alle Daten löschen?", isPresented: $showDeleteConfirm) {
                 Button("Abbrechen", role: .cancel) {}
                 Button("Endgültig löschen", role: .destructive) {
@@ -238,6 +242,59 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Trinkmengen (optional)
+
+    private var drinkSection: some View {
+        Section {
+            Toggle(isOn: $drink.enabled) {
+                Label("Trinkmengen erfassen", systemImage: "cup.and.saucer.fill")
+            }
+
+            if drink.enabled {
+                ForEach(Array(drink.presets.enumerated()), id: \.offset) { index, value in
+                    HStack {
+                        Text("\(value) ml")
+                            .monospacedDigit()
+                        Spacer()
+                        Button(role: .destructive) {
+                            drink.presets.remove(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                HStack {
+                    TextField("Neuer Wert", text: $newDrinkValue)
+                        .keyboardType(.numberPad)
+
+                    Button {
+                        if let val = Int(newDrinkValue), val > 0 {
+                            drink.presets.append(val)
+                            drink.presets.sort()
+                            newDrinkValue = ""
+                        }
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(Color.accentBlue)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(Int(newDrinkValue) == nil || Int(newDrinkValue)! <= 0)
+                }
+            }
+        } header: {
+            Text("Trinkmengen")
+        } footer: {
+            Text(drink.enabled
+                 ? "Erscheint beim Erfassen als eigener Abschnitt \u{201E}Getrunken (ml)\u{201C} mit diesen Schnelltasten."
+                 : "Optional: Erfasse zusätzlich, wie viel du trinkst — für die Ein-/Ausfuhr-Bilanz.")
+                .font(.caption)
+        }
+    }
+
     // MARK: - Cloud Section
 
     private var cloudSection: some View {
@@ -420,7 +477,7 @@ struct SettingsView: View {
     // MARK: - CSV Export
 
     private func exportCSV() {
-        var csv = "Datum;Uhrzeit;Urin_ml;Stuhlgang;Notiz\n"
+        var csv = "Datum;Uhrzeit;Urin_ml;Getrunken_ml;Stuhlgang;Notiz\n"
         let df = DateFormatter()
         df.dateFormat = "dd.MM.yyyy"
         let tf = DateFormatter()
@@ -428,7 +485,7 @@ struct SettingsView: View {
 
         for e in store.entries.sorted(by: { $0.timestamp < $1.timestamp }) {
             let note = e.note.replacingOccurrences(of: ";", with: ",")
-            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.bowel ? "Ja" : "Nein");\(note)\n"
+            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.drinkMl ?? 0);\(e.bowel ? "Ja" : "Nein");\(note)\n"
         }
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("blasen_darm_protokoll.csv")
@@ -477,6 +534,7 @@ struct SettingsView: View {
         let zeitIdx = columns.firstIndex(where: { $0.contains("uhrzeit") || $0.contains("zeit") || $0.contains("time") })
         let mlIdx = columns.firstIndex(where: { $0.contains("urin") || $0.contains("ml") || $0.contains("menge") })
         let stuhlIdx = columns.firstIndex(where: { $0.contains("stuhl") || $0.contains("bowel") })
+        let drinkIdx = columns.firstIndex(where: { $0.contains("getrunken") || $0.contains("trink") || $0.contains("drink") })
         let notizIdx = columns.firstIndex(where: { $0.contains("notiz") || $0.contains("note") })
 
         let df = DateFormatter()
@@ -530,7 +588,13 @@ struct SettingsView: View {
                 note = fields[ni]
             }
 
-            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note)
+            var drinkVal: Int? = nil
+            if let di = drinkIdx, di < fields.count {
+                let v = Int(fields[di].replacingOccurrences(of: "ml", with: "").trimmingCharacters(in: .whitespaces)) ?? 0
+                if v > 0 { drinkVal = v }
+            }
+
+            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note, drinkMl: drinkVal)
             store.add(entry)
             imported += 1
         }

@@ -83,6 +83,7 @@ final class DataStore {
     }
 
     var todayMl: Int { todayEntries.reduce(0) { $0 + $1.urineMl } }
+    var todayDrink: Int { todayEntries.reduce(0) { $0 + ($1.drinkMl ?? 0) } }
     var todayBowel: Int { todayEntries.filter(\.bowel).count }
     var todayCount: Int { todayEntries.count }
 

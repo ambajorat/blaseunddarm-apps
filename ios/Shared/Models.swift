@@ -112,8 +112,10 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
     var bristolType: BristolType
     var urineColor: UrineColor
     var note: String
+    /// Optional, damit alte gespeicherte Einträge weiter decodieren
+    var drinkMl: Int?
 
-    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "") {
+    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "", drinkMl: Int? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.urineMl = urineMl
@@ -121,6 +123,7 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
         self.bristolType = bristolType
         self.urineColor = urineColor
         self.note = note
+        self.drinkMl = drinkMl
     }
 
     var dateKey: String {
