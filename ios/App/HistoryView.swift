@@ -102,6 +102,15 @@ struct EntryRow: View {
                     .font(.caption)
             }
 
+            if let drink = entry.drinkMl, drink > 0 {
+                Label("\(drink) ml", systemImage: "cup.and.saucer.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.teal)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.teal.opacity(0.12), in: .rect(cornerRadius: 6))
+            }
+
             if entry.bowel {
                 HStack(spacing: 3) {
                     Label("Stuhl", systemImage: "checkmark.circle.fill")
@@ -147,6 +156,8 @@ struct EditEntryView: View {
     @State private var bowel: Bool
     @State private var bristolType: BristolType
     @State private var note: String
+    @State private var drinkText: String
+    private let drinkSettings = DrinkSettings.load()
     @State private var showDeleteConfirm = false
     @State private var showBristolInfo = false
 
@@ -158,6 +169,7 @@ struct EditEntryView: View {
         _bowel = State(initialValue: entry.bowel)
         _bristolType = State(initialValue: entry.bristolType)
         _note = State(initialValue: entry.note)
+        _drinkText = State(initialValue: (entry.drinkMl ?? 0) > 0 ? String(entry.drinkMl ?? 0) : "")
     }
 
     private var quickValues: [Int] {
@@ -212,6 +224,30 @@ struct EditEntryView: View {
                             .buttonStyle(.plain)
                             .foregroundStyle(urineColor == color ? Color.accent : .secondary)
                         }
+                    }
+                }
+
+                if drinkSettings.enabled || !drinkText.isEmpty {
+                    Section("Getrunken (ml)") {
+                        TextField("ml eingeben", text: $drinkText)
+                            .keyboardType(.numberPad)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(drinkSettings.presets, id: \.self) { val in
+                                    Button(String(val)) {
+                                        drinkText = String(val)
+                                    }
+                                    .font(.subheadline.weight(.semibold))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(drinkText == String(val) ? Color.teal.opacity(0.15) : Color(.systemGroupedBackground),
+                                               in: .rect(cornerRadius: 8))
+                                    .foregroundStyle(drinkText == String(val) ? Color.teal : .secondary)
+                                }
+                            }
+                        }
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     }
                 }
 
