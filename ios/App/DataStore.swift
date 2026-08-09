@@ -37,7 +37,13 @@ final class DataStore {
     // MARK: - Entries
 
     func add(_ entry: ToiletEntry) {
-        entries.insert(entry, at: 0)
+        // Doppelte Zustellung (z. B. Watch: sendMessage + transferUserInfo-Fallback)
+        // darf nie zu Duplikaten führen: gleiche ID = Update statt zweiter Zeile.
+        if let idx = entries.firstIndex(where: { $0.id == entry.id }) {
+            entries[idx] = entry
+        } else {
+            entries.insert(entry, at: 0)
+        }
         saveEntries()
         // Hinweise: Sofort-Check des Eintrags + Tages-Checks
         AlertEngine.checkEntry(entry)
@@ -103,7 +109,10 @@ final class DataStore {
     private func loadEntries() {
         guard let data = UserDefaults.standard.data(forKey: entriesKey),
               let decoded = try? decoder.decode([ToiletEntry].self, from: data) else { return }
-        entries = decoded.sorted { $0.timestamp > $1.timestamp }
+        var seen = Set<UUID>()
+        entries = decoded
+            .filter { seen.insert($0.id).inserted }
+            .sorted { $0.timestamp > $1.timestamp }
     }
 
     private func saveSettings() {
