@@ -249,7 +249,7 @@ struct LogView: View {
                             Button {
                                 palpation = (palpation == f) ? nil : f
                             } label: {
-                                Text(f.rawValue)
+                                Text(f.label)
                                     .font(.caption)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.center)
@@ -281,7 +281,7 @@ struct LogView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: symptoms.contains(s) ? "checkmark.circle.fill" : "circle")
                                         .font(.caption)
-                                    Text(s.rawValue)
+                                    Text(s.label)
                                         .font(.caption)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)
@@ -313,7 +313,7 @@ struct LogView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: adSigns.contains(z) ? "checkmark.circle.fill" : "circle")
                                         .font(.caption)
-                                    Text(z.rawValue)
+                                    Text(z.label)
                                         .font(.caption)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)

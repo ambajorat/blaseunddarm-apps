@@ -379,18 +379,18 @@ struct SettingsView: View {
 
     private var catheterFooterText: String {
         guard catheter.enabled else {
-            return "Optional: Zählt deine Katheter mit — jeder Blaseneintrag gilt als eine Katheterisierung — und erinnert dich rechtzeitig ans Rezept."
+            return String(localized: "Optional: Zählt deine Katheter mit — jeder Blaseneintrag gilt als eine Katheterisierung — und erinnert dich rechtzeitig ans Rezept.")
         }
         if catheter.currentStock(entries: store.entries) == 0 {
-            return "Trage deinen aktuellen Bestand ein, um zu starten."
+            return String(localized: "Trage deinen aktuellen Bestand ein, um zu starten.")
         }
         if let days = catheter.daysRemaining(entries: store.entries),
            let empty = catheter.estimatedEmptyDate(entries: store.entries),
            let usage = catheter.dailyUsage(entries: store.entries) {
             let dateText = empty.formatted(.dateTime.day().month())
-            return String(format: "Ø %.1f pro Tag — reicht noch etwa %d Tage (bis ca. %@).", usage, days, dateText)
+            return String(format: String(localized: "Ø %.1f pro Tag — reicht noch etwa %d Tage (bis ca. %@)."), usage, days, dateText)
         }
-        return "Reichweite erscheint, sobald mindestens 3 Tage mit Blaseneinträgen in den letzten 14 Tagen vorliegen."
+        return String(localized: "Reichweite erscheint, sobald mindestens 3 Tage mit Blaseneinträgen in den letzten 14 Tagen vorliegen.")
     }
 
     // MARK: - HWI-Frühwarnung (optional)
@@ -404,8 +404,8 @@ struct SettingsView: View {
             Text("Harnwegsinfekt")
         } footer: {
             Text(uti.enabled
-                 ? "Beim Erfassen erscheint der Abschnitt \u{201E}Auffälligkeiten\u{201C}. Bei Blut oder Fieber meldet sich die App sofort, bei Mustern über mehrere Tage mit einem Hinweis. Ersetzt keine ärztliche Diagnose."
-                 : "Optional: Erfasse Anzeichen wie Geruch, Brennen oder vermehrte Spastik — die App warnt bei Mustern, die bei ISK auf einen Harnwegsinfekt hindeuten können. Ersetzt keine ärztliche Diagnose.")
+                 ? String(localized: "Beim Erfassen erscheint der Abschnitt \u{201E}Auffälligkeiten\u{201C}. Bei Blut oder Fieber meldet sich die App sofort, bei Mustern über mehrere Tage mit einem Hinweis. Ersetzt keine ärztliche Diagnose.")
+                 : String(localized: "Optional: Erfasse Anzeichen wie Geruch, Brennen oder vermehrte Spastik — die App warnt bei Mustern, die bei ISK auf einen Harnwegsinfekt hindeuten können. Ersetzt keine ärztliche Diagnose."))
                 .font(.caption)
         }
     }

@@ -9,6 +9,7 @@ enum TimeRange: String, CaseIterable, Identifiable {
     case year = "1 Jahr"
     case all = "Alle"
     var id: String { rawValue }
+    var label: String { String(localized: String.LocalizationValue(rawValue)) }
     var days: Int {
         switch self {
         case .week: 7
@@ -81,7 +82,7 @@ struct StatsView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(TimeRange.allCases) { r in
-                    Button(r.rawValue) { range = r }
+                    Button(r.label) { range = r }
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 12).padding(.vertical, 7)
                         .background(range == r ? Color.pillActiveBg : Color.clear, in: .capsule)
@@ -143,7 +144,7 @@ struct StatsView: View {
                     }
                     ForEach(rows, id: \.0) { row in
                         HStack {
-                            Text(row.0.rawValue)
+                            Text(row.0.label)
                                 .font(.caption)
                             Spacer()
                             Text("Ø \(row.1) ml")
@@ -172,11 +173,11 @@ struct StatsView: View {
         let inRange = store.entries.filter { $0.timestamp >= start }
         let utiRows: [(String, Int)] = UtiSymptom.allCases.compactMap { sym in
             let n = inRange.filter { ($0.symptoms ?? []).contains(sym) }.count
-            return n > 0 ? (sym.rawValue, n) : nil
+            return n > 0 ? (sym.label, n) : nil
         }
         let adRows: [(String, Int)] = AdSign.allCases.compactMap { z in
             let n = inRange.filter { ($0.adSigns ?? []).contains(z) }.count
-            return n > 0 ? (z.rawValue, n) : nil
+            return n > 0 ? (z.label, n) : nil
         }
         let bps = inRange.compactMap(\.systolicBp)
         if !utiRows.isEmpty || !adRows.isEmpty || !bps.isEmpty {

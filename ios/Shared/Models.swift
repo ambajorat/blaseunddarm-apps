@@ -138,6 +138,13 @@ enum AdSign: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// Anzeige-Label: rawValue ist Speicher-/CSV-Format (deutsch, stabil),
+/// label läuft durchs Lokalisierungssystem.
+extension UrineColor { var label: String { String(localized: String.LocalizationValue(rawValue)) } }
+extension UtiSymptom { var label: String { String(localized: String.LocalizationValue(rawValue)) } }
+extension PalpationFinding { var label: String { String(localized: String.LocalizationValue(rawValue)) } }
+extension AdSign { var label: String { String(localized: String.LocalizationValue(rawValue)) } }
+
 struct ToiletEntry: Identifiable, Codable, Equatable {
     let id: UUID
     var timestamp: Date

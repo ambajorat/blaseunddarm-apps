@@ -154,10 +154,10 @@ struct EntryRow: View {
     /// Zweite Zeile mit ISK-Details — nur wenn der Eintrag welche hat.
     private var detailLine: String? {
         var parts: [String] = []
-        if let palp = entry.palpation { parts.append("Tastbefund: \(palp.rawValue)") }
-        if let syms = entry.symptoms, !syms.isEmpty { parts.append("Auffällig: " + syms.map(\.rawValue).joined(separator: ", ")) }
-        if let ad = entry.adSigns, !ad.isEmpty { parts.append("Vegetativ: " + ad.map(\.rawValue).joined(separator: ", ")) }
-        if let bp = entry.systolicBp { parts.append("RR \(bp)") }
+        if let palp = entry.palpation { parts.append(String(localized: "Tastbefund: \(palp.label)")) }
+        if let syms = entry.symptoms, !syms.isEmpty { parts.append(String(localized: "Auffällig: \(syms.map(\.label).joined(separator: ", "))")) }
+        if let ad = entry.adSigns, !ad.isEmpty { parts.append(String(localized: "Vegetativ: \(ad.map(\.label).joined(separator: ", "))")) }
+        if let bp = entry.systolicBp { parts.append(String(localized: "RR \(bp)")) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -246,7 +246,7 @@ struct EditEntryView: View {
                             } label: {
                                 VStack(spacing: 3) {
                                     Text(color.emoji).font(.title3)
-                                    Text(color.rawValue).font(.system(size: 9)).lineLimit(1)
+                                    Text(color.label).font(.system(size: 9)).lineLimit(1)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 6)
@@ -265,7 +265,7 @@ struct EditEntryView: View {
                                 Button {
                                     palpation = (palpation == f) ? nil : f
                                 } label: {
-                                    Text(f.rawValue)
+                                    Text(f.label)
                                         .font(.system(size: 11))
                                         .lineLimit(2)
                                         .multilineTextAlignment(.center)
@@ -291,7 +291,7 @@ struct EditEntryView: View {
                                     HStack(spacing: 6) {
                                         Image(systemName: symptoms.contains(sym) ? "checkmark.circle.fill" : "circle")
                                             .font(.caption)
-                                        Text(sym.rawValue)
+                                        Text(sym.label)
                                             .font(.caption)
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.8)
@@ -317,7 +317,7 @@ struct EditEntryView: View {
                                     HStack(spacing: 6) {
                                         Image(systemName: adSigns.contains(z) ? "checkmark.circle.fill" : "circle")
                                             .font(.caption)
-                                        Text(z.rawValue)
+                                        Text(z.label)
                                             .font(.caption)
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.8)

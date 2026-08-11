@@ -60,8 +60,8 @@ enum AlertEngine {
               entry.urineMl >= settings.singleOverMl else { return }
         notifyOnce(
             rule: "single_\(entry.id.uuidString)",
-            title: "Hohe Einzelmenge",
-            body: "\(entry.urineMl) ml auf einmal — über deiner Grenze von \(settings.singleOverMl) ml.",
+            title: String(localized: "Hohe Einzelmenge"),
+            body: String(localized: "\(entry.urineMl) ml auf einmal — über deiner Grenze von \(settings.singleOverMl) ml."),
             timeSensitive: true
         )
     }
@@ -79,24 +79,24 @@ enum AlertEngine {
 
         if settings.dayOverEnabled, ml >= settings.dayOverMl {
             notifyOnce(rule: "dayOver_\(dateKey)",
-                       title: "Hohe Tagesmenge",
-                       body: "Heute schon \(ml) ml — über deiner Grenze von \(settings.dayOverMl) ml.")
+                       title: String(localized: "Hohe Tagesmenge"),
+                       body: String(localized: "Heute schon \(ml) ml — über deiner Grenze von \(settings.dayOverMl) ml."))
         }
         if settings.countOverEnabled, count >= settings.countOverLimit {
             notifyOnce(rule: "countOver_\(dateKey)",
-                       title: "Viele Toilettengänge",
-                       body: "Heute schon \(count) Gänge — über deiner Grenze von \(settings.countOverLimit).")
+                       title: String(localized: "Viele Toilettengänge"),
+                       body: String(localized: "Heute schon \(count) Gänge — über deiner Grenze von \(settings.countOverLimit)."))
         }
         if let base {
             if Double(ml) > Double(base.avgMl) * (1 + dev) {
                 notifyOnce(rule: "baseMlOver_\(dateKey)",
-                           title: "Deutlich über deinem Schnitt",
-                           body: "Heute \(ml) ml — dein 14-Tage-Schnitt liegt bei \(base.avgMl) ml.")
+                           title: String(localized: "Deutlich über deinem Schnitt"),
+                           body: String(localized: "Heute \(ml) ml — dein 14-Tage-Schnitt liegt bei \(base.avgMl) ml."))
             }
             if Double(count) > base.avgCount * (1 + dev) {
                 notifyOnce(rule: "baseCountOver_\(dateKey)",
-                           title: "Häufiger als sonst",
-                           body: "Heute \(count) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount)).")
+                           title: String(localized: "Häufiger als sonst"),
+                           body: String(localized: "Heute \(count) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount))."))
             }
         }
 
@@ -107,24 +107,24 @@ enum AlertEngine {
 
         if settings.dayUnderEnabled, ml < settings.dayUnderMl {
             notifyOnce(rule: "dayUnder_\(dateKey)",
-                       title: "Niedrige Tagesmenge",
-                       body: "Bis jetzt \(ml) ml — unter deiner Grenze von \(settings.dayUnderMl) ml. Genug getrunken?")
+                       title: String(localized: "Niedrige Tagesmenge"),
+                       body: String(localized: "Bis jetzt \(ml) ml — unter deiner Grenze von \(settings.dayUnderMl) ml. Genug getrunken?"))
         }
         if settings.countUnderEnabled, count < settings.countUnderLimit {
             notifyOnce(rule: "countUnder_\(dateKey)",
-                       title: "Wenige Toilettengänge",
-                       body: "Bis jetzt \(count) Gänge — unter deiner Grenze von \(settings.countUnderLimit).")
+                       title: String(localized: "Wenige Toilettengänge"),
+                       body: String(localized: "Bis jetzt \(count) Gänge — unter deiner Grenze von \(settings.countUnderLimit)."))
         }
         if let base {
             if Double(ml) < Double(base.avgMl) * (1 - dev) {
                 notifyOnce(rule: "baseMlUnder_\(dateKey)",
-                           title: "Deutlich unter deinem Schnitt",
-                           body: "Bis jetzt \(ml) ml — dein 14-Tage-Schnitt liegt bei \(base.avgMl) ml.")
+                           title: String(localized: "Deutlich unter deinem Schnitt"),
+                           body: String(localized: "Bis jetzt \(ml) ml — dein 14-Tage-Schnitt liegt bei \(base.avgMl) ml."))
             }
             if Double(count) < base.avgCount * (1 - dev) {
                 notifyOnce(rule: "baseCountUnder_\(dateKey)",
-                           title: "Seltener als sonst",
-                           body: "Bis jetzt \(count) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount)).")
+                           title: String(localized: "Seltener als sonst"),
+                           body: String(localized: "Bis jetzt \(count) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount))."))
             }
         }
     }
@@ -137,8 +137,8 @@ enum AlertEngine {
         guard ad.enabled, let signs = entry.adSigns, !signs.isEmpty, entry.urineMl == 0 else { return }
         notifyOnce(
             rule: "adSigns_\(entry.id.uuidString)",
-            title: "Vegetative Zeichen erfasst",
-            body: "Bei voller Blase können das Füllungssignale sein — Blase entleeren und mögliche Auslöser prüfen.",
+            title: String(localized: "Vegetative Zeichen erfasst"),
+            body: String(localized: "Bei voller Blase können das Füllungssignale sein — Blase entleeren und mögliche Auslöser prüfen."),
             timeSensitive: true
         )
     }
@@ -151,11 +151,11 @@ enum AlertEngine {
         guard uti.enabled, let syms = entry.symptoms, !syms.isEmpty else { return }
         let urgent = syms.filter { $0.isUrgent }
         guard !urgent.isEmpty else { return }
-        let names = urgent.map(\.rawValue).joined(separator: ", ")
+        let names = urgent.map(\.label).joined(separator: ", ")
         notifyOnce(
             rule: "utiUrgent_\(entry.id.uuidString)",
-            title: "Auffälligkeit erfasst",
-            body: "\(names) — bei ISK bitte zeitnah ärztlich abklären.",
+            title: String(localized: "Auffälligkeit erfasst"),
+            body: String(localized: "\(names) — bei ISK bitte zeitnah ärztlich abklären."),
             timeSensitive: true
         )
     }
@@ -179,8 +179,8 @@ enum AlertEngine {
         if !t.isEmpty, !y.isEmpty, t.union(y).count >= 2 {
             notifyOnce(
                 rule: "utiPattern_\(dateKey)",
-                title: "Auffälligkeiten seit zwei Tagen",
-                body: "Mehrere Anzeichen an zwei Tagen in Folge — das kann bei ISK auf einen Harnwegsinfekt hindeuten. Ggf. ärztlich abklären."
+                title: String(localized: "Auffälligkeiten seit zwei Tagen"),
+                body: String(localized: "Mehrere Anzeichen an zwei Tagen in Folge — das kann bei ISK auf einen Harnwegsinfekt hindeuten. Ggf. ärztlich abklären.")
             )
         }
 
@@ -196,8 +196,8 @@ enum AlertEngine {
         if darkDays >= 2 {
             notifyOnce(
                 rule: "utiColor_\(dateKey)",
-                title: "Urin auffällig dunkel oder trüb",
-                body: "An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären."
+                title: String(localized: "Urin auffällig dunkel oder trüb"),
+                body: String(localized: "An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären.")
             )
         }
     }
@@ -213,12 +213,12 @@ enum AlertEngine {
         let count = stock.currentStock(entries: entries)
         let body: String
         if let empty = stock.estimatedEmptyDate(entries: entries) {
-            body = "Noch \(count) Katheter — reicht etwa bis \(empty.formatted(.dateTime.day().month())). Zeit fürs Rezept."
+            body = String(localized: "Noch \(count) Katheter — reicht etwa bis \(empty.formatted(.dateTime.day().month())). Zeit fürs Rezept.")
         } else {
-            body = "Noch \(count) Katheter. Zeit fürs Rezept."
+            body = String(localized: "Noch \(count) Katheter. Zeit fürs Rezept.")
         }
         notifyOnce(rule: "cathLow_\(dateKey)",
-                   title: "Katheter werden knapp",
+                   title: String(localized: "Katheter werden knapp"),
                    body: body)
     }
 
