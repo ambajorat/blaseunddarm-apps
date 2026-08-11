@@ -55,6 +55,7 @@ enum AlertEngine {
     /// Sofort beim Speichern eines Eintrags (App, Siri, Watch via DataStore).
     static func checkEntry(_ entry: ToiletEntry, settings: AlertSettings = .load()) {
         checkUtiEntry(entry)
+        checkAdEntry(entry)
         guard settings.singleOverEnabled,
               entry.urineMl >= settings.singleOverMl else { return }
         notifyOnce(
@@ -126,6 +127,20 @@ enum AlertEngine {
                            body: "Bis jetzt \(count) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount)).")
             }
         }
+    }
+
+    // MARK: Vegetative Zeichen (AD)
+
+    /// Hinweis, wenn vegetative Zeichen OHNE Entleerung erfasst wurden —
+    /// Erinnerung an etabliertes Vorgehen, keine Diagnose.
+    static func checkAdEntry(_ entry: ToiletEntry, ad: AdSettings = .load()) {
+        guard ad.enabled, let signs = entry.adSigns, !signs.isEmpty, entry.urineMl == 0 else { return }
+        notifyOnce(
+            rule: "adSigns_\(entry.id.uuidString)",
+            title: "Vegetative Zeichen erfasst",
+            body: "Bei voller Blase können das Füllungssignale sein — Blase entleeren und mögliche Auslöser prüfen.",
+            timeSensitive: true
+        )
     }
 
     // MARK: HWI-Frühwarnung

@@ -61,6 +61,7 @@ struct StatsView: View {
                             rangePicker
                             averageCards
                             catheterCard
+                            palpationCard
                             urineChart
                             toiletCountChart
                             dailyTable
@@ -119,6 +120,48 @@ struct StatsView: View {
             .padding(16)
             .background(Color.cardBg, in: .rect(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+        }
+    }
+
+    @ViewBuilder
+    private var palpationCard: some View {
+        if PalpationSettings.load().enabled {
+            let rows: [(PalpationFinding, Int, Int)] = PalpationFinding.allCases.compactMap { f in
+                let mls = store.entries.filter { $0.palpation == f && $0.urineMl > 0 }.map(\.urineMl)
+                guard mls.count >= 3 else { return nil }
+                return (f, mls.reduce(0, +) / mls.count, mls.count)
+            }
+            if !rows.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "hand.point.up.left.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.accent)
+                        Text("Dein Tastbefund, kalibriert")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    ForEach(rows, id: \.0) { row in
+                        HStack {
+                            Text(row.0.rawValue)
+                                .font(.caption)
+                            Spacer()
+                            Text("Ø \(row.1) ml")
+                                .font(.caption.weight(.semibold))
+                                .monospacedDigit()
+                            Text("(\(row.2)×)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                    }
+                    Text("Durchschnittliche Menge je Befundstufe — aus deinen eigenen Einträgen.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .background(Color.cardBg, in: .rect(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+            }
         }
     }
 

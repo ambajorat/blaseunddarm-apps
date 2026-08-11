@@ -120,6 +120,24 @@ enum UtiSymptom: String, Codable, CaseIterable, Identifiable {
     var isUrgent: Bool { self == .blood || self == .fever }
 }
 
+/// Tastbefund oberhalb der Symphyse — Selbsteinschätzung des Füllungsgrades (ISK).
+enum PalpationFinding: String, Codable, CaseIterable, Identifiable {
+    case soft = "Tief eindrückbar"
+    case medium = "Leichter Widerstand"
+    case firm = "Deutlich federnd"
+    var id: String { rawValue }
+}
+
+/// Vegetative Zeichen (autonome Dysreflexie) — bei hoher Lähmung oft
+/// die einzigen Füllungssignale. Bewusst getrennt von den Infektzeichen.
+enum AdSign: String, Codable, CaseIterable, Identifiable {
+    case goosebumps = "Gänsehaut"
+    case sweating = "Schwitzen"
+    case heat = "Hitzegefühl"
+    case headache = "Kopfschmerz"
+    var id: String { rawValue }
+}
+
 struct ToiletEntry: Identifiable, Codable, Equatable {
     let id: UUID
     var timestamp: Date
@@ -132,8 +150,14 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
     var drinkMl: Int?
     /// Optional, damit alte gespeicherte Einträge weiter decodieren
     var symptoms: [UtiSymptom]?
+    /// Optional, damit alte gespeicherte Einträge weiter decodieren
+    var palpation: PalpationFinding?
+    /// Optional, damit alte gespeicherte Einträge weiter decodieren
+    var adSigns: [AdSign]?
+    /// Optional, damit alte gespeicherte Einträge weiter decodieren
+    var systolicBp: Int?
 
-    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "", drinkMl: Int? = nil, symptoms: [UtiSymptom]? = nil) {
+    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "", drinkMl: Int? = nil, symptoms: [UtiSymptom]? = nil, palpation: PalpationFinding? = nil, adSigns: [AdSign]? = nil, systolicBp: Int? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.urineMl = urineMl
@@ -143,6 +167,9 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
         self.note = note
         self.drinkMl = drinkMl
         self.symptoms = symptoms
+        self.palpation = palpation
+        self.adSigns = adSigns
+        self.systolicBp = systolicBp
     }
 
     var dateKey: String {

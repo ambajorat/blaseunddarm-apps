@@ -15,6 +15,11 @@ struct LogView: View {
     @State private var drinkSettings = DrinkSettings.load()
     @State private var utiSettings = UtiSettings.load()
     @State private var symptoms: Set<UtiSymptom> = []
+    @State private var palpSettings = PalpationSettings.load()
+    @State private var palpation: PalpationFinding? = nil
+    @State private var adSettings = AdSettings.load()
+    @State private var adSigns: Set<AdSign> = []
+    @State private var bpText = ""
     @State private var entryTime: Date = .now
     @State private var showSaved = false
     @State private var timer: Timer?
@@ -52,6 +57,8 @@ struct LogView: View {
                 entryTime = .now
                 drinkSettings = DrinkSettings.load()
                 utiSettings = UtiSettings.load()
+                palpSettings = PalpationSettings.load()
+                adSettings = AdSettings.load()
                 startTimer()
             }
             .onChange(of: scenePhase) { _, phase in
@@ -59,6 +66,8 @@ struct LogView: View {
                     entryTime = .now
                     drinkSettings = DrinkSettings.load()
                     utiSettings = UtiSettings.load()
+                palpSettings = PalpationSettings.load()
+                adSettings = AdSettings.load()
                 }
             }
             .onDisappear { timer?.invalidate() }
@@ -229,6 +238,35 @@ struct LogView: View {
                 }
             }
 
+            // Tastbefund (optional, per Einstellungen aktivierbar)
+            if palpSettings.enabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Tastbefund")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.subtleText)
+                    HStack(spacing: 6) {
+                        ForEach(PalpationFinding.allCases) { f in
+                            Button {
+                                palpation = (palpation == f) ? nil : f
+                            } label: {
+                                Text(f.rawValue)
+                                    .font(.caption)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center)
+                                    .minimumScaleFactor(0.75)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8).padding(.horizontal, 4)
+                                    .background(palpation == f ? Color.pillActiveBg : Color.pageBg, in: .rect(cornerRadius: 8))
+                                    .foregroundStyle(palpation == f ? Color.pillActiveText : .primary)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(palpation == f ? .isSelected : [])
+                        }
+                    }
+                }
+            }
+
             // Auffälligkeiten (HWI-Frühwarnung, optional)
             if utiSettings.enabled {
                 VStack(alignment: .leading, spacing: 8) {
@@ -257,6 +295,51 @@ struct LogView: View {
                             .buttonStyle(.plain)
                             .accessibilityAddTraits(symptoms.contains(s) ? .isSelected : [])
                         }
+                    }
+                }
+            }
+
+            // Vegetative Zeichen / AD (optional, per Einstellungen aktivierbar)
+            if adSettings.enabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Vegetative Zeichen")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.subtleText)
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                        ForEach(AdSign.allCases) { z in
+                            Button {
+                                if adSigns.contains(z) { adSigns.remove(z) } else { adSigns.insert(z) }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: adSigns.contains(z) ? "checkmark.circle.fill" : "circle")
+                                        .font(.caption)
+                                    Text(z.rawValue)
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.vertical, 8).padding(.horizontal, 10)
+                                .background(adSigns.contains(z) ? Color.pillActiveBg : Color.pageBg, in: .rect(cornerRadius: 8))
+                                .foregroundStyle(adSigns.contains(z) ? Color.pillActiveText : .primary)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(adSigns.contains(z) ? .isSelected : [])
+                        }
+                    }
+                    if adSettings.bpEnabled {
+                        HStack {
+                            Text("RR systolisch")
+                                .font(.caption)
+                                .foregroundStyle(Color.subtleText)
+                            TextField("mmHg", text: $bpText)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.trailing)
+                        }
+                        .padding(.vertical, 6).padding(.horizontal, 10)
+                        .background(Color.pageBg, in: .rect(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
                     }
                 }
             }
@@ -377,13 +460,19 @@ struct LogView: View {
             urineColor: urineColor,
             note: note,
             drinkMl: drinkVal,
-            symptoms: symptoms.isEmpty ? nil : Array(symptoms)
+            symptoms: symptoms.isEmpty ? nil : Array(symptoms),
+            palpation: palpSettings.enabled ? palpation : nil,
+            adSigns: adSigns.isEmpty ? nil : Array(adSigns),
+            systolicBp: {
+                guard adSettings.enabled, adSettings.bpEnabled, let v = Int(bpText), (60...300).contains(v) else { return nil }
+                return v
+            }()
         ))
         // store.add(...) startet die Live Activity bereits selbst.
         if store.settings.reminderEnabled {
             notifications.scheduleReminder(afterMinutes: store.settings.intervalMinutes, settings: store.settings)
         }
-        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; entryTime = .now; showSaved = true
+        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; palpation = nil; adSigns = []; bpText = ""; entryTime = .now; showSaved = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { showSaved = false }
     }
 
