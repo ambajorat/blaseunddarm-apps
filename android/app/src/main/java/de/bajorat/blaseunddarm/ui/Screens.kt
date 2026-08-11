@@ -55,8 +55,9 @@ fun HistoryScreen(dataStore: BDMDataStore) {
                             else -> date.format(DateTimeFormatter.ofPattern("EE dd.MM"))
                         }, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         val totalMl = dayEntries.sumOf { it.urineMl }
+                        val totalDrink = dayEntries.sumOf { it.drinkMl }
                         val bowelCount = dayEntries.count { it.bowel }
-                        Text("$totalMl ml · ${bowelCount}× Stuhl", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (totalDrink > 0) "$totalMl ml · \uD83E\uDD64 $totalDrink ml · ${bowelCount}× Stuhl" else "$totalMl ml · ${bowelCount}× Stuhl", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.height(8.dp))
                 }
@@ -73,6 +74,7 @@ fun HistoryScreen(dataStore: BDMDataStore) {
                             if (entry.urineMl > 0) Text("${entry.urineMl} ml", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Orange)
                             val color = try { UrineColor.valueOf(entry.urineColor) } catch (_: Exception) { UrineColor.NONE }
                             if (color != UrineColor.NONE) Text(color.emoji, fontSize = 12.sp)
+                            if (entry.drinkMl > 0) Text("\uD83E\uDD64 ${entry.drinkMl} ml", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = androidx.compose.ui.graphics.Color(0xFF2A9D8F))
                             if (entry.bowel) {
                                 val bristol = try { BristolType.valueOf(entry.bristolType) } catch (_: Exception) { BristolType.NONE }
                                 Text("Stuhl${if (bristol != BristolType.NONE) " ${bristol.label}" else ""}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Purple)
@@ -102,6 +104,7 @@ fun HistoryScreen(dataStore: BDMDataStore) {
 @Composable
 fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -> Unit, onDelete: () -> Unit) {
     var urineMl by remember { mutableStateOf(if (entry.urineMl > 0) entry.urineMl.toString() else "") }
+    var drinkMl by remember { mutableStateOf(if (entry.drinkMl > 0) entry.drinkMl.toString() else "") }
     var urineColor by remember { mutableStateOf(try { UrineColor.valueOf(entry.urineColor) } catch (_: Exception) { UrineColor.NONE }) }
     var bowel by remember { mutableStateOf(entry.bowel) }
     var bristolType by remember { mutableStateOf(try { BristolType.valueOf(entry.bristolType) } catch (_: Exception) { BristolType.NONE }) }
@@ -112,6 +115,9 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(entry.dateTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(value = urineMl, onValueChange = { urineMl = it.filter { c -> c.isDigit() } }, label = { Text("Urin (ml)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                if (DrinkSettings.load(androidx.compose.ui.platform.LocalContext.current).enabled || drinkMl.isNotEmpty()) {
+                    OutlinedTextField(value = drinkMl, onValueChange = { drinkMl = it.filter { c -> c.isDigit() } }, label = { Text("Getrunken (ml)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
                 Text("Urinfarbe", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     UrineColor.displayValues().forEach { color ->
@@ -135,7 +141,7 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
         },
         confirmButton = {
             TextButton(onClick = {
-                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note))
+                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, drinkMl = drinkMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note))
                 onDismiss()
             }) { Text("Sichern") }
         },
@@ -219,9 +225,9 @@ fun StatsScreen(dataStore: BDMDataStore) {
                     Button(onClick = {
                         val tf = DateTimeFormatter.ofPattern("dd.MM.yyyy;HH:mm")
                         val csv = buildString {
-                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz")
+                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml")
                             filtered.sortedByDescending { it.timestamp }.forEach { e ->
-                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note}")
+                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl}")
                             }
                         }
                         val file = File(context.cacheDir, "Blase_Darm_Export.csv")
@@ -378,6 +384,39 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
 
         Spacer(Modifier.height(16.dp))
 
+        // Trinkmengen (optional)
+        run {
+            var drink by remember { mutableStateOf(DrinkSettings.load(context)) }
+            var newDrinkVal by remember { mutableStateOf("") }
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Trinkmengen erfassen", fontWeight = FontWeight.SemiBold)
+                        Switch(checked = drink.enabled, onCheckedChange = { drink = drink.copy(enabled = it); drink.save(context) })
+                    }
+                    if (drink.enabled) {
+                        Spacer(Modifier.height(8.dp))
+                        drink.presets.forEach { v ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("$v ml", fontSize = 14.sp)
+                                IconButton(onClick = { drink = drink.copy(presets = drink.presets.filter { it != v }); drink.save(context) }) { Text("\u2715", color = MaterialTheme.colorScheme.error) }
+                            }
+                            HorizontalDivider()
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(value = newDrinkVal, onValueChange = { newDrinkVal = it.filter { c -> c.isDigit() } }, placeholder = { Text("Neuer Wert") }, singleLine = true, modifier = Modifier.weight(1f))
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(onClick = { val v = newDrinkVal.toIntOrNull(); if (v != null && v > 0) { drink = drink.copy(presets = (drink.presets + v).sorted()); drink.save(context); newDrinkVal = "" } }) { Text("+", fontSize = 24.sp, color = Orange) }
+                        }
+                    } else {
+                        Spacer(Modifier.height(4.dp))
+                        Text("Optional: Erfasse zusätzlich, wie viel du trinkst.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+
         // Backup
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
@@ -420,7 +459,8 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                                             bowel = p.getOrNull(4)?.trim()?.lowercase() == "ja",
                                             urineColor = p.getOrNull(3)?.trim()?.uppercase()?.replace(" ", "_") ?: "NONE",
                                             bristolType = p.getOrNull(5)?.trim()?.uppercase()?.replace(" ", "") ?: "NONE",
-                                            note = p.getOrNull(6)?.trim() ?: ""
+                                            note = p.getOrNull(6)?.trim() ?: "",
+                                            drinkMl = p.getOrNull(7)?.trim()?.toIntOrNull() ?: 0
                                         ))
                                     }
                                 }

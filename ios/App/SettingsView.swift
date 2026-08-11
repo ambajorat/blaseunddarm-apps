@@ -15,6 +15,8 @@ struct SettingsView: View {
     @State private var newQuickValue = ""
     @State private var drink = DrinkSettings.load()
     @State private var newDrinkValue = ""
+    @State private var catheter = CatheterStock.load()
+    @State private var newStockValue = ""
 
     var body: some View {
         NavigationStack {
@@ -22,12 +24,14 @@ struct SettingsView: View {
                 reminderSection
                 quickValuesSection
                 drinkSection
+                catheterSection
                 cloudSection
                 dataSection
                 aboutSection
             }
             .navigationTitle(String(localized: "tab_settings"))
             .onChange(of: drink) { _, new in new.save() }
+            .onChange(of: catheter) { _, new in new.save() }
             .alert("Alle Daten löschen?", isPresented: $showDeleteConfirm) {
                 Button("Abbrechen", role: .cancel) {}
                 Button("Endgültig löschen", role: .destructive) {
@@ -293,6 +297,88 @@ struct SettingsView: View {
                  : "Optional: Erfasse zusätzlich, wie viel du trinkst — für die Ein-/Ausfuhr-Bilanz.")
                 .font(.caption)
         }
+    }
+
+    // MARK: - Katheterbestand (optional)
+
+    private var catheterSection: some View {
+        Section {
+            Toggle(isOn: $catheter.enabled) {
+                Label("Katheterbestand verfolgen", systemImage: "cross.vial.fill")
+            }
+
+            if catheter.enabled {
+                HStack {
+                    Text("Aktueller Bestand")
+                    Spacer()
+                    Text("\(catheter.currentStock(entries: store.entries)) Stück")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    catheter.addPack(entries: store.entries)
+                } label: {
+                    Label("+1 Packung (\(catheter.packSize) Stück)", systemImage: "plus.circle.fill")
+                }
+
+                Stepper(value: $catheter.packSize, in: 5...120, step: 5) {
+                    HStack {
+                        Text("Packungsgröße")
+                        Spacer()
+                        Text("\(catheter.packSize)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Stepper(value: $catheter.warnDays, in: 3...30) {
+                    HStack {
+                        Text("Warnen unter")
+                        Spacer()
+                        Text("\(catheter.warnDays) Tagen")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                HStack {
+                    TextField("Bestand korrigieren", text: $newStockValue)
+                        .keyboardType(.numberPad)
+
+                    Button {
+                        if let val = Int(newStockValue), val >= 0 {
+                            catheter.setStock(val)
+                            newStockValue = ""
+                        }
+                    } label: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.accentBlue)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(Int(newStockValue) == nil || Int(newStockValue)! < 0)
+                }
+            }
+        } header: {
+            Text("Katheterbestand")
+        } footer: {
+            Text(catheterFooterText)
+                .font(.caption)
+        }
+    }
+
+    private var catheterFooterText: String {
+        guard catheter.enabled else {
+            return "Optional: Zählt deine Katheter mit — jeder Blaseneintrag gilt als eine Katheterisierung — und erinnert dich rechtzeitig ans Rezept."
+        }
+        if let days = catheter.daysRemaining(entries: store.entries),
+           let empty = catheter.estimatedEmptyDate(entries: store.entries),
+           let usage = catheter.dailyUsage(entries: store.entries) {
+            let dateText = empty.formatted(.dateTime.day().month())
+            return String(format: "Ø %.1f pro Tag — reicht noch etwa %d Tage (bis ca. %@).", usage, days, dateText)
+        }
+        return "Reichweite erscheint, sobald mindestens 3 Tage mit Blaseneinträgen in den letzten 14 Tagen vorliegen."
     }
 
     // MARK: - Cloud Section

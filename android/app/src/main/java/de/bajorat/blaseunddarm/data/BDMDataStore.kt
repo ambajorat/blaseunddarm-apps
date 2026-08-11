@@ -66,6 +66,7 @@ class BDMDataStore(private val context: Context) {
         }
 
     val todayMl: Int get() = todayEntries.sumOf { it.urineMl }
+    val todayDrink: Int get() = todayEntries.sumOf { it.drinkMl }
     val todayBowel: Int get() = todayEntries.count { it.bowel }
     val todayCount: Int get() = todayEntries.size
     val lastEntry: ToiletEntry? get() = _entries.value.firstOrNull()

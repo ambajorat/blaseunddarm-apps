@@ -98,6 +98,8 @@ enum AlertEngine {
             }
         }
 
+        checkCatheterStock(entries: entries, dateKey: dateKey)
+
         guard lateEnough else { return }
 
         if settings.dayUnderEnabled, ml < settings.dayUnderMl {
@@ -122,6 +124,26 @@ enum AlertEngine {
                            body: "Bis jetzt \(count) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount)).")
             }
         }
+    }
+
+    // MARK: Katheterbestand
+
+    /// Warnt einmal am Tag, wenn die rechnerische Reichweite unter die
+    /// eingestellte Grenze fällt. Eigene Settings (CatheterStock), damit
+    /// AlertSettings von Bestandsnutzern unangetastet bleiben.
+    static func checkCatheterStock(entries: [ToiletEntry], dateKey: String, stock: CatheterStock = .load()) {
+        guard stock.enabled else { return }
+        guard let days = stock.daysRemaining(entries: entries), days <= stock.warnDays else { return }
+        let count = stock.currentStock(entries: entries)
+        let body: String
+        if let empty = stock.estimatedEmptyDate(entries: entries) {
+            body = "Noch \(count) Katheter — reicht etwa bis \(empty.formatted(.dateTime.day().month())). Zeit fürs Rezept."
+        } else {
+            body = "Noch \(count) Katheter. Zeit fürs Rezept."
+        }
+        notifyOnce(rule: "cathLow_\(dateKey)",
+                   title: "Katheter werden knapp",
+                   body: body)
     }
 
     // MARK: Status-Liste für den Hinweise-Reiter

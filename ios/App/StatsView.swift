@@ -60,6 +60,7 @@ struct StatsView: View {
                         VStack(spacing: 16) {
                             rangePicker
                             averageCards
+                            catheterCard
                             urineChart
                             toiletCountChart
                             dailyTable
@@ -86,6 +87,38 @@ struct StatsView: View {
                         .overlay(Capsule().stroke(range == r ? Color.clear : Color.pillBorder, lineWidth: 1))
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var catheterCard: some View {
+        let stock = CatheterStock.load()
+        if stock.enabled {
+            let count = stock.currentStock(entries: store.entries)
+            HStack(spacing: 12) {
+                Image(systemName: "cross.vial.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(count) Katheter im Bestand")
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                    if let days = stock.daysRemaining(entries: store.entries),
+                       let empty = stock.estimatedEmptyDate(entries: store.entries) {
+                        Text("Reicht etwa \(days) Tage — bis ca. \(empty.formatted(.dateTime.day().month()))")
+                            .font(.caption)
+                            .foregroundStyle(days <= stock.warnDays ? Color.red : Color.secondary)
+                    } else {
+                        Text("Reichweite folgt nach ein paar Tagen mit Einträgen")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .padding(16)
+            .background(Color.cardBg, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
         }
     }
 

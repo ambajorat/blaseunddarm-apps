@@ -36,11 +36,13 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
     var bowel by remember { mutableStateOf(false) }
     var bristolType by remember { mutableStateOf(BristolType.NONE) }
     var note by remember { mutableStateOf("") }
+    var drinkText by remember { mutableStateOf("") }
     var showSaved by remember { mutableStateOf(false) }
     var showBristolInfo by remember { mutableStateOf(false) }
     var alarmTriggered by remember { mutableStateOf(false) }
     var showAlarm by remember { mutableStateOf(false) }
     val alarmContext = LocalContext.current
+    val drinkSettings = DrinkSettings.load(alarmContext)
     var showPaywall by remember { mutableStateOf(false) }
     val hasAccess = true
     val isTrialActive = false
@@ -158,6 +160,10 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                 Box(Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
                 SummaryItem("${dataStore.todayBowel}×", null, "Stuhl", Purple, Modifier.weight(1f))
                 Box(Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
+                if (drinkSettings.enabled) {
+                    SummaryItem("${dataStore.todayDrink}", "ml", "Getrunken", androidx.compose.ui.graphics.Color(0xFF2A9D8F), Modifier.weight(1f))
+                    Box(Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
+                }
                 SummaryItem("${dataStore.todayCount}", null, "Einträge", MaterialTheme.colorScheme.onSurfaceVariant, Modifier.weight(1f))
             }
         }
@@ -205,6 +211,20 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 Spacer(Modifier.height(14.dp))
 
+                // Getrunken (optional)
+                if (drinkSettings.enabled) {
+                    Text("Getrunken (ml)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedTextField(value = drinkText, onValueChange = { drinkText = it.filter { c -> c.isDigit() } }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("ml eingeben") }, singleLine = true)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        drinkSettings.presets.forEach { v ->
+                            FilterChip(selected = drinkText == v.toString(), onClick = { drinkText = v.toString() }, label = { Text("$v", fontWeight = FontWeight.SemiBold) })
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
                 // Bowel
                 OutlinedButton(onClick = { bowel = !bowel; if (!bowel) bristolType = BristolType.NONE }, modifier = Modifier.fillMaxWidth().height(48.dp), colors = if (bowel) ButtonDefaults.outlinedButtonColors(containerColor = Purple.copy(alpha = 0.12f)) else ButtonDefaults.outlinedButtonColors(), border = BorderStroke(1.dp, if (bowel) Purple else MaterialTheme.colorScheme.outline)) {
                     Text(if (bowel) "✅ Stuhlgang" else "⬜ Stuhlgang", color = if (bowel) Purple else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -250,11 +270,11 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                 Spacer(Modifier.height(14.dp))
 
                 // Save
-                val canSave = (urineMl.toIntOrNull() ?: 0) > 0 || bowel
+                val canSave = (urineMl.toIntOrNull() ?: 0) > 0 || bowel || (drinkText.toIntOrNull() ?: 0) > 0
                 Button(onClick = {
-                    dataStore.addEntry(ToiletEntry(urineMl = urineMl.toIntOrNull() ?: 0, bowel = bowel, bristolType = bristolType.name, urineColor = urineColor.name, note = note))
+                    dataStore.addEntry(ToiletEntry(urineMl = urineMl.toIntOrNull() ?: 0, bowel = bowel, bristolType = bristolType.name, urineColor = urineColor.name, note = note, drinkMl = drinkText.toIntOrNull() ?: 0))
                     onScheduleReminder()
-                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; showSaved = true
+                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; drinkText = ""; showSaved = true
                 }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = canSave, colors = ButtonDefaults.buttonColors(containerColor = Orange)) {
                     Text(if (showSaved) "✓ Gespeichert" else "Speichern", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }

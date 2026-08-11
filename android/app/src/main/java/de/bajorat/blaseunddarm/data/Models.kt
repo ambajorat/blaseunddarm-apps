@@ -40,7 +40,8 @@ data class ToiletEntry(
     val bowel: Boolean = false,
     val bristolType: String = BristolType.NONE.name,
     val urineColor: String = UrineColor.NONE.name,
-    val note: String = ""
+    val note: String = "",
+    val drinkMl: Int = 0
 ) {
     val dateTime: LocalDateTime
         get() = LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
