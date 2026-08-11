@@ -62,6 +62,7 @@ struct StatsView: View {
                             averageCards
                             catheterCard
                             palpationCard
+                            symptomsCard
                             urineChart
                             toiletCountChart
                             dailyTable
@@ -162,6 +163,55 @@ struct StatsView: View {
                 .background(Color.cardBg, in: .rect(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
             }
+        }
+    }
+
+    @ViewBuilder
+    private var symptomsCard: some View {
+        let start = Calendar.current.date(byAdding: .day, value: -range.days, to: .now) ?? .distantPast
+        let inRange = store.entries.filter { $0.timestamp >= start }
+        let utiRows: [(String, Int)] = UtiSymptom.allCases.compactMap { sym in
+            let n = inRange.filter { ($0.symptoms ?? []).contains(sym) }.count
+            return n > 0 ? (sym.rawValue, n) : nil
+        }
+        let adRows: [(String, Int)] = AdSign.allCases.compactMap { z in
+            let n = inRange.filter { ($0.adSigns ?? []).contains(z) }.count
+            return n > 0 ? (z.rawValue, n) : nil
+        }
+        let bps = inRange.compactMap(\.systolicBp)
+        if !utiRows.isEmpty || !adRows.isEmpty || !bps.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.shield.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.accent)
+                    Text("Auffälligkeiten im Zeitraum")
+                        .font(.subheadline.weight(.semibold))
+                }
+                ForEach(utiRows + adRows, id: \.0) { row in
+                    HStack {
+                        Text(row.0)
+                            .font(.caption)
+                        Spacer()
+                        Text("\(row.1)×")
+                            .font(.caption.weight(.semibold))
+                            .monospacedDigit()
+                    }
+                }
+                if let lo = bps.min(), let hi = bps.max() {
+                    HStack {
+                        Text("RR systolisch")
+                            .font(.caption)
+                        Spacer()
+                        Text(lo == hi ? "\(lo) mmHg" : "\(lo)–\(hi) mmHg")
+                            .font(.caption.weight(.semibold))
+                            .monospacedDigit()
+                    }
+                }
+            }
+            .padding(16)
+            .background(Color.cardBg, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
         }
     }
 

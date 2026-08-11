@@ -81,6 +81,7 @@ struct EntryRow: View {
     let entry: ToiletEntry
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
         HStack(spacing: 12) {
             Text(entry.timestamp, format: .dateTime.hour().minute())
                 .font(.subheadline.weight(.semibold))
@@ -138,7 +139,26 @@ struct EntryRow: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+
+            if let details = detailLine {
+                Text(details)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 60)
+                    .lineLimit(2)
+            }
+        }
         .padding(.vertical, 2)
+    }
+
+    /// Zweite Zeile mit ISK-Details — nur wenn der Eintrag welche hat.
+    private var detailLine: String? {
+        var parts: [String] = []
+        if let palp = entry.palpation { parts.append("Tastbefund: \(palp.rawValue)") }
+        if let syms = entry.symptoms, !syms.isEmpty { parts.append("Auffällig: " + syms.map(\.rawValue).joined(separator: ", ")) }
+        if let ad = entry.adSigns, !ad.isEmpty { parts.append("Vegetativ: " + ad.map(\.rawValue).joined(separator: ", ")) }
+        if let bp = entry.systolicBp { parts.append("RR \(bp)") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 
@@ -157,7 +177,14 @@ struct EditEntryView: View {
     @State private var bristolType: BristolType
     @State private var note: String
     @State private var drinkText: String
+    @State private var symptoms: Set<UtiSymptom>
+    @State private var palpation: PalpationFinding?
+    @State private var adSigns: Set<AdSign>
+    @State private var bpText: String
     private let drinkSettings = DrinkSettings.load()
+    private let utiSettings = UtiSettings.load()
+    private let palpSettings = PalpationSettings.load()
+    private let adSettings = AdSettings.load()
     @State private var showDeleteConfirm = false
     @State private var showBristolInfo = false
 
@@ -170,6 +197,10 @@ struct EditEntryView: View {
         _bristolType = State(initialValue: entry.bristolType)
         _note = State(initialValue: entry.note)
         _drinkText = State(initialValue: (entry.drinkMl ?? 0) > 0 ? String(entry.drinkMl ?? 0) : "")
+        _symptoms = State(initialValue: Set(entry.symptoms ?? []))
+        _palpation = State(initialValue: entry.palpation)
+        _adSigns = State(initialValue: Set(entry.adSigns ?? []))
+        _bpText = State(initialValue: entry.systolicBp.map(String.init) ?? "")
     }
 
     private var quickValues: [Int] {
@@ -223,6 +254,91 @@ struct EditEntryView: View {
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(urineColor == color ? Color.accent : .secondary)
+                        }
+                    }
+                }
+
+                if palpSettings.enabled || palpation != nil {
+                    Section("Tastbefund") {
+                        HStack(spacing: 8) {
+                            ForEach(PalpationFinding.allCases) { f in
+                                Button {
+                                    palpation = (palpation == f) ? nil : f
+                                } label: {
+                                    Text(f.rawValue)
+                                        .font(.system(size: 11))
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.center)
+                                        .minimumScaleFactor(0.75)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(palpation == f ? Color.accent.opacity(0.15) : Color.clear, in: .rect(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(palpation == f ? Color.accent : .secondary)
+                            }
+                        }
+                    }
+                }
+
+                if utiSettings.enabled || !symptoms.isEmpty {
+                    Section("Auffälligkeiten") {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                            ForEach(UtiSymptom.allCases) { sym in
+                                Button {
+                                    if symptoms.contains(sym) { symptoms.remove(sym) } else { symptoms.insert(sym) }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: symptoms.contains(sym) ? "checkmark.circle.fill" : "circle")
+                                            .font(.caption)
+                                        Text(sym.rawValue)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.8)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .background(symptoms.contains(sym) ? Color.accent.opacity(0.15) : Color.clear, in: .rect(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(symptoms.contains(sym) ? Color.accent : .secondary)
+                            }
+                        }
+                    }
+                }
+
+                if adSettings.enabled || !adSigns.isEmpty || !bpText.isEmpty {
+                    Section("Vegetative Zeichen") {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                            ForEach(AdSign.allCases) { z in
+                                Button {
+                                    if adSigns.contains(z) { adSigns.remove(z) } else { adSigns.insert(z) }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: adSigns.contains(z) ? "checkmark.circle.fill" : "circle")
+                                            .font(.caption)
+                                        Text(z.rawValue)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.8)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .background(adSigns.contains(z) ? Color.accent.opacity(0.15) : Color.clear, in: .rect(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(adSigns.contains(z) ? Color.accent : .secondary)
+                            }
+                        }
+                        if adSettings.bpEnabled || !bpText.isEmpty {
+                            HStack {
+                                Text("RR systolisch (mmHg)")
+                                Spacer()
+                                TextField("optional", text: $bpText)
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(maxWidth: 100)
+                            }
                         }
                     }
                 }
@@ -340,6 +456,15 @@ struct EditEntryView: View {
         updated.bowel = bowel
         updated.bristolType = bristolType
         updated.note = note
+        let drinkVal = Int(drinkText) ?? 0
+        updated.drinkMl = drinkVal > 0 ? drinkVal : nil
+        updated.symptoms = symptoms.isEmpty ? nil : Array(symptoms)
+        updated.palpation = palpation
+        updated.adSigns = adSigns.isEmpty ? nil : Array(adSigns)
+        updated.systolicBp = {
+            guard let v = Int(bpText), (60...300).contains(v) else { return nil }
+            return v
+        }()
         store.update(updated)
         dismiss()
     }
