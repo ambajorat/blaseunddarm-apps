@@ -213,7 +213,6 @@ struct EditEntryView: View {
             Form {
                 Section("Zeitpunkt") {
                     DatePicker("Datum & Uhrzeit", selection: $timestamp, displayedComponents: [.date, .hourAndMinute])
-                        .environment(\.locale, Locale(identifier: "de_DE"))
                 }
 
                 Section("Urin-Menge (ml)") {

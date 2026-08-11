@@ -103,7 +103,7 @@ struct SettingsView: View {
                             Button {
                                 store.settings.intervalMinutes = item.minutes
                             } label: {
-                                Text(item.label)
+                                Text(String(localized: String.LocalizationValue(item.label)))
                                     .font(.subheadline.weight(
                                         store.settings.intervalMinutes == item.minutes ? .bold : .medium
                                     ))
@@ -201,9 +201,9 @@ struct SettingsView: View {
     private func formatInterval(_ minutes: Int) -> String {
         let h = minutes / 60
         let m = minutes % 60
-        if h == 0 { return "\(m) Min" }
-        if m == 0 { return "\(h) Std" }
-        return "\(h) Std \(m) Min"
+        if h == 0 { return String(localized: "\(m) Min") }
+        if m == 0 { return String(localized: "\(h) Std") }
+        return String(localized: "\(h) Std \(m) Min")
     }
 
     // MARK: - Quick Values Section
@@ -301,8 +301,8 @@ struct SettingsView: View {
             Text("Trinkmengen")
         } footer: {
             Text(drink.enabled
-                 ? "Erscheint beim Erfassen als eigener Abschnitt \u{201E}Getrunken (ml)\u{201C} mit diesen Schnelltasten."
-                 : "Optional: Erfasse zusätzlich, wie viel du trinkst — für die Ein-/Ausfuhr-Bilanz.")
+                 ? String(localized: "Erscheint beim Erfassen als eigener Abschnitt \u{201E}Getrunken (ml)\u{201C} mit diesen Schnelltasten.")
+                 : String(localized: "Optional: Erfasse zusätzlich, wie viel du trinkst — für die Ein-/Ausfuhr-Bilanz."))
                 .font(.caption)
         }
     }

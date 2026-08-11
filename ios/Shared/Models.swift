@@ -44,14 +44,14 @@ enum BristolType: Int, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .none: "Keine Angabe"
-        case .type1: "Typ 1"
-        case .type2: "Typ 2"
-        case .type3: "Typ 3"
-        case .type4: "Typ 4"
-        case .type5: "Typ 5"
-        case .type6: "Typ 6"
-        case .type7: "Typ 7"
+        case .none: String(localized: "Keine Angabe")
+        case .type1: String(localized: "Typ 1")
+        case .type2: String(localized: "Typ 2")
+        case .type3: String(localized: "Typ 3")
+        case .type4: String(localized: "Typ 4")
+        case .type5: String(localized: "Typ 5")
+        case .type6: String(localized: "Typ 6")
+        case .type7: String(localized: "Typ 7")
         }
     }
 
@@ -71,35 +71,35 @@ enum BristolType: Int, Codable, CaseIterable, Identifiable {
     var shortDesc: String {
         switch self {
         case .none: ""
-        case .type1: "Einzelne harte Klumpen"
-        case .type2: "Wurstartig, klumpig"
-        case .type3: "Wurstartig, rissig"
-        case .type4: "Glatt, weich"
-        case .type5: "Weiche Klümpchen"
-        case .type6: "Breiig, aufgelöst"
-        case .type7: "Wässrig, flüssig"
+        case .type1: String(localized: "Einzelne harte Klumpen")
+        case .type2: String(localized: "Wurstartig, klumpig")
+        case .type3: String(localized: "Wurstartig, rissig")
+        case .type4: String(localized: "Glatt, weich")
+        case .type5: String(localized: "Weiche Klümpchen")
+        case .type6: String(localized: "Breiig, aufgelöst")
+        case .type7: String(localized: "Wässrig, flüssig")
         }
     }
 
     var detail: String {
         switch self {
         case .none: ""
-        case .type1: "Einzelne, harte Klumpen wie Nüsse. Schwer auszuscheiden. Zeichen für starke Verstopfung."
-        case .type2: "Wurstartig, aber klumpig. Zeichen für leichte Verstopfung."
-        case .type3: "Wie eine Wurst mit Rissen an der Oberfläche. Normal."
-        case .type4: "Wie eine Wurst oder Schlange, glatt und weich. Ideale Form."
-        case .type5: "Weiche Klümpchen mit klaren Rändern. Neigung zu Durchfall."
-        case .type6: "Breiige Konsistenz mit unscharfen Rändern. Leichter Durchfall."
-        case .type7: "Wässrig, keine festen Bestandteile. Starker Durchfall."
+        case .type1: String(localized: "Einzelne, harte Klumpen wie Nüsse. Schwer auszuscheiden. Zeichen für starke Verstopfung.")
+        case .type2: String(localized: "Wurstartig, aber klumpig. Zeichen für leichte Verstopfung.")
+        case .type3: String(localized: "Wie eine Wurst mit Rissen an der Oberfläche. Normal.")
+        case .type4: String(localized: "Wie eine Wurst oder Schlange, glatt und weich. Ideale Form.")
+        case .type5: String(localized: "Weiche Klümpchen mit klaren Rändern. Neigung zu Durchfall.")
+        case .type6: String(localized: "Breiige Konsistenz mit unscharfen Rändern. Leichter Durchfall.")
+        case .type7: String(localized: "Wässrig, keine festen Bestandteile. Starker Durchfall.")
         }
     }
 
     var category: String {
         switch self {
         case .none: ""
-        case .type1, .type2: "Verstopfung"
-        case .type3, .type4: "Normal"
-        case .type5, .type6, .type7: "Durchfall"
+        case .type1, .type2: String(localized: "Verstopfung")
+        case .type3, .type4: String(localized: "Normal")
+        case .type5, .type6, .type7: String(localized: "Durchfall")
         }
     }
 }

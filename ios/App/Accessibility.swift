@@ -51,6 +51,8 @@ struct AccessibleQuickValueButton: View {
         Button(action: action) {
             Text("\(value)")
                 .font(.body.weight(.semibold))
+                .lineLimit(1)
+                .fixedSize()
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(isSelected ? Color.pillActiveBg : Color.clear, in: .capsule)

@@ -239,40 +239,40 @@ enum AlertEngine {
         if settings.singleOverEnabled {
             result.append(RuleStatus(
                 id: "single",
-                title: "Einzelmenge",
-                detail: "größte heute: \(maxSingle) ml · Grenze \(settings.singleOverMl) ml",
+                title: String(localized: "Einzelmenge"),
+                detail: String(localized: "größte heute: \(maxSingle) ml · Grenze \(settings.singleOverMl) ml"),
                 state: maxSingle >= settings.singleOverMl ? .warn : .ok
             ))
         }
         if settings.dayOverEnabled {
             result.append(RuleStatus(
                 id: "dayOver",
-                title: "Tagesmenge zu hoch",
-                detail: "\(ml) ml · Grenze \(settings.dayOverMl) ml",
+                title: String(localized: "Tagesmenge zu hoch"),
+                detail: String(localized: "\(ml) ml · Grenze \(settings.dayOverMl) ml"),
                 state: ml >= settings.dayOverMl ? .warn : .ok
             ))
         }
         if settings.dayUnderEnabled {
             result.append(RuleStatus(
                 id: "dayUnder",
-                title: "Tagesmenge zu niedrig",
-                detail: "\(ml) ml · Grenze \(settings.dayUnderMl) ml",
+                title: String(localized: "Tagesmenge zu niedrig"),
+                detail: String(localized: "\(ml) ml · Grenze \(settings.dayUnderMl) ml"),
                 state: !lateEnough ? .waiting : (ml < settings.dayUnderMl ? .warn : .ok)
             ))
         }
         if settings.countOverEnabled {
             result.append(RuleStatus(
                 id: "countOver",
-                title: "Zu viele Gänge",
-                detail: "\(count) · Grenze \(settings.countOverLimit)",
+                title: String(localized: "Zu viele Gänge"),
+                detail: String(localized: "\(count) · Grenze \(settings.countOverLimit)"),
                 state: count >= settings.countOverLimit ? .warn : .ok
             ))
         }
         if settings.countUnderEnabled {
             result.append(RuleStatus(
                 id: "countUnder",
-                title: "Zu wenige Gänge",
-                detail: "\(count) · Grenze \(settings.countUnderLimit)",
+                title: String(localized: "Zu wenige Gänge"),
+                detail: String(localized: "\(count) · Grenze \(settings.countUnderLimit)"),
                 state: !lateEnough ? .waiting : (count < settings.countUnderLimit ? .warn : .ok)
             ))
         }
@@ -285,15 +285,15 @@ enum AlertEngine {
                 let deviates = mlHigh || mlLow || cntHigh || cntLow
                 result.append(RuleStatus(
                     id: "baseline",
-                    title: "Abweichung vom Schnitt",
-                    detail: "Ø \(base.avgMl) ml · Ø \(String(format: "%.0f", base.avgCount)) Gänge (\(base.days) Tage) · ±\(settings.baselineDeviationPercent) %",
+                    title: String(localized: "Abweichung vom Schnitt"),
+                    detail: String(localized: "Ø \(base.avgMl) ml · Ø \(String(format: "%.0f", base.avgCount)) Gänge (\(base.days) Tage) · ±\(settings.baselineDeviationPercent) %"),
                     state: deviates ? .warn : .ok
                 ))
             } else {
                 result.append(RuleStatus(
                     id: "baseline",
-                    title: "Abweichung vom Schnitt",
-                    detail: "Noch nicht genug Daten (mind. 5 Tage mit Einträgen in den letzten 14 Tagen)",
+                    title: String(localized: "Abweichung vom Schnitt"),
+                    detail: String(localized: "Noch nicht genug Daten (mind. 5 Tage mit Einträgen in den letzten 14 Tagen)"),
                     state: .noData
                 ))
             }
