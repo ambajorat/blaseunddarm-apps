@@ -1,0 +1,96 @@
+From e1dd2db9559480d15c0c16bebaee365c2ff30318 Mon Sep 17 00:00:00 2001
+From: Claude <claude@anthropic.com>
+Date: Tue, 11 Aug 2026 06:36:02 +0000
+Subject: [PATCH] =?UTF-8?q?4.2:=20Katheterbestand=20+=20HWI-Fr=C3=BChwarnu?=
+ =?UTF-8?q?ng=20=E2=80=94=20Listenpunkte,=20FAQ=20und=20ISK-Absatz=20(DE+E?=
+ =?UTF-8?q?N)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ en/index.html                        | 6 ++++++
+ en/intermittent-catheterisation.html | 3 ++-
+ index.html                           | 6 ++++++
+ isk.html                             | 3 ++-
+ 4 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/en/index.html b/en/index.html
+index 557a99a..d968d34 100644
+--- a/en/index.html
++++ b/en/index.html
+@@ -247,6 +247,8 @@
+           <li><strong>Siri and Shortcuts</strong><span>Log an entry without touching the screen.</span></li>
+           <li><strong>Apple Watch</strong><span>Log straight from your wrist — the watch syncs back to the iPhone.</span></li>
+           <li><strong>iCloud</strong><span>Backup into your own iCloud storage.</span></li>
++          <li><strong>Catheter supply</strong><span>Counts along with every entry, shows how long it lasts and reminds you to reorder in time. Off by default.</span></li>
++          <li><strong>Early UTI alerts</strong><span>Log signs such as odour, burning or spasticity — the app flags patterns. Not a diagnosis. Off by default.</span></li>
+         </ul>
+       </div>
+       <div class="thread thread--both">
+@@ -391,6 +393,10 @@
+         <summary>What happens when I get a new iPhone?</summary>
+         <div>With iCloud backup on, your entries come across during setup. Without it, export first and import afterwards.</div>
+       </details>
++      <details>
++        <summary>Does the app detect a urinary tract infection?</summary>
++        <p>No. It logs your observations — such as odour, burning or cloudy urine — and flags patterns you should have checked by a doctor. It does not make a diagnosis.</p>
++      </details>
+       <details>
+         <summary>Is there an Android version?</summary>
+         <div>Yes — as a direct download, see <a href="#android">Android</a>. Deliberately outside the Play Store.</div>
+diff --git a/en/intermittent-catheterisation.html b/en/intermittent-catheterisation.html
+index 12bb0b2..fe18f1c 100644
+--- a/en/intermittent-catheterisation.html
++++ b/en/intermittent-catheterisation.html
+@@ -231,7 +231,8 @@
+         trigger. Sit upright, loosen tight clothing, empty the bladder, get medical help.
+       </p>
+     </div>
+-  </section>
++  <p>The app can support you here: it can keep count of your catheter supply and flag signs such as persistently cloudy urine. It does not replace a diagnosis.</p>
++    </section>
+ 
+   <section class="section wrap">
+     <div class="measure">
+diff --git a/index.html b/index.html
+index c5d1862..4f47f81 100644
+--- a/index.html
++++ b/index.html
+@@ -249,6 +249,8 @@
+           <li><strong>Siri und Kurzbefehle</strong><span>Eintragen, ohne den Bildschirm zu berühren.</span></li>
+           <li><strong>Apple Watch</strong><span>Erfassen direkt am Handgelenk — die Uhr synct zurück aufs iPhone.</span></li>
+           <li><strong>iCloud</strong><span>Sicherung in deinen eigenen iCloud-Speicher.</span></li>
++          <li><strong>Katheterbestand</strong><span>Zählt bei jedem Eintrag mit, zeigt die Reichweite und erinnert rechtzeitig ans Rezept. Standardmäßig aus.</span></li>
++          <li><strong>HWI-Frühwarnung</strong><span>Auffälligkeiten wie Geruch, Brennen oder Spastik erfassen — die App meldet sich bei Mustern. Ersetzt keine Diagnose. Standardmäßig aus.</span></li>
+         </ul>
+       </div>
+       <div class="thread thread--both">
+@@ -393,6 +395,10 @@
+         <summary>Was passiert bei einem neuen iPhone?</summary>
+         <div>Mit aktiviertem iCloud-Backup übernimmst du deine Einträge beim Einrichten. Ohne Backup kannst du vorher exportieren und danach importieren.</div>
+       </details>
++      <details>
++        <summary>Erkennt die App einen Harnwegsinfekt?</summary>
++        <p>Nein. Sie protokolliert deine Beobachtungen — etwa Geruch, Brennen oder trüben Urin — und weist auf Muster hin, die du ärztlich abklären lassen solltest. Eine Diagnose stellt sie nicht.</p>
++      </details>
+       <details>
+         <summary>Gibt es die App für Android?</summary>
+         <div>Ja — als direkten Download, siehe <a href="#android">Android</a>. Ganz bewusst ohne Play Store.</div>
+diff --git a/isk.html b/isk.html
+index 3b2e29f..fe044cb 100644
+--- a/isk.html
++++ b/isk.html
+@@ -236,7 +236,8 @@
+         ärztliche Hilfe holen.
+       </p>
+     </div>
+-  </section>
++  <p>Die App kann dich dabei unterstützen: Sie zählt auf Wunsch deinen Katheterbestand mit und weist auf Auffälligkeiten wie anhaltend trüben Urin hin. Eine Diagnose ersetzt sie nicht.</p>
++    </section>
+ 
+   <section class="section wrap">
+     <div class="measure">
+-- 
+2.43.0
+

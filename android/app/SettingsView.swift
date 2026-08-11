@@ -18,6 +18,8 @@ struct SettingsView: View {
     @State private var catheter = CatheterStock.load()
     @State private var newStockValue = ""
     @State private var uti = UtiSettings.load()
+    @State private var palp = PalpationSettings.load()
+    @State private var ad = AdSettings.load()
 
     var body: some View {
         NavigationStack {
@@ -27,6 +29,7 @@ struct SettingsView: View {
                 drinkSection
                 catheterSection
                 utiSection
+                iskExtrasSection
                 cloudSection
                 dataSection
                 aboutSection
@@ -35,6 +38,8 @@ struct SettingsView: View {
             .onChange(of: drink) { _, new in new.save() }
             .onChange(of: catheter) { _, new in new.save() }
             .onChange(of: uti) { _, new in new.save() }
+            .onChange(of: palp) { _, new in new.save() }
+            .onChange(of: ad) { _, new in new.save() }
             .alert("Alle Daten löschen?", isPresented: $showDeleteConfirm) {
                 Button("Abbrechen", role: .cancel) {}
                 Button("Endgültig löschen", role: .destructive) {
@@ -319,6 +324,24 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                HStack {
+                    TextField("Bestand eintragen", text: $newStockValue)
+                        .keyboardType(.numberPad)
+
+                    Button {
+                        if let val = Int(newStockValue), val >= 0 {
+                            catheter.setStock(val)
+                            newStockValue = ""
+                        }
+                    } label: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.accentBlue)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(Int(newStockValue) == nil || Int(newStockValue)! < 0)
+                }
+
                 Button {
                     catheter.addPack(entries: store.entries)
                 } label: {
@@ -345,23 +368,6 @@ struct SettingsView: View {
                     }
                 }
 
-                HStack {
-                    TextField("Bestand korrigieren", text: $newStockValue)
-                        .keyboardType(.numberPad)
-
-                    Button {
-                        if let val = Int(newStockValue), val >= 0 {
-                            catheter.setStock(val)
-                            newStockValue = ""
-                        }
-                    } label: {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(Color.accentBlue)
-                            .font(.title3)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(Int(newStockValue) == nil || Int(newStockValue)! < 0)
-                }
             }
         } header: {
             Text("Katheterbestand")
@@ -374,6 +380,9 @@ struct SettingsView: View {
     private var catheterFooterText: String {
         guard catheter.enabled else {
             return "Optional: Zählt deine Katheter mit — jeder Blaseneintrag gilt als eine Katheterisierung — und erinnert dich rechtzeitig ans Rezept."
+        }
+        if catheter.currentStock(entries: store.entries) == 0 {
+            return "Trage deinen aktuellen Bestand ein, um zu starten."
         }
         if let days = catheter.daysRemaining(entries: store.entries),
            let empty = catheter.estimatedEmptyDate(entries: store.entries),
@@ -397,6 +406,29 @@ struct SettingsView: View {
             Text(uti.enabled
                  ? "Beim Erfassen erscheint der Abschnitt \u{201E}Auffälligkeiten\u{201C}. Bei Blut oder Fieber meldet sich die App sofort, bei Mustern über mehrere Tage mit einem Hinweis. Ersetzt keine ärztliche Diagnose."
                  : "Optional: Erfasse Anzeichen wie Geruch, Brennen oder vermehrte Spastik — die App warnt bei Mustern, die bei ISK auf einen Harnwegsinfekt hindeuten können. Ersetzt keine ärztliche Diagnose.")
+                .font(.caption)
+        }
+    }
+
+    // MARK: - ISK-Erweiterungen (Tastbefund, vegetative Zeichen)
+
+    private var iskExtrasSection: some View {
+        Section {
+            Toggle(isOn: $palp.enabled) {
+                Label("Tastbefund", systemImage: "hand.point.up.left.fill")
+            }
+            Toggle(isOn: $ad.enabled) {
+                Label("Vegetative Zeichen", systemImage: "waveform.path.ecg")
+            }
+            if ad.enabled {
+                Toggle(isOn: $ad.bpEnabled) {
+                    Label("Blutdruckfeld (RR systolisch)", systemImage: "heart.fill")
+                }
+            }
+        } header: {
+            Text("ISK-Erweiterungen")
+        } footer: {
+            Text("Tastbefund: Füllungsgrad oberhalb des Schambeins in drei Stufen selbst einschätzen — die Statistik zeigt dir mit der Zeit deine eigenen Durchschnittsmengen je Stufe. Vegetative Zeichen: Gänsehaut, Schwitzen, Hitzegefühl oder Kopfschmerz als Füllungssignale erfassen, optional mit Blutdruck. Beides ersetzt keine ärztliche Diagnose.")
                 .font(.caption)
         }
     }
@@ -583,7 +615,7 @@ struct SettingsView: View {
     // MARK: - CSV Export
 
     private func exportCSV() {
-        var csv = "Datum;Uhrzeit;Urin_ml;Getrunken_ml;Stuhlgang;Notiz;Symptome\n"
+        var csv = "Datum;Uhrzeit;Urin_ml;Getrunken_ml;Stuhlgang;Notiz;Symptome;Tastbefund;AD_Zeichen;RR_syst\n"
         let df = DateFormatter()
         df.dateFormat = "dd.MM.yyyy"
         let tf = DateFormatter()
@@ -592,7 +624,9 @@ struct SettingsView: View {
         for e in store.entries.sorted(by: { $0.timestamp < $1.timestamp }) {
             let note = e.note.replacingOccurrences(of: ";", with: ",")
             let syms = (e.symptoms ?? []).map(\.rawValue).joined(separator: ", ")
-            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.drinkMl ?? 0);\(e.bowel ? "Ja" : "Nein");\(note);\(syms)\n"
+            let adS = (e.adSigns ?? []).map(\.rawValue).joined(separator: ", ")
+            let bpS = e.systolicBp.map(String.init) ?? ""
+            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.drinkMl ?? 0);\(e.bowel ? "Ja" : "Nein");\(note);\(syms);\(e.palpation?.rawValue ?? "");\(adS);\(bpS)\n"
         }
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("blasen_darm_protokoll.csv")
@@ -644,6 +678,9 @@ struct SettingsView: View {
         let drinkIdx = columns.firstIndex(where: { $0.contains("getrunken") || $0.contains("trink") || $0.contains("drink") })
         let notizIdx = columns.firstIndex(where: { $0.contains("notiz") || $0.contains("note") })
         let symptomIdx = columns.firstIndex(where: { $0.contains("symptom") })
+        let palpIdx = columns.firstIndex(where: { $0.contains("tastbefund") })
+        let adIdx = columns.firstIndex(where: { $0.contains("ad_zeichen") })
+        let bpIdx = columns.firstIndex(where: { $0.contains("rr_syst") })
 
         let df = DateFormatter()
         let dateFormats = ["dd.MM.yyyy", "yyyy-MM-dd", "d.M.yyyy", "dd/MM/yyyy"]
@@ -708,7 +745,21 @@ struct SettingsView: View {
                 if !parsed.isEmpty { syms = parsed }
             }
 
-            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note, drinkMl: drinkVal, symptoms: syms)
+            var palpVal: PalpationFinding? = nil
+            if let pi = palpIdx, pi < fields.count, !fields[pi].isEmpty {
+                palpVal = PalpationFinding(rawValue: fields[pi].trimmingCharacters(in: .whitespaces))
+            }
+            var adVals: [AdSign]? = nil
+            if let ai = adIdx, ai < fields.count, !fields[ai].isEmpty {
+                let parsed = fields[ai].split(separator: ",").compactMap { AdSign(rawValue: $0.trimmingCharacters(in: .whitespaces)) }
+                if !parsed.isEmpty { adVals = parsed }
+            }
+            var bpVal: Int? = nil
+            if let bi = bpIdx, bi < fields.count, let v = Int(fields[bi].trimmingCharacters(in: .whitespaces)), (60...300).contains(v) {
+                bpVal = v
+            }
+
+            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note, drinkMl: drinkVal, symptoms: syms, palpation: palpVal, adSigns: adVals, systolicBp: bpVal)
             store.add(entry)
             imported += 1
         }
