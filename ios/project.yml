@@ -65,6 +65,7 @@ targets:
     platform: iOS
     sources:
       - path: BDMWidget
+      - path: App/Localizable.xcstrings
       - path: Shared/WidgetData.swift
       - path: Shared/Models.swift
       - path: Shared/SharedDataStore.swift
@@ -95,6 +96,7 @@ targets:
       - path: Watch
         excludes:
           - "Info.plist"
+      - path: App/Localizable.xcstrings
       - path: Shared/Models.swift
       - path: Shared/WidgetData.swift
     dependencies:
@@ -120,6 +122,7 @@ targets:
       - path: WatchWidget
         excludes:
           - "Info.plist"
+      - path: App/Localizable.xcstrings
       - path: Shared/WidgetData.swift
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: blase-und-darm.Blase-und-Darm.watchkitapp.Komplikation

@@ -225,9 +225,9 @@ fun StatsScreen(dataStore: BDMDataStore) {
                     Button(onClick = {
                         val tf = DateTimeFormatter.ofPattern("dd.MM.yyyy;HH:mm")
                         val csv = buildString {
-                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml")
+                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml;Symptome")
                             filtered.sortedByDescending { it.timestamp }.forEach { e ->
-                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl}")
+                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl};${e.utiSymptoms.joinToString(", ") { it.label }}")
                             }
                         }
                         val file = File(context.cacheDir, "Blase_Darm_Export.csv")
@@ -416,6 +416,91 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
             }
         }
         Spacer(Modifier.height(16.dp))
+
+        // Katheterbestand (optional)
+        var catheter by remember { mutableStateOf(CatheterStock.load(context)) }
+        var stockInput by remember { mutableStateOf("") }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Katheterbestand", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Switch(checked = catheter.enabled, onCheckedChange = {
+                        catheter = catheter.copy(enabled = it); catheter.save(context)
+                    })
+                }
+                if (catheter.enabled) {
+                    Spacer(Modifier.height(8.dp))
+                    val current = catheter.currentStock(entries)
+                    Text("Aktueller Bestand: $current Stück", fontSize = 14.sp)
+                    val days = catheter.daysRemaining(entries)
+                    val empty = catheter.estimatedEmptyDate(entries)
+                    if (days != null && empty != null) {
+                        Text(
+                            "Reicht etwa $days Tage — bis ca. ${empty.format(java.time.format.DateTimeFormatter.ofPattern("d.M."))}",
+                            fontSize = 12.sp,
+                            color = if (days <= catheter.warnDays) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else if (current == 0 && catheter.stockAtAdjustment == 0) {
+                        Text("Trage deinen aktuellen Bestand ein, um zu starten.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("Reichweite erscheint nach ein paar Tagen mit Einträgen.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = stockInput,
+                            onValueChange = { stockInput = it.filter { c -> c.isDigit() } },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Bestand eintragen") },
+                            singleLine = true
+                        )
+                        Button(onClick = {
+                            stockInput.toIntOrNull()?.let {
+                                catheter = catheter.withStock(it); catheter.save(context); stockInput = ""
+                            }
+                        }, enabled = stockInput.toIntOrNull() != null) { Text("OK") }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = {
+                        catheter = catheter.withPackAdded(entries); catheter.save(context)
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        Text("+1 Packung (${catheter.packSize} Stück)")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Warnen unter", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        OutlinedButton(onClick = {
+                            val next = if (catheter.warnDays >= 30) 3 else catheter.warnDays + 1
+                            catheter = catheter.copy(warnDays = next); catheter.save(context)
+                        }) { Text("${catheter.warnDays} Tagen") }
+                    }
+                    Text("Jeder Blaseneintrag zählt als eine Katheterisierung.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // HWI-Frühwarnung (optional)
+        var uti by remember { mutableStateOf(UtiSettings.load(context)) }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("HWI-Frühwarnung", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Switch(checked = uti.enabled, onCheckedChange = {
+                        uti = uti.copy(enabled = it); uti.save(context)
+                    })
+                }
+                Text(
+                    if (uti.enabled)
+                        "Beim Erfassen erscheint der Abschnitt \u201EAuffälligkeiten\u201C. Bei Blut oder Fieber meldet sich die App sofort, bei Mustern über mehrere Tage mit einem Hinweis. Ersetzt keine ärztliche Diagnose."
+                    else
+                        "Optional: Erfasse Anzeichen wie Geruch, Brennen oder vermehrte Spastik — die App warnt bei Mustern, die bei ISK auf einen Harnwegsinfekt hindeuten können. Ersetzt keine ärztliche Diagnose.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
 
         // Backup
         Card(Modifier.fillMaxWidth()) {

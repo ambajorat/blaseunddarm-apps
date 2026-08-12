@@ -61,6 +61,7 @@ object AlertEngine {
 
     /** Sofort beim Speichern eines Eintrags. */
     fun checkEntry(context: Context, entry: ToiletEntry, settings: AlertSettings = AlertSettings.load(context)) {
+        checkUtiEntry(context, entry)
         if (!settings.singleOverEnabled || entry.urineMl < settings.singleOverMl) return
         notifyOnce(
             context,
@@ -80,6 +81,9 @@ object AlertEngine {
         val lateEnough = LocalDateTime.now().hour >= UNDER_CHECK_HOUR
         val base = if (settings.baselineEnabled) baseline(entries) else null
         val dev = settings.baselineDeviationPercent / 100.0
+
+        checkCatheterStock(context, entries, dateKey)
+        checkUtiDay(context, entries, dateKey)
 
         if (settings.dayOverEnabled && ml >= settings.dayOverMl) {
             notifyOnce(context, "dayOver_$dateKey", "Hohe Tagesmenge",
@@ -180,6 +184,64 @@ object AlertEngine {
             }
         }
         return result
+    }
+
+    // MARK: HWI-Frühwarnung (identisch zur iOS-Fassung)
+
+    fun checkUtiEntry(context: Context, entry: ToiletEntry, uti: UtiSettings = UtiSettings.load(context)) {
+        if (!uti.enabled) return
+        val urgent = entry.utiSymptoms.filter { it.isUrgent }
+        if (urgent.isEmpty()) return
+        val names = urgent.joinToString(", ") { it.label }
+        notifyOnce(context, "utiUrgent_${entry.id}",
+            "Auffälligkeit erfasst",
+            "$names — bei ISK bitte zeitnah ärztlich abklären.")
+    }
+
+    fun checkUtiDay(context: Context, entries: List<ToiletEntry>, dateKey: String, uti: UtiSettings = UtiSettings.load(context)) {
+        if (!uti.enabled) return
+        val today = LocalDate.now()
+
+        fun daySymptoms(offset: Long): Set<UtiSymptom> =
+            entries.filter { it.dateTime.toLocalDate() == today.minusDays(offset) }
+                .flatMap { it.utiSymptoms }.toSet()
+
+        val t = daySymptoms(0)
+        val y = daySymptoms(1)
+        if (t.isNotEmpty() && y.isNotEmpty() && (t + y).size >= 2) {
+            notifyOnce(context, "utiPattern_$dateKey",
+                "Auffälligkeiten seit zwei Tagen",
+                "Mehrere Anzeichen an zwei Tagen in Folge — das kann bei ISK auf einen Harnwegsinfekt hindeuten. Ggf. ärztlich abklären.")
+        }
+
+        var darkDays = 0
+        for (i in 0..2L) {
+            val day = today.minusDays(i)
+            val colored = entries.filter { it.dateTime.toLocalDate() == day && it.urineColor != UrineColor.NONE.name }
+            if (colored.isEmpty()) continue
+            val dark = colored.count { it.urineColor == UrineColor.DARK_YELLOW.name || it.urineColor == UrineColor.CLOUDY.name }
+            if (dark * 2 > colored.size) darkDays++
+        }
+        if (darkDays >= 2) {
+            notifyOnce(context, "utiColor_$dateKey",
+                "Urin auffällig dunkel oder trüb",
+                "An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären.")
+        }
+    }
+
+    // MARK: Katheterbestand
+
+    fun checkCatheterStock(context: Context, entries: List<ToiletEntry>, dateKey: String, stock: CatheterStock = CatheterStock.load(context)) {
+        if (!stock.enabled) return
+        val days = stock.daysRemaining(entries) ?: return
+        if (days > stock.warnDays) return
+        val count = stock.currentStock(entries)
+        val empty = stock.estimatedEmptyDate(entries)
+        val body = if (empty != null)
+            "Noch $count Katheter — reicht etwa bis ${empty.format(DateTimeFormatter.ofPattern("d.M."))}. Zeit fürs Rezept."
+        else
+            "Noch $count Katheter. Zeit fürs Rezept."
+        notifyOnce(context, "cathLow_$dateKey", "Katheter werden knapp", body)
     }
 
     // MARK: Benachrichtigung mit Dedup (pro Regel/Tag genau einmal)

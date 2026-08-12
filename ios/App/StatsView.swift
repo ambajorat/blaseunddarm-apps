@@ -64,6 +64,7 @@ struct StatsView: View {
                             catheterCard
                             palpationCard
                             symptomsCard
+                            balanceCard
                             urineChart
                             toiletCountChart
                             dailyTable
@@ -209,6 +210,52 @@ struct StatsView: View {
                             .monospacedDigit()
                     }
                 }
+            }
+            .padding(16)
+            .background(Color.cardBg, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+        }
+    }
+
+    /// Bilanz-Berechnung außerhalb des ViewBuilders (Schleifen sind dort nicht erlaubt).
+    private func balanceData() -> (days: Int, avgDrink: Int, avgUrine: Int)? {
+        let cal = Calendar.current
+        let start = cal.date(byAdding: .day, value: -range.days, to: .now) ?? .distantPast
+        var byDay: [Date: (drink: Int, urine: Int)] = [:]
+        for e in store.entries where e.timestamp >= start {
+            let d = cal.startOfDay(for: e.timestamp)
+            var t = byDay[d] ?? (0, 0)
+            t.drink += e.drinkMl ?? 0
+            t.urine += e.urineMl
+            byDay[d] = t
+        }
+        let drinkDays = byDay.values.filter { $0.drink > 0 }
+        guard drinkDays.count >= 3 else { return nil }
+        return (drinkDays.count,
+                drinkDays.map(\.drink).reduce(0, +) / drinkDays.count,
+                drinkDays.map(\.urine).reduce(0, +) / drinkDays.count)
+    }
+
+    @ViewBuilder
+    private var balanceCard: some View {
+        if let bal = balanceData() {
+            let avgDrink = bal.avgDrink
+            let avgUrine = bal.avgUrine
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.left.arrow.right.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ein- und Ausfuhr")
+                        .font(.subheadline.weight(.semibold))
+                    Text(String(localized: "Ø getrunken \(avgDrink) ml · Ø ausgeschieden \(avgUrine) ml"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(String(localized: "Tage mit Trink-Einträgen: \(bal.days)"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
             }
             .padding(16)
             .background(Color.cardBg, in: .rect(cornerRadius: 10))

@@ -113,8 +113,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         guard interval > 0 else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "⚠️ Toiletten-Erinnerung"
-        content.body = "Zeit für den nächsten Toilettengang!"
+        content.title = String(localized: "⚠️ Toiletten-Erinnerung")
+        content.body = String(localized: "Zeit für den nächsten Toilettengang!")
         content.categoryIdentifier = "TOILET_REMINDER"
         content.interruptionLevel = .timeSensitive
 
@@ -145,8 +145,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
 
         let startContent = UNMutableNotificationContent()
-        startContent.title = "Ruhezeit beginnt"
-        startContent.body = "Erinnerungen sind bis \(settings.quietTo):00 Uhr pausiert. Gute Nacht!"
+        startContent.title = String(localized: "Ruhezeit beginnt")
+        startContent.body = String(localized: "Erinnerungen sind bis \(settings.quietTo):00 Uhr pausiert. Gute Nacht!")
         startContent.sound = .default
         startContent.interruptionLevel = .passive
 
@@ -158,8 +158,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         center.add(startRequest)
 
         let endContent = UNMutableNotificationContent()
-        endContent.title = "Ruhezeit beendet"
-        endContent.body = "Erinnerungen sind wieder aktiv."
+        endContent.title = String(localized: "Ruhezeit beendet")
+        endContent.body = String(localized: "Erinnerungen sind wieder aktiv.")
         endContent.sound = UNNotificationSound.criticalSoundNamed(UNNotificationSoundName("toilet_alert.wav"), withAudioVolume: 1.0)
         endContent.interruptionLevel = .timeSensitive
 

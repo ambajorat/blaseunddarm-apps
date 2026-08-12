@@ -29,14 +29,14 @@ struct ContentView: View {
                     NavigationLink {
                         BladderEntryView()
                     } label: {
-                        actionLabel(title: "Blase", icon: "drop.fill", color: Farbe.blase)
+                        actionLabel(title: String(localized: "Blase"), icon: "drop.fill", color: Farbe.blase)
                     }
                     .buttonStyle(.plain)
 
                     NavigationLink {
                         BowelEntryView()
                     } label: {
-                        actionLabel(title: "Darm", icon: "circle.hexagongrid.fill", color: Farbe.darm)
+                        actionLabel(title: String(localized: "Darm"), icon: "circle.hexagongrid.fill", color: Farbe.darm)
                     }
                     .buttonStyle(.plain)
 

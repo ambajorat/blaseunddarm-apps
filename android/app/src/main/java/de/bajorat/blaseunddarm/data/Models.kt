@@ -32,6 +32,17 @@ enum class BristolType(val label: String, val shortDesc: String, val category: S
     }
 }
 
+enum class UtiSymptom(val label: String) {
+    SMELL("Starker Geruch"),
+    BLOOD("Blut im Urin"),
+    PAIN("Brennen/Schmerzen"),
+    SPASTICITY("Vermehrte Spastik"),
+    FEVER("Fieber/Schüttelfrost"),
+    MALAISE("Abgeschlagenheit");
+
+    val isUrgent: Boolean get() = this == BLOOD || this == FEVER
+}
+
 @Serializable
 data class ToiletEntry(
     val id: String = UUID.randomUUID().toString(),
@@ -41,8 +52,12 @@ data class ToiletEntry(
     val bristolType: String = BristolType.NONE.name,
     val urineColor: String = UrineColor.NONE.name,
     val note: String = "",
-    val drinkMl: Int = 0
+    val drinkMl: Int = 0,
+    val symptoms: List<String> = emptyList()
 ) {
+    val utiSymptoms: List<UtiSymptom>
+        get() = symptoms.mapNotNull { runCatching { UtiSymptom.valueOf(it) }.getOrNull() }
+
     val dateTime: LocalDateTime
         get() = LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 }

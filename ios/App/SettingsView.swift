@@ -154,6 +154,28 @@ struct SettingsView: View {
                 }
 
                 // Quiet hours
+                if let sug = SuggestionEngine.compute(entries: store.entries), let mins = sug.intervalMinutes,
+                   mins != store.settings.intervalMinutes {
+                    let h = mins / 60
+                    let m = mins % 60
+                    let durationText = m == 0
+                        ? String(localized: "\(h) Std")
+                        : (h == 0 ? String(localized: "\(m) Min") : String(localized: "\(h) Std \(m) Min"))
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Vorschlag aus deinen Daten")
+                                .font(.subheadline)
+                            Text(String(localized: "Median deiner Abstände: \(durationText)"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(String(localized: "Übernehmen")) { store.settings.intervalMinutes = mins }
+                            .font(.caption.weight(.semibold))
+                            .buttonStyle(.bordered)
+                    }
+                }
+
                 Toggle(isOn: Binding(
                     get: { store.settings.quietHoursEnabled },
                     set: { store.settings.quietHoursEnabled = $0 }
@@ -246,6 +268,24 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
                 .disabled(Int(newQuickValue) == nil || Int(newQuickValue)! <= 0)
             }
+
+            if let sug = SuggestionEngine.compute(entries: store.entries),
+               let vals = sug.urineQuickValues, vals != store.settings.quickValues {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Deine häufigsten Mengen")
+                            .font(.subheadline)
+                        Text(vals.map { String($0) }.joined(separator: " · ") + " ml")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(String(localized: "Übernehmen")) { store.settings.quickValues = vals }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(.bordered)
+                }
+            }
+
         } header: {
             Text("Schnellwahl-Mengen (ml)")
         } footer: {
@@ -297,6 +337,25 @@ struct SettingsView: View {
                     .disabled(Int(newDrinkValue) == nil || Int(newDrinkValue)! <= 0)
                 }
             }
+
+            if drink.enabled,
+               let sug = SuggestionEngine.compute(entries: store.entries),
+               let vals = sug.drinkQuickValues, vals != drink.presets {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Deine häufigsten Mengen")
+                            .font(.subheadline)
+                        Text(vals.map { String($0) }.joined(separator: " · ") + " ml")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(String(localized: "Übernehmen")) { drink.presets = vals }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(.bordered)
+                }
+            }
+
         } header: {
             Text("Trinkmengen")
         } footer: {

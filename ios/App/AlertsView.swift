@@ -12,6 +12,7 @@ struct AlertsView: View {
                 daySection
                 countSection
                 baselineSection
+                suggestionSection
                 footerSection
             }
             .navigationTitle("Hinweise")
@@ -203,6 +204,57 @@ struct AlertsView: View {
     }
 
     // MARK: - Footer
+
+    // MARK: - Vorschläge aus den eigenen Daten
+
+    @ViewBuilder
+    private var suggestionSection: some View {
+        if let sug = SuggestionEngine.compute(entries: store.entries), !sug.isEmpty {
+            Section {
+                if let v = sug.singleOverMl {
+                    suggestionRow(String(localized: "Einzelmenge"),
+                                  value: String(localized: "\(v) ml") + (sug.singleCapped ? String(localized: " (gedeckelt)") : "")) {
+                        alerts.singleOverMl = v
+                    }
+                }
+                if let v = sug.dayOverMl {
+                    suggestionRow(String(localized: "Tagesmenge oben"), value: String(localized: "\(v) ml")) { alerts.dayOverMl = v }
+                }
+                if let v = sug.dayUnderMl {
+                    suggestionRow(String(localized: "Tagesmenge unten"), value: String(localized: "\(v) ml")) { alerts.dayUnderMl = v }
+                }
+                if let v = sug.countOver {
+                    suggestionRow(String(localized: "Gänge oben"), value: String(localized: "\(v) pro Tag")) { alerts.countOverLimit = v }
+                }
+                if let v = sug.countUnder {
+                    suggestionRow(String(localized: "Gänge unten"), value: String(localized: "\(v) pro Tag")) { alerts.countUnderLimit = v }
+                }
+            } header: {
+                Text("Vorschläge aus deinen Daten")
+            } footer: {
+                Text(sug.singleCapped
+                     ? String(localized: "Beschreibt dein Muster der letzten 30 Tage — keine medizinische Empfehlung. Bei der Einzelmenge schlägt die App bewusst nie mehr als 500 ml vor.")
+                     : String(localized: "Beschreibt dein Muster der letzten 30 Tage — keine medizinische Empfehlung."))
+                    .font(.caption)
+            }
+        }
+    }
+
+    private func suggestionRow(_ title: String, value: String, apply: @escaping () -> Void) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(String(localized: "Übernehmen")) { apply() }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+        }
+    }
 
     private var footerSection: some View {
         Section {
