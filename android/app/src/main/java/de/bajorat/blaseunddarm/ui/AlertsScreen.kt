@@ -163,6 +163,36 @@ fun AlertsScreen(store: BDMDataStore) {
             }
         }
 
+        // Vorschläge aus den eigenen Daten
+        item {
+            val sug = remember(entries) { SuggestionEngine.compute(entries) }
+            if (sug != null && !sug.isEmpty) {
+                SectionCard(title = "Vorschläge aus deinen Daten") {
+                    @Composable
+                    fun suggestionRow(label: String, value: String, apply: () -> Unit) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(label, style = MaterialTheme.typography.bodyMedium)
+                                Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            OutlinedButton(onClick = apply) { Text("Übernehmen") }
+                        }
+                    }
+                    sug.singleOverMl?.let { v ->
+                        suggestionRow("Einzelmenge", "$v ml" + if (sug.singleCapped) " (gedeckelt)" else "") { update(settings.copy(singleOverMl = v)) }
+                    }
+                    sug.dayOverMl?.let { v -> suggestionRow("Tagesmenge oben", "$v ml") { update(settings.copy(dayOverMl = v)) } }
+                    sug.dayUnderMl?.let { v -> suggestionRow("Tagesmenge unten", "$v ml") { update(settings.copy(dayUnderMl = v)) } }
+                    sug.countOver?.let { v -> suggestionRow("Gänge oben", "$v pro Tag") { update(settings.copy(countOverLimit = v)) } }
+                    sug.countUnder?.let { v -> suggestionRow("Gänge unten", "$v pro Tag") { update(settings.copy(countUnderLimit = v)) } }
+                    FooterText(if (sug.singleCapped)
+                        "Beschreibt dein Muster der letzten 30 Tage — keine medizinische Empfehlung. Bei der Einzelmenge schlägt die App bewusst nie mehr als 500 ml vor."
+                    else
+                        "Beschreibt dein Muster der letzten 30 Tage — keine medizinische Empfehlung.")
+                }
+            }
+        }
+
         // Fußnote
         item {
             Text(

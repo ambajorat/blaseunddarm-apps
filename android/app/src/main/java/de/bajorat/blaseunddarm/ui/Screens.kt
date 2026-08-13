@@ -314,6 +314,21 @@ fun StatsScreen(dataStore: BDMDataStore) {
                 }
             }
 
+            // Ein- und Ausfuhr (nur Tage mit Trink-Einträgen, min. 3)
+            val balDays = filtered.groupBy { it.dateTime.toLocalDate() }
+                .mapValues { (_, l) -> Pair(l.sumOf { it.drinkMl }, l.sumOf { it.urineMl }) }
+                .values.filter { it.first > 0 }
+            if (balDays.size >= 3) {
+                Spacer(Modifier.height(12.dp))
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Ein- und Ausfuhr", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Ø getrunken ${balDays.sumOf { it.first } / balDays.size} ml · Ø ausgeschieden ${balDays.sumOf { it.second } / balDays.size} ml", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Tage mit Trink-Einträgen: ${balDays.size}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
@@ -443,6 +458,17 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                     Text("Intervall: $hours Std $mins Min", fontSize = 14.sp, color = Orange, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     Slider(value = settings.intervalMinutes.toFloat(), onValueChange = { dataStore.updateSettings(settings.copy(intervalMinutes = (it / 15).toInt() * 15)) }, valueRange = 15f..480f, steps = 30)
+                    val intervalSug = remember(entries) { SuggestionEngine.compute(entries)?.intervalMinutes }
+                    if (intervalSug != null && intervalSug != settings.intervalMinutes) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Vorschlag aus deinen Daten", fontSize = 13.sp)
+                                Text("Median deiner Abstände: ${intervalSug / 60} Std ${intervalSug % 60} Min", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            OutlinedButton(onClick = { dataStore.updateSettings(settings.copy(intervalMinutes = intervalSug)) }) { Text("Übernehmen", fontSize = 12.sp) }
+                        }
+                    }
                     Spacer(Modifier.height(16.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Ruhezeit", fontSize = 14.sp)
