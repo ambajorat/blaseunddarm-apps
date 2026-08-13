@@ -158,6 +158,7 @@ struct EntryRow: View {
         if let syms = entry.symptoms, !syms.isEmpty { parts.append(String(localized: "Auffällig: \(syms.map(\.label).joined(separator: ", "))")) }
         if let ad = entry.adSigns, !ad.isEmpty { parts.append(String(localized: "Vegetativ: \(ad.map(\.label).joined(separator: ", "))")) }
         if let bp = entry.systolicBp { parts.append(String(localized: "RR \(bp)")) }
+        if entry.bowel, let amount = entry.stoolAmount { parts.append("\(amount.emoji) \(amount.label)") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -181,6 +182,7 @@ struct EditEntryView: View {
     @State private var palpation: PalpationFinding?
     @State private var adSigns: Set<AdSign>
     @State private var bpText: String
+    @State private var stoolAmount: StoolAmount?
     private let drinkSettings = DrinkSettings.load()
     private let utiSettings = UtiSettings.load()
     private let palpSettings = PalpationSettings.load()
@@ -201,6 +203,7 @@ struct EditEntryView: View {
         _palpation = State(initialValue: entry.palpation)
         _adSigns = State(initialValue: Set(entry.adSigns ?? []))
         _bpText = State(initialValue: entry.systolicBp.map(String.init) ?? "")
+        _stoolAmount = State(initialValue: entry.stoolAmount)
     }
 
     private var quickValues: [Int] {
@@ -372,7 +375,7 @@ struct EditEntryView: View {
                     }
                     .tint(Color.bowel)
                     .onChange(of: bowel) { _, newVal in
-                        if !newVal { bristolType = .none }
+                        if !newVal { bristolType = .none; stoolAmount = nil }
                     }
                 }
 
@@ -404,6 +407,32 @@ struct EditEntryView: View {
                                     .foregroundStyle(bristolType == type ? Color.bowel : .secondary)
                                 }
                                 .buttonStyle(.plain)
+                            }
+                        }
+
+                        HStack {
+                            Text("Stuhlmenge")
+                                .font(.subheadline)
+                            Spacer()
+                        }
+                        HStack(spacing: 6) {
+                            ForEach(StoolAmount.allCases) { amount in
+                                Button {
+                                    stoolAmount = stoolAmount == amount ? nil : amount
+                                } label: {
+                                    VStack(spacing: 2) {
+                                        Text(amount.emoji).font(.title3)
+                                        Text(amount.label)
+                                            .font(.system(size: 9))
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 6)
+                                    .background(stoolAmount == amount ? Color.bowel.opacity(0.15) : Color.clear, in: .rect(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(stoolAmount == amount ? Color.bowel : .secondary)
                             }
                         }
                     }
@@ -460,6 +489,7 @@ struct EditEntryView: View {
         updated.symptoms = symptoms.isEmpty ? nil : Array(symptoms)
         updated.palpation = palpation
         updated.adSigns = adSigns.isEmpty ? nil : Array(adSigns)
+        updated.stoolAmount = bowel ? stoolAmount : nil
         updated.systolicBp = {
             guard let v = Int(bpText), (60...300).contains(v) else { return nil }
             return v

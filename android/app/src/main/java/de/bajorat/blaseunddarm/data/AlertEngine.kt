@@ -62,6 +62,7 @@ object AlertEngine {
     /** Sofort beim Speichern eines Eintrags. */
     fun checkEntry(context: Context, entry: ToiletEntry, settings: AlertSettings = AlertSettings.load(context)) {
         checkUtiEntry(context, entry)
+        checkAdEntry(context, entry)
         if (!settings.singleOverEnabled || entry.urineMl < settings.singleOverMl) return
         notifyOnce(
             context,
@@ -227,6 +228,16 @@ object AlertEngine {
                 "Urin auffällig dunkel oder trüb",
                 "An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären.")
         }
+    }
+
+    // MARK: Vegetative Zeichen (AD)
+
+    fun checkAdEntry(context: Context, entry: ToiletEntry, ad: AdSettings = AdSettings.load(context)) {
+        if (!ad.enabled) return
+        if (entry.adSignList.isEmpty() || entry.urineMl > 0) return
+        notifyOnce(context, "adSigns_${entry.id}",
+            "Vegetative Zeichen erfasst",
+            "Bei voller Blase können das Füllungssignale sein — Blase entleeren und mögliche Auslöser prüfen.")
     }
 
     // MARK: Katheterbestand

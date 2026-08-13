@@ -145,6 +145,27 @@ extension UtiSymptom { var label: String { String(localized: String.Localization
 extension PalpationFinding { var label: String { String(localized: String.LocalizationValue(rawValue)) } }
 extension AdSign { var label: String { String(localized: String.LocalizationValue(rawValue)) } }
 
+/// Stuhlmenge in fünf Stufen — Tier-Größenskala mit Augenzwinkern.
+enum StoolAmount: String, Codable, CaseIterable, Identifiable {
+    case verySmall = "Sehr klein"
+    case small = "Klein"
+    case medium = "Mittel"
+    case large = "Groß"
+    case huge = "Riesig"
+
+    var id: String { rawValue }
+    var label: String { String(localized: String.LocalizationValue(rawValue)) }
+    var emoji: String {
+        switch self {
+        case .verySmall: "🐜"
+        case .small: "🐭"
+        case .medium: "🐰"
+        case .large: "🐕"
+        case .huge: "🐘"
+        }
+    }
+}
+
 struct ToiletEntry: Identifiable, Codable, Equatable {
     let id: UUID
     var timestamp: Date
@@ -163,8 +184,10 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
     var adSigns: [AdSign]?
     /// Optional, damit alte gespeicherte Einträge weiter decodieren
     var systolicBp: Int?
+    /// Optional, damit alte gespeicherte Einträge weiter decodieren
+    var stoolAmount: StoolAmount?
 
-    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "", drinkMl: Int? = nil, symptoms: [UtiSymptom]? = nil, palpation: PalpationFinding? = nil, adSigns: [AdSign]? = nil, systolicBp: Int? = nil) {
+    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "", drinkMl: Int? = nil, symptoms: [UtiSymptom]? = nil, palpation: PalpationFinding? = nil, adSigns: [AdSign]? = nil, systolicBp: Int? = nil, stoolAmount: StoolAmount? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.urineMl = urineMl
@@ -177,6 +200,7 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
         self.palpation = palpation
         self.adSigns = adSigns
         self.systolicBp = systolicBp
+        self.stoolAmount = stoolAmount
     }
 
     var dateKey: String {

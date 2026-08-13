@@ -45,6 +45,12 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
     val drinkSettings = DrinkSettings.load(alarmContext)
     val utiSettings = UtiSettings.load(alarmContext)
     var symptoms by remember { mutableStateOf(setOf<UtiSymptom>()) }
+    val palpSettings = PalpationSettings.load(alarmContext)
+    var palpation by remember { mutableStateOf<PalpationFinding?>(null) }
+    val adSettings = AdSettings.load(alarmContext)
+    var adSigns by remember { mutableStateOf(setOf<AdSign>()) }
+    var bpText by remember { mutableStateOf("") }
+    var stoolAmount by remember { mutableStateOf<StoolAmount?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
     val hasAccess = true
     val isTrialActive = false
@@ -213,6 +219,22 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 Spacer(Modifier.height(14.dp))
 
+                // Tastbefund (optional)
+                if (palpSettings.enabled) {
+                    Text("Tastbefund", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PalpationFinding.entries.forEach { f ->
+                            FilterChip(
+                                selected = palpation == f,
+                                onClick = { palpation = if (palpation == f) null else f },
+                                label = { Text(f.label, fontSize = 12.sp) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
                 // Auffälligkeiten (HWI-Frühwarnung, optional)
                 if (utiSettings.enabled) {
                     Text("Auffälligkeiten", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -225,6 +247,32 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                                 label = { Text(sym.label, fontSize = 12.sp) }
                             )
                         }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
+                // Vegetative Zeichen / AD (optional)
+                if (adSettings.enabled) {
+                    Text("Vegetative Zeichen", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        AdSign.entries.forEach { z ->
+                            FilterChip(
+                                selected = adSigns.contains(z),
+                                onClick = { adSigns = if (adSigns.contains(z)) adSigns - z else adSigns + z },
+                                label = { Text(z.label, fontSize = 12.sp) }
+                            )
+                        }
+                    }
+                    if (adSettings.bpEnabled) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = bpText,
+                            onValueChange = { bpText = it.filter { c -> c.isDigit() } },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("RR systolisch (mmHg)") },
+                            singleLine = true
+                        )
                     }
                     Spacer(Modifier.height(14.dp))
                 }
@@ -244,8 +292,24 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                 }
 
                 // Bowel
-                OutlinedButton(onClick = { bowel = !bowel; if (!bowel) bristolType = BristolType.NONE }, modifier = Modifier.fillMaxWidth().height(48.dp), colors = if (bowel) ButtonDefaults.outlinedButtonColors(containerColor = Purple.copy(alpha = 0.12f)) else ButtonDefaults.outlinedButtonColors(), border = BorderStroke(1.dp, if (bowel) Purple else MaterialTheme.colorScheme.outline)) {
+                OutlinedButton(onClick = { bowel = !bowel; if (!bowel) { bristolType = BristolType.NONE; stoolAmount = null } }, modifier = Modifier.fillMaxWidth().height(48.dp), colors = if (bowel) ButtonDefaults.outlinedButtonColors(containerColor = Purple.copy(alpha = 0.12f)) else ButtonDefaults.outlinedButtonColors(), border = BorderStroke(1.dp, if (bowel) Purple else MaterialTheme.colorScheme.outline)) {
                     Text(if (bowel) "✅ Stuhlgang" else "⬜ Stuhlgang", color = if (bowel) Purple else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
+                // Stuhlmenge (nur wenn Stuhlgang aktiv)
+                if (bowel) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("Stuhlmenge", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        StoolAmount.entries.forEach { a ->
+                            FilterChip(
+                                selected = stoolAmount == a,
+                                onClick = { stoolAmount = if (stoolAmount == a) null else a },
+                                label = { Text("${a.emoji} ${a.label}", fontSize = 12.sp) }
+                            )
+                        }
+                    }
                 }
 
                 // Bristol
@@ -290,9 +354,13 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                 // Save
                 val canSave = (urineMl.toIntOrNull() ?: 0) > 0 || bowel || (drinkText.toIntOrNull() ?: 0) > 0
                 Button(onClick = {
-                    dataStore.addEntry(ToiletEntry(urineMl = urineMl.toIntOrNull() ?: 0, bowel = bowel, bristolType = bristolType.name, urineColor = urineColor.name, note = note, drinkMl = drinkText.toIntOrNull() ?: 0, symptoms = symptoms.map { it.name }))
+                    dataStore.addEntry(ToiletEntry(urineMl = urineMl.toIntOrNull() ?: 0, bowel = bowel, bristolType = bristolType.name, urineColor = urineColor.name, note = note, drinkMl = drinkText.toIntOrNull() ?: 0, symptoms = symptoms.map { it.name },
+                        palpation = palpation?.name ?: "",
+                        adSigns = adSigns.map { it.name },
+                        systolicBp = bpText.toIntOrNull()?.takeIf { adSettings.enabled && adSettings.bpEnabled && it in 60..300 } ?: 0,
+                        stoolAmount = if (bowel) stoolAmount?.name ?: "" else ""))
                     onScheduleReminder()
-                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; symptoms = setOf(); drinkText = ""; showSaved = true
+                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; symptoms = setOf(); palpation = null; adSigns = setOf(); bpText = ""; stoolAmount = null; drinkText = ""; showSaved = true
                 }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = canSave, colors = ButtonDefaults.buttonColors(containerColor = Orange)) {
                     Text(if (showSaved) "✓ Gespeichert" else "Speichern", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }

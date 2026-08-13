@@ -643,8 +643,10 @@ struct SettingsView: View {
             }
 
             Button {
-                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                    AppStore.requestReview(in: scene)
+                // Direkter Sprung ins Bewertungsformular — requestReview ist von
+                // Apple gedrosselt und zeigt oft schlicht nichts an.
+                if let url = URL(string: "https://apps.apple.com/app/id6792282103?action=write-review") {
+                    UIApplication.shared.open(url)
                 }
             } label: {
                 HStack {
@@ -674,7 +676,7 @@ struct SettingsView: View {
     // MARK: - CSV Export
 
     private func exportCSV() {
-        var csv = "Datum;Uhrzeit;Urin_ml;Getrunken_ml;Stuhlgang;Notiz;Symptome;Tastbefund;AD_Zeichen;RR_syst\n"
+        var csv = "Datum;Uhrzeit;Urin_ml;Getrunken_ml;Stuhlgang;Notiz;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge\n"
         let df = DateFormatter()
         df.dateFormat = "dd.MM.yyyy"
         let tf = DateFormatter()
@@ -685,7 +687,7 @@ struct SettingsView: View {
             let syms = (e.symptoms ?? []).map(\.rawValue).joined(separator: ", ")
             let adS = (e.adSigns ?? []).map(\.rawValue).joined(separator: ", ")
             let bpS = e.systolicBp.map(String.init) ?? ""
-            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.drinkMl ?? 0);\(e.bowel ? "Ja" : "Nein");\(note);\(syms);\(e.palpation?.rawValue ?? "");\(adS);\(bpS)\n"
+            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.drinkMl ?? 0);\(e.bowel ? "Ja" : "Nein");\(note);\(syms);\(e.palpation?.rawValue ?? "");\(adS);\(bpS);\(e.stoolAmount?.rawValue ?? "")\n"
         }
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("blasen_darm_protokoll.csv")
@@ -740,6 +742,7 @@ struct SettingsView: View {
         let palpIdx = columns.firstIndex(where: { $0.contains("tastbefund") })
         let adIdx = columns.firstIndex(where: { $0.contains("ad_zeichen") })
         let bpIdx = columns.firstIndex(where: { $0.contains("rr_syst") })
+        let stoolIdx = columns.firstIndex(where: { $0.contains("stuhlmenge") })
 
         let df = DateFormatter()
         let dateFormats = ["dd.MM.yyyy", "yyyy-MM-dd", "d.M.yyyy", "dd/MM/yyyy"]
@@ -818,7 +821,12 @@ struct SettingsView: View {
                 bpVal = v
             }
 
-            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note, drinkMl: drinkVal, symptoms: syms, palpation: palpVal, adSigns: adVals, systolicBp: bpVal)
+            var stoolVal: StoolAmount? = nil
+            if let si = stoolIdx, si < fields.count, !fields[si].isEmpty {
+                stoolVal = StoolAmount(rawValue: fields[si].trimmingCharacters(in: .whitespaces))
+            }
+
+            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note, drinkMl: drinkVal, symptoms: syms, palpation: palpVal, adSigns: adVals, systolicBp: bpVal, stoolAmount: stoolVal)
             store.add(entry)
             imported += 1
         }

@@ -9,6 +9,7 @@ struct LogView: View {
     @State private var urineColor: UrineColor = .none
     @State private var bowel = false
     @State private var bristolType: BristolType = .none
+    @State private var stoolAmount: StoolAmount? = nil
     @State private var showBristolInfo = false
     @State private var note = ""
     @State private var drinkText = ""
@@ -369,7 +370,7 @@ struct LogView: View {
             // Bowel
             Button {
                 bowel.toggle()
-                if !bowel { bristolType = .none }
+                if !bowel { bristolType = .none; stoolAmount = nil }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: bowel ? "checkmark.circle.fill" : "circle")
@@ -384,6 +385,36 @@ struct LogView: View {
             .accessibilityLabel(String(localized: "bowel"))
             .accessibilityHint(bowel ? "Aktiviert. Doppeltippen zum Deaktivieren" : "Doppeltippen zum Aktivieren")
             .accessibilityAddTraits(bowel ? [.isButton, .isSelected] : .isButton)
+
+            // Stuhlmenge (nur wenn Stuhlgang aktiv)
+            if bowel {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Stuhlmenge")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.subtleText)
+                    HStack(spacing: 6) {
+                        ForEach(StoolAmount.allCases) { amount in
+                            Button {
+                                stoolAmount = stoolAmount == amount ? nil : amount
+                            } label: {
+                                VStack(spacing: 2) {
+                                    Text(amount.emoji).font(.title3)
+                                    Text(amount.label)
+                                        .font(.system(size: 9))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .background(stoolAmount == amount ? Color.bowel.opacity(0.15) : Color.clear, in: .rect(cornerRadius: 8))
+                                .foregroundStyle(stoolAmount == amount ? Color.bowel : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(stoolAmount == amount ? .isSelected : [])
+                        }
+                    }
+                }
+            }
 
             // Bristol (jetzt immer verfügbar, wenn Stuhlgang aktiv)
             if bowel {
@@ -466,13 +497,14 @@ struct LogView: View {
             systolicBp: {
                 guard adSettings.enabled, adSettings.bpEnabled, let v = Int(bpText), (60...300).contains(v) else { return nil }
                 return v
-            }()
+            }(),
+            stoolAmount: bowel ? stoolAmount : nil
         ))
         // store.add(...) startet die Live Activity bereits selbst.
         if store.settings.reminderEnabled {
             notifications.scheduleReminder(afterMinutes: store.settings.intervalMinutes, settings: store.settings)
         }
-        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; palpation = nil; adSigns = []; bpText = ""; entryTime = .now; showSaved = true
+        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; palpation = nil; adSigns = []; bpText = ""; stoolAmount = nil; entryTime = .now; showSaved = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { showSaved = false }
     }
 

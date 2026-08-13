@@ -69,7 +69,8 @@ fun HistoryScreen(dataStore: BDMDataStore) {
                         },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
                     ) {
-                        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(entry.dateTime.format(DateTimeFormatter.ofPattern("HH:mm")), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (entry.urineMl > 0) Text("${entry.urineMl} ml", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Orange)
                             val color = try { UrineColor.valueOf(entry.urineColor) } catch (_: Exception) { UrineColor.NONE }
@@ -82,6 +83,17 @@ fun HistoryScreen(dataStore: BDMDataStore) {
                             if (entry.note.isNotEmpty()) Text(entry.note, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
                             Spacer(Modifier.weight(1f))
                             Text("✏️", fontSize = 12.sp)
+                        }
+                        val details = buildList {
+                            entry.palpationFinding?.let { add("Tastbefund: ${it.label}") }
+                            if (entry.utiSymptoms.isNotEmpty()) add("Auffällig: " + entry.utiSymptoms.joinToString(", ") { it.label })
+                            if (entry.adSignList.isNotEmpty()) add("Vegetativ: " + entry.adSignList.joinToString(", ") { it.label })
+                            if (entry.systolicBp > 0) add("RR ${entry.systolicBp}")
+                            if (entry.bowel) entry.stoolAmountValue?.let { add("${it.emoji} ${it.label}") }
+                        }
+                        if (details.isNotEmpty()) {
+                            Text(details.joinToString(" · "), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, modifier = Modifier.padding(top = 4.dp))
+                        }
                         }
                     }
                 }
@@ -109,6 +121,16 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
     var bowel by remember { mutableStateOf(entry.bowel) }
     var bristolType by remember { mutableStateOf(try { BristolType.valueOf(entry.bristolType) } catch (_: Exception) { BristolType.NONE }) }
     var note by remember { mutableStateOf(entry.note) }
+    var symptoms by remember { mutableStateOf(entry.utiSymptoms.toSet()) }
+    var palpation by remember { mutableStateOf(entry.palpationFinding) }
+    var adSigns by remember { mutableStateOf(entry.adSignList.toSet()) }
+    var bpText by remember { mutableStateOf(if (entry.systolicBp > 0) entry.systolicBp.toString() else "") }
+    var stoolAmount by remember { mutableStateOf(entry.stoolAmountValue) }
+    val editContext = androidx.compose.ui.platform.LocalContext.current
+    val palpOn = PalpationSettings.load(editContext).enabled || palpation != null
+    val utiOn = UtiSettings.load(editContext).enabled || symptoms.isNotEmpty()
+    val adOn = AdSettings.load(editContext).enabled || adSigns.isNotEmpty() || bpText.isNotEmpty()
+    val bpOn = AdSettings.load(editContext).bpEnabled || bpText.isNotEmpty()
 
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Eintrag bearbeiten") },
         text = {
@@ -124,14 +146,47 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
                         FilterChip(selected = urineColor == color, onClick = { urineColor = if (urineColor == color) UrineColor.NONE else color }, label = { Text(color.emoji, fontSize = 14.sp) })
                     }
                 }
+                if (palpOn) {
+                    Text("Tastbefund", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PalpationFinding.entries.forEach { f ->
+                            FilterChip(selected = palpation == f, onClick = { palpation = if (palpation == f) null else f }, label = { Text(f.label, fontSize = 10.sp) })
+                        }
+                    }
+                }
+                if (utiOn) {
+                    Text("Auffälligkeiten", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        UtiSymptom.entries.forEach { sym ->
+                            FilterChip(selected = symptoms.contains(sym), onClick = { symptoms = if (symptoms.contains(sym)) symptoms - sym else symptoms + sym }, label = { Text(sym.label, fontSize = 10.sp) })
+                        }
+                    }
+                }
+                if (adOn) {
+                    Text("Vegetative Zeichen", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        AdSign.entries.forEach { z ->
+                            FilterChip(selected = adSigns.contains(z), onClick = { adSigns = if (adSigns.contains(z)) adSigns - z else adSigns + z }, label = { Text(z.label, fontSize = 10.sp) })
+                        }
+                    }
+                    if (bpOn) {
+                        OutlinedTextField(value = bpText, onValueChange = { bpText = it.filter { c -> c.isDigit() } }, label = { Text("RR systolisch (mmHg)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = bowel, onCheckedChange = { bowel = it; if (!it) bristolType = BristolType.NONE })
+                    Checkbox(checked = bowel, onCheckedChange = { bowel = it; if (!it) { bristolType = BristolType.NONE; stoolAmount = null } })
                     Text("Stuhlgang")
                 }
                 if (bowel) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         BristolType.displayValues().forEach { type ->
                             FilterChip(selected = bristolType == type, onClick = { bristolType = if (bristolType == type) BristolType.NONE else type }, label = { Text(type.label, fontSize = 10.sp) })
+                        }
+                    }
+                    Text("Stuhlmenge", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        StoolAmount.entries.forEach { a ->
+                            FilterChip(selected = stoolAmount == a, onClick = { stoolAmount = if (stoolAmount == a) null else a }, label = { Text("${a.emoji} ${a.label}", fontSize = 10.sp) })
                         }
                     }
                 }
@@ -141,7 +196,7 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
         },
         confirmButton = {
             TextButton(onClick = {
-                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, drinkMl = drinkMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note))
+                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, drinkMl = drinkMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note, symptoms = symptoms.map { it.name }, palpation = palpation?.name ?: "", adSigns = adSigns.map { it.name }, systolicBp = bpText.toIntOrNull()?.takeIf { it in 60..300 } ?: 0, stoolAmount = if (bowel) stoolAmount?.name ?: "" else ""))
                 onDismiss()
             }) { Text("Sichern") }
         },
@@ -197,6 +252,68 @@ fun StatsScreen(dataStore: BDMDataStore) {
                 }
             }
 
+            // Katheterbestand (nachgeholt aus 2.0)
+            val catheterStats = CatheterStock.load(context)
+            if (catheterStats.enabled) {
+                Spacer(Modifier.height(12.dp))
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("\uD83E\uDDF4 ${catheterStats.currentStock(entries)} Katheter im Bestand", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        val cDays = catheterStats.daysRemaining(entries)
+                        val cEmpty = catheterStats.estimatedEmptyDate(entries)
+                        if (cDays != null && cEmpty != null) {
+                            Text("Reicht etwa $cDays Tage — bis ca. ${cEmpty.format(DateTimeFormatter.ofPattern("d. MMM"))}", fontSize = 12.sp,
+                                color = if (cDays <= catheterStats.warnDays) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            // Tastbefund, kalibriert (Ø ml je Stufe, min. 3 Einträge)
+            val palpRows = PalpationFinding.entries.mapNotNull { f ->
+                val ml = filtered.filter { it.palpationFinding == f && it.urineMl > 0 }.map { it.urineMl }
+                if (ml.size >= 3) Triple(f, ml.sum() / ml.size, ml.size) else null
+            }
+            if (palpRows.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Dein Tastbefund, kalibriert", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Spacer(Modifier.height(6.dp))
+                        palpRows.forEach { (f, avg, n) ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                                Text(f.label, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                Text("Ø $avg ml ($n×)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Text("Aus deinen eigenen Einträgen.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            // Auffälligkeiten im Zeitraum
+            val symCounts = (UtiSymptom.entries.map { sym -> sym.label to filtered.count { it.utiSymptoms.contains(sym) } } +
+                             AdSign.entries.map { z -> z.label to filtered.count { it.adSignList.contains(z) } }).filter { it.second > 0 }
+            if (symCounts.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Auffälligkeiten im Zeitraum", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Spacer(Modifier.height(6.dp))
+                        symCounts.forEach { (label, n) ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                                Text(label, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                Text("${n}×", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        val bps = filtered.mapNotNull { if (it.systolicBp > 0) it.systolicBp else null }
+                        if (bps.isNotEmpty()) {
+                            Text("RR systolisch: ${bps.min()}–${bps.max()} mmHg", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
@@ -225,9 +342,9 @@ fun StatsScreen(dataStore: BDMDataStore) {
                     Button(onClick = {
                         val tf = DateTimeFormatter.ofPattern("dd.MM.yyyy;HH:mm")
                         val csv = buildString {
-                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml;Symptome")
+                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge")
                             filtered.sortedByDescending { it.timestamp }.forEach { e ->
-                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl};${e.utiSymptoms.joinToString(", ") { it.label }}")
+                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl};${e.utiSymptoms.joinToString(", ") { it.label }};${e.palpationFinding?.label ?: ""};${e.adSignList.joinToString(", ") { it.label }};${if (e.systolicBp > 0) e.systolicBp.toString() else ""};${e.stoolAmountValue?.label ?: ""}")
                             }
                         }
                         val file = File(context.cacheDir, "Blase_Darm_Export.csv")
@@ -495,6 +612,42 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                         "Beim Erfassen erscheint der Abschnitt \u201EAuffälligkeiten\u201C. Bei Blut oder Fieber meldet sich die App sofort, bei Mustern über mehrere Tage mit einem Hinweis. Ersetzt keine ärztliche Diagnose."
                     else
                         "Optional: Erfasse Anzeichen wie Geruch, Brennen oder vermehrte Spastik — die App warnt bei Mustern, die bei ISK auf einen Harnwegsinfekt hindeuten können. Ersetzt keine ärztliche Diagnose.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // ISK-Erweiterungen (Tastbefund, vegetative Zeichen)
+        var palp by remember { mutableStateOf(PalpationSettings.load(context)) }
+        var ad by remember { mutableStateOf(AdSettings.load(context)) }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text("ISK-Erweiterungen", fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Tastbefund", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Switch(checked = palp.enabled, onCheckedChange = {
+                        palp = palp.copy(enabled = it); palp.save(context)
+                    })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Vegetative Zeichen", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Switch(checked = ad.enabled, onCheckedChange = {
+                        ad = ad.copy(enabled = it); ad.save(context)
+                    })
+                }
+                if (ad.enabled) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Blutdruckfeld (RR systolisch)", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Switch(checked = ad.bpEnabled, onCheckedChange = {
+                            ad = ad.copy(bpEnabled = it); ad.save(context)
+                        })
+                    }
+                }
+                Text(
+                    "Tastbefund: Füllungsgrad oberhalb des Schambeins in drei Stufen. Vegetative Zeichen: Gänsehaut, Schwitzen, Hitzegefühl oder Kopfschmerz als Füllungssignale, optional mit Blutdruck. Ersetzt keine ärztliche Diagnose.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

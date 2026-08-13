@@ -32,6 +32,27 @@ enum class BristolType(val label: String, val shortDesc: String, val category: S
     }
 }
 
+enum class PalpationFinding(val label: String) {
+    SOFT("Tief eindrückbar"),
+    MEDIUM("Leichter Widerstand"),
+    FIRM("Deutlich federnd")
+}
+
+enum class AdSign(val label: String) {
+    GOOSEBUMPS("Gänsehaut"),
+    SWEATING("Schwitzen"),
+    HEAT("Hitzegefühl"),
+    HEADACHE("Kopfschmerz")
+}
+
+enum class StoolAmount(val label: String, val emoji: String) {
+    VERY_SMALL("Sehr klein", "🐜"),
+    SMALL("Klein", "🐭"),
+    MEDIUM("Mittel", "🐰"),
+    LARGE("Groß", "🐕"),
+    HUGE("Riesig", "🐘")
+}
+
 enum class UtiSymptom(val label: String) {
     SMELL("Starker Geruch"),
     BLOOD("Blut im Urin"),
@@ -53,10 +74,20 @@ data class ToiletEntry(
     val urineColor: String = UrineColor.NONE.name,
     val note: String = "",
     val drinkMl: Int = 0,
-    val symptoms: List<String> = emptyList()
+    val symptoms: List<String> = emptyList(),
+    val palpation: String = "",
+    val adSigns: List<String> = emptyList(),
+    val systolicBp: Int = 0,
+    val stoolAmount: String = ""
 ) {
     val utiSymptoms: List<UtiSymptom>
         get() = symptoms.mapNotNull { runCatching { UtiSymptom.valueOf(it) }.getOrNull() }
+    val palpationFinding: PalpationFinding?
+        get() = runCatching { PalpationFinding.valueOf(palpation) }.getOrNull()
+    val adSignList: List<AdSign>
+        get() = adSigns.mapNotNull { runCatching { AdSign.valueOf(it) }.getOrNull() }
+    val stoolAmountValue: StoolAmount?
+        get() = runCatching { StoolAmount.valueOf(stoolAmount) }.getOrNull()
 
     val dateTime: LocalDateTime
         get() = LocalDateTime.parse(timestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
