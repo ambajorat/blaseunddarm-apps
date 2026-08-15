@@ -12,6 +12,11 @@ struct SettingsView: View {
     @State private var importResult: (count: Int, message: String)?
     @State private var showImportResult = false
     @State private var showRestoreConfirm = false
+    /// Fokus-Steuerung für die Ziffernblock-Felder — der numberPad hat
+    /// keine Return-Taste, ohne das hier bleibt die Tastatur stehen.
+    private enum NumField: Hashable { case quick, drink, stock }
+    @FocusState private var numFocus: NumField?
+
     @State private var newQuickValue = ""
     @State private var drink = DrinkSettings.load()
     @State private var newDrinkValue = ""
@@ -23,55 +28,73 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                reminderSection
-                quickValuesSection
-                drinkSection
-                catheterSection
-                utiSection
-                iskExtrasSection
-                cloudSection
-                dataSection
-                aboutSection
-            }
-            .navigationTitle(String(localized: "tab_settings"))
-            .onChange(of: drink) { _, new in new.save() }
-            .onChange(of: catheter) { _, new in new.save() }
-            .onChange(of: uti) { _, new in new.save() }
-            .onChange(of: palp) { _, new in new.save() }
-            .onChange(of: ad) { _, new in new.save() }
-            .alert("Alle Daten löschen?", isPresented: $showDeleteConfirm) {
-                Button("Abbrechen", role: .cancel) {}
-                Button("Endgültig löschen", role: .destructive) {
-                    store.deleteAll()
-                }
-            } message: {
-                Text("Alle \(store.entries.count) Einträge werden unwiderruflich gelöscht.")
-            }
-            .alert("Backup wiederherstellen?", isPresented: $showRestoreConfirm) {
-                Button("Abbrechen", role: .cancel) {}
-                Button("Wiederherstellen", role: .destructive) {
-                    cloudBackup.restore { entries, settings in
-                        store.restoreFromBackup(entries: entries, settings: settings)
-                    }
-                }
-            } message: {
-                Text("Deine aktuellen Daten werden durch das Backup ersetzt.")
-            }
-            .alert(importResult?.message ?? "", isPresented: $showImportResult) {
-                Button("OK") {}
-            }
-            .fileImporter(isPresented: $showImportPicker, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
-                switch result {
-                case .success(let url):
-                    importCSV(from: url)
-                case .failure:
-                    importResult = (0, "Datei konnte nicht geöffnet werden.")
-                    showImportResult = true
-                }
-            }
+            settingsList
+                .navigationTitle(String(localized: "tab_settings"))
+                .scrollDismissesKeyboard(.immediately)
         }
     }
+
+    /// Ausgelagert: der Typprüfer schafft die List samt Modifier-Kette
+    /// nicht mehr als einen Ausdruck (Fehler "unable to type-check").
+    /// Fertig-Leiste über dem Ziffernblock — direkt an den Feldern
+    /// angebracht, weil sie an der List hängend nicht zuverlässig erscheint.
+    @ToolbarContentBuilder
+    private var doneToolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .keyboard) {
+            Spacer()
+            Button("Fertig") { numFocus = nil }
+        }
+    }
+
+    private var settingsList: some View {
+        List {
+            reminderSection
+            quickValuesSection
+            drinkSection
+            catheterSection
+            utiSection
+            iskExtrasSection
+            cloudSection
+            dataSection
+            aboutSection
+        }
+        .onChange(of: drink) { _, new in new.save() }
+        .onChange(of: catheter) { _, new in new.save() }
+        .onChange(of: uti) { _, new in new.save() }
+        .onChange(of: palp) { _, new in new.save() }
+        .onChange(of: ad) { _, new in new.save() }
+        .alert("Alle Daten löschen?", isPresented: $showDeleteConfirm) {
+        Button("Abbrechen", role: .cancel) {}
+        Button("Endgültig löschen", role: .destructive) {
+        store.deleteAll()
+        }
+        } message: {
+        Text("Alle \(store.entries.count) Einträge werden unwiderruflich gelöscht.")
+        }
+        .alert("Backup wiederherstellen?", isPresented: $showRestoreConfirm) {
+        Button("Abbrechen", role: .cancel) {}
+        Button("Wiederherstellen", role: .destructive) {
+        cloudBackup.restore { entries, settings in
+        store.restoreFromBackup(entries: entries, settings: settings)
+        }
+        }
+        } message: {
+        Text("Deine aktuellen Daten werden durch das Backup ersetzt.")
+        }
+        .alert(importResult?.message ?? "", isPresented: $showImportResult) {
+        Button("OK") {}
+        }
+        .fileImporter(isPresented: $showImportPicker, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+        switch result {
+        case .success(let url):
+        importCSV(from: url)
+        case .failure:
+        importResult = (0, "Datei konnte nicht geöffnet werden.")
+        showImportResult = true
+        }
+        }
+    }
+
 
     // MARK: - Reminder Section
 
@@ -253,11 +276,14 @@ struct SettingsView: View {
             HStack {
                 TextField("Neuer Wert", text: $newQuickValue)
                     .keyboardType(.numberPad)
+                    .focused($numFocus, equals: .quick)
+                    .toolbar { doneToolbar }
 
                 Button {
                     if let val = Int(newQuickValue), val > 0 {
                         store.settings.quickValues.append(val)
                         store.settings.quickValues.sort()
+                        numFocus = nil
                         newQuickValue = ""
                     }
                 } label: {
@@ -321,11 +347,14 @@ struct SettingsView: View {
                 HStack {
                     TextField("Neuer Wert", text: $newDrinkValue)
                         .keyboardType(.numberPad)
+                        .focused($numFocus, equals: .drink)
+                    .toolbar { doneToolbar }
 
                     Button {
                         if let val = Int(newDrinkValue), val > 0 {
                             drink.presets.append(val)
                             drink.presets.sort()
+                            numFocus = nil
                             newDrinkValue = ""
                         }
                     } label: {
@@ -386,11 +415,14 @@ struct SettingsView: View {
                 HStack {
                     TextField("Bestand eintragen", text: $newStockValue)
                         .keyboardType(.numberPad)
+                        .focused($numFocus, equals: .stock)
+                    .toolbar { doneToolbar }
 
                     Button {
                         if let val = Int(newStockValue), val >= 0 {
                             catheter.setStock(val)
                             newStockValue = ""
+                            numFocus = nil
                         }
                     } label: {
                         Image(systemName: "checkmark.circle.fill")

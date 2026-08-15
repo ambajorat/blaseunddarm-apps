@@ -216,7 +216,7 @@ struct LogView: View {
                     .padding(10)
                     .background(Color.pageBg, in: .rect(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
-                HStack(spacing: 6) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 6)], spacing: 6) {
                     ForEach(quickValues, id: \.self) { val in
                         AccessibleQuickValueButton(value: val, isSelected: urineMl == String(val)) {
                             urineMl = String(val)
@@ -357,7 +357,7 @@ struct LogView: View {
                         .padding(10)
                         .background(Color.pageBg, in: .rect(cornerRadius: 8))
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
-                    HStack(spacing: 6) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 6)], spacing: 6) {
                         ForEach(drinkSettings.presets, id: \.self) { val in
                             AccessibleQuickValueButton(value: val, isSelected: drinkText == String(val)) {
                                 drinkText = String(val)
