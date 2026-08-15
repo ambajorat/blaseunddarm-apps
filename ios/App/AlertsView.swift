@@ -213,21 +213,22 @@ struct AlertsView: View {
             Section {
                 if let v = sug.singleOverMl {
                     suggestionRow(String(localized: "Einzelmenge"),
-                                  value: String(localized: "\(v) ml") + (sug.singleCapped ? String(localized: " (gedeckelt)") : "")) {
+                                  value: String(localized: "\(v) ml") + (sug.singleCapped ? String(localized: " (gedeckelt)") : ""),
+                                  applied: alerts.singleOverMl == v) {
                         alerts.singleOverMl = v
                     }
                 }
                 if let v = sug.dayOverMl {
-                    suggestionRow(String(localized: "Tagesmenge oben"), value: String(localized: "\(v) ml")) { alerts.dayOverMl = v }
+                    suggestionRow(String(localized: "Tagesmenge oben"), value: String(localized: "\(v) ml"), applied: alerts.dayOverMl == v) { alerts.dayOverMl = v }
                 }
                 if let v = sug.dayUnderMl {
-                    suggestionRow(String(localized: "Tagesmenge unten"), value: String(localized: "\(v) ml")) { alerts.dayUnderMl = v }
+                    suggestionRow(String(localized: "Tagesmenge unten"), value: String(localized: "\(v) ml"), applied: alerts.dayUnderMl == v) { alerts.dayUnderMl = v }
                 }
                 if let v = sug.countOver {
-                    suggestionRow(String(localized: "Gänge oben"), value: String(localized: "\(v) pro Tag")) { alerts.countOverLimit = v }
+                    suggestionRow(String(localized: "Gänge oben"), value: String(localized: "\(v) pro Tag"), applied: alerts.countOverLimit == v) { alerts.countOverLimit = v }
                 }
                 if let v = sug.countUnder {
-                    suggestionRow(String(localized: "Gänge unten"), value: String(localized: "\(v) pro Tag")) { alerts.countUnderLimit = v }
+                    suggestionRow(String(localized: "Gänge unten"), value: String(localized: "\(v) pro Tag"), applied: alerts.countUnderLimit == v) { alerts.countUnderLimit = v }
                 }
             } header: {
                 Text("Vorschläge aus deinen Daten")
@@ -237,10 +238,18 @@ struct AlertsView: View {
                      : String(localized: "Beschreibt dein Muster der letzten 30 Tage — keine medizinische Empfehlung."))
                     .font(.caption)
             }
+        } else {
+            Section {
+                Text(String(localized: "Vorschläge erscheinen nach etwa einer Woche mit Einträgen — die App braucht erst genug eigene Daten."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Vorschläge aus deinen Daten")
+            }
         }
     }
 
-    private func suggestionRow(_ title: String, value: String, apply: @escaping () -> Void) -> some View {
+    private func suggestionRow(_ title: String, value: String, applied: Bool, apply: @escaping () -> Void) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -250,9 +259,18 @@ struct AlertsView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button(String(localized: "Übernehmen")) { apply() }
+            if applied {
+                // Rückmeldung nach dem Tippen: Wert steht in den Regeln oben
+                Label(String(localized: "Übernommen"), systemImage: "checkmark.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.green)
+            } else {
+                Button(String(localized: "Übernehmen")) {
+                    withAnimation(.easeInOut(duration: 0.2)) { apply() }
+                }
                 .font(.caption.weight(.semibold))
                 .buttonStyle(.bordered)
+            }
         }
     }
 

@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import de.bajorat.blaseunddarm.data.BDMDataStore
+import de.bajorat.blaseunddarm.data.tr
 import de.bajorat.blaseunddarm.notification.ReminderManager
 import de.bajorat.blaseunddarm.ui.*
 
@@ -59,32 +60,32 @@ fun MainScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Filled.Add, "Erfassen") },
-                    label = { Text("Erfassen", maxLines = 1, softWrap = false) }
+                    icon = { Icon(Icons.Filled.Add, tr("Erfassen")) },
+                    label = { Text(tr("Erfassen"), maxLines = 1, softWrap = false) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Filled.List, "Verlauf") },
-                    label = { Text("Verlauf", maxLines = 1, softWrap = false) }
+                    icon = { Icon(Icons.Filled.List, tr("Verlauf")) },
+                    label = { Text(tr("Verlauf"), maxLines = 1, softWrap = false) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Filled.BarChart, "Statistik") },
-                    label = { Text("Statistik", maxLines = 1, softWrap = false) }
+                    icon = { Icon(Icons.Filled.BarChart, tr("Statistik")) },
+                    label = { Text(tr("Statistik"), maxLines = 1, softWrap = false) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
-                    icon = { Icon(Icons.Filled.Notifications, "Hinweise") },
-                    label = { Text("Hinweise", maxLines = 1, softWrap = false) }
+                    icon = { Icon(Icons.Filled.Notifications, tr("Hinweise")) },
+                    label = { Text(tr("Hinweise"), maxLines = 1, softWrap = false) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 4,
                     onClick = { selectedTab = 4 },
-                    icon = { Icon(Icons.Filled.Settings, "Einstellungen") },
-                    label = { Text("Einstellungen", maxLines = 1, softWrap = false) }
+                    icon = { Icon(Icons.Filled.Settings, tr("Einstellungen")) },
+                    label = { Text(tr("Einstellungen"), maxLines = 1, softWrap = false) }
                 )
             }
         }

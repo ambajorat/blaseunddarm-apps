@@ -1,5 +1,7 @@
 package de.bajorat.blaseunddarm.notification
 
+import de.bajorat.blaseunddarm.data.tr
+
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -30,10 +32,10 @@ class ReminderManager(private val context: Context) {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Toiletten-Erinnerung",
+            tr("Toiletten-Erinnerung"),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Erinnerungen an Toilettengänge"
+            description = tr("Erinnerungen an Toilettengänge")
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 500, 200, 500, 200, 500)
         }
@@ -126,11 +128,11 @@ class QuietHoursReceiver : BroadcastReceiver() {
         val body: String
         if (type == "start") {
             val quietTo = intent.getIntExtra("quietTo", 6)
-            title = "Ruhezeit beginnt"
+            title = tr("Ruhezeit beginnt")
             body = "Erinnerungen sind bis $quietTo:00 Uhr pausiert. Gute Nacht!"
         } else {
-            title = "Ruhezeit beendet"
-            body = "Erinnerungen sind wieder aktiv."
+            title = tr("Ruhezeit beendet")
+            body = tr("Erinnerungen sind wieder aktiv.")
         }
         val notification = NotificationCompat.Builder(context, ReminderManager.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -163,8 +165,8 @@ class ReminderReceiver : BroadcastReceiver() {
         // Show notification
         val notification = NotificationCompat.Builder(context, ReminderManager.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("⚠️ Toiletten-Erinnerung")
-            .setContentText("Zeit für den nächsten Toilettengang!")
+            .setContentTitle(tr("⚠️ Toiletten-Erinnerung"))
+            .setContentText(tr("Zeit für den nächsten Toilettengang!"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)

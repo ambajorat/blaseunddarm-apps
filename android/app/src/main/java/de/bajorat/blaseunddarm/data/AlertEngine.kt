@@ -25,8 +25,8 @@ data class Baseline(
 )
 
 /**
- * Prüf-Logik für den "Hinweise"-Reiter — Regeln und Texte identisch zur
- * iOS-Fassung: Einzelmenge sofort beim Eintrag, "Über"-Checks jederzeit,
+ * Prüf-Logik für den tr("Hinweise")-Reiter — Regeln und Texte identisch zur
+ * iOS-Fassung: Einzelmenge sofort beim Eintrag, tr("Über")-Checks jederzeit,
  * "Unter"-Checks ab 18 Uhr, persönliche 14-Tage-Baseline (mind. 5 Datentage).
  * Jede Warnung feuert pro Regel und Tag genau einmal.
  */
@@ -67,12 +67,12 @@ object AlertEngine {
         notifyOnce(
             context,
             rule = "single_${entry.id}",
-            title = "Hohe Einzelmenge",
-            body = "${entry.urineMl} ml auf einmal — über deiner Grenze von ${settings.singleOverMl} ml."
+            title = tr("Hohe Einzelmenge"),
+            body = trf("{0} ml auf einmal — über deiner Grenze von {1} ml.", entry.urineMl, settings.singleOverMl)
         )
     }
 
-    /** Tages-Checks: "Über" sofort, "Unter" und Abweichungen nach unten ab 18 Uhr. */
+    /** Tages-Checks: tr("Über") sofort, "Unter" und Abweichungen nach unten ab 18 Uhr. */
     fun checkDay(context: Context, entries: List<ToiletEntry>, settings: AlertSettings = AlertSettings.load(context)) {
         val today = LocalDate.now()
         val todayEntries = entries.filter { it.dateTime.toLocalDate() == today }
@@ -87,42 +87,42 @@ object AlertEngine {
         checkUtiDay(context, entries, dateKey)
 
         if (settings.dayOverEnabled && ml >= settings.dayOverMl) {
-            notifyOnce(context, "dayOver_$dateKey", "Hohe Tagesmenge",
-                "Heute schon $ml ml — über deiner Grenze von ${settings.dayOverMl} ml.")
+            notifyOnce(context, "dayOver_$dateKey", tr("Hohe Tagesmenge"),
+                trf("Heute schon {0} ml — über deiner Grenze von {1} ml.", ml, settings.dayOverMl))
         }
         if (settings.countOverEnabled && count >= settings.countOverLimit) {
-            notifyOnce(context, "countOver_$dateKey", "Viele Toilettengänge",
-                "Heute schon $count Gänge — über deiner Grenze von ${settings.countOverLimit}.")
+            notifyOnce(context, "countOver_$dateKey", tr("Viele Toilettengänge"),
+                trf("Heute schon {0} Gänge — über deiner Grenze von {1}.", count, settings.countOverLimit))
         }
         if (base != null) {
             if (ml > base.avgMl * (1 + dev)) {
-                notifyOnce(context, "baseMlOver_$dateKey", "Deutlich über deinem Schnitt",
-                    "Heute $ml ml — dein 14-Tage-Schnitt liegt bei ${base.avgMl} ml.")
+                notifyOnce(context, "baseMlOver_$dateKey", tr("Deutlich über deinem Schnitt"),
+                    trf("Heute {0} ml — dein 14-Tage-Schnitt liegt bei {1} ml.", ml, base.avgMl))
             }
             if (count > base.avgCount * (1 + dev)) {
-                notifyOnce(context, "baseCountOver_$dateKey", "Häufiger als sonst",
-                    "Heute $count Gänge — dein Schnitt liegt bei ${"%.0f".format(base.avgCount)}.")
+                notifyOnce(context, "baseCountOver_$dateKey", tr("Häufiger als sonst"),
+                    trf("Heute {0} Gänge — dein Schnitt liegt bei {1}.", count, "%.0f".format(base.avgCount)))
             }
         }
 
         if (!lateEnough) return
 
         if (settings.dayUnderEnabled && ml < settings.dayUnderMl) {
-            notifyOnce(context, "dayUnder_$dateKey", "Niedrige Tagesmenge",
-                "Bis jetzt $ml ml — unter deiner Grenze von ${settings.dayUnderMl} ml. Genug getrunken?")
+            notifyOnce(context, "dayUnder_$dateKey", tr("Niedrige Tagesmenge"),
+                trf("Bis jetzt {0} ml — unter deiner Grenze von {1} ml. Genug getrunken?", ml, settings.dayUnderMl))
         }
         if (settings.countUnderEnabled && count < settings.countUnderLimit) {
-            notifyOnce(context, "countUnder_$dateKey", "Wenige Toilettengänge",
-                "Bis jetzt $count Gänge — unter deiner Grenze von ${settings.countUnderLimit}.")
+            notifyOnce(context, "countUnder_$dateKey", tr("Wenige Toilettengänge"),
+                trf("Bis jetzt {0} Gänge — unter deiner Grenze von {1}.", count, settings.countUnderLimit))
         }
         if (base != null) {
             if (ml < base.avgMl * (1 - dev)) {
-                notifyOnce(context, "baseMlUnder_$dateKey", "Deutlich unter deinem Schnitt",
-                    "Bis jetzt $ml ml — dein 14-Tage-Schnitt liegt bei ${base.avgMl} ml.")
+                notifyOnce(context, "baseMlUnder_$dateKey", tr("Deutlich unter deinem Schnitt"),
+                    trf("Bis jetzt {0} ml — dein 14-Tage-Schnitt liegt bei {1} ml.", ml, base.avgMl))
             }
             if (count < base.avgCount * (1 - dev)) {
-                notifyOnce(context, "baseCountUnder_$dateKey", "Seltener als sonst",
-                    "Bis jetzt $count Gänge — dein Schnitt liegt bei ${"%.0f".format(base.avgCount)}.")
+                notifyOnce(context, "baseCountUnder_$dateKey", tr("Seltener als sonst"),
+                    trf("Bis jetzt {0} Gänge — dein Schnitt liegt bei {1}.", count, "%.0f".format(base.avgCount)))
             }
         }
     }
@@ -142,29 +142,29 @@ object AlertEngine {
         val result = mutableListOf<RuleStatus>()
 
         if (settings.singleOverEnabled) {
-            result.add(RuleStatus("single", "Einzelmenge",
-                "größte heute: $maxSingle ml · Grenze ${settings.singleOverMl} ml",
+            result.add(RuleStatus("single", tr("Einzelmenge"),
+                trf("größte heute: {0} ml · Grenze {1} ml", maxSingle, settings.singleOverMl),
                 if (maxSingle >= settings.singleOverMl) RuleState.WARN else RuleState.OK))
         }
         if (settings.dayOverEnabled) {
-            result.add(RuleStatus("dayOver", "Tagesmenge zu hoch",
-                "$ml ml · Grenze ${settings.dayOverMl} ml",
+            result.add(RuleStatus("dayOver", tr("Tagesmenge zu hoch"),
+                trf("{0} ml · Grenze {1} ml", ml, settings.dayOverMl),
                 if (ml >= settings.dayOverMl) RuleState.WARN else RuleState.OK))
         }
         if (settings.dayUnderEnabled) {
-            result.add(RuleStatus("dayUnder", "Tagesmenge zu niedrig",
-                "$ml ml · Grenze ${settings.dayUnderMl} ml",
+            result.add(RuleStatus("dayUnder", tr("Tagesmenge zu niedrig"),
+                trf("{0} ml · Grenze {1} ml", ml, settings.dayUnderMl),
                 if (!lateEnough) RuleState.WAITING
                 else if (ml < settings.dayUnderMl) RuleState.WARN else RuleState.OK))
         }
         if (settings.countOverEnabled) {
-            result.add(RuleStatus("countOver", "Zu viele Gänge",
-                "$count · Grenze ${settings.countOverLimit}",
+            result.add(RuleStatus("countOver", tr("Zu viele Gänge"),
+                trf("{0} · Grenze {1}", count, settings.countOverLimit),
                 if (count >= settings.countOverLimit) RuleState.WARN else RuleState.OK))
         }
         if (settings.countUnderEnabled) {
-            result.add(RuleStatus("countUnder", "Zu wenige Gänge",
-                "$count · Grenze ${settings.countUnderLimit}",
+            result.add(RuleStatus("countUnder", tr("Zu wenige Gänge"),
+                trf("{0} · Grenze {1}", count, settings.countUnderLimit),
                 if (!lateEnough) RuleState.WAITING
                 else if (count < settings.countUnderLimit) RuleState.WARN else RuleState.OK))
         }
@@ -175,12 +175,12 @@ object AlertEngine {
                 val cntHigh = count > base.avgCount * (1 + dev)
                 val cntLow = lateEnough && count < base.avgCount * (1 - dev)
                 val deviates = mlHigh || mlLow || cntHigh || cntLow
-                result.add(RuleStatus("baseline", "Abweichung vom Schnitt",
-                    "Ø ${base.avgMl} ml · Ø ${"%.0f".format(base.avgCount)} Gänge (${base.days} Tage) · ±${settings.baselineDeviationPercent} %",
+                result.add(RuleStatus("baseline", tr("Abweichung vom Schnitt"),
+                    trf("Ø {0} ml · Ø {1} Gänge ({2} Tage) · ±{3} %", base.avgMl, "%.0f".format(base.avgCount), base.days, settings.baselineDeviationPercent),
                     if (deviates) RuleState.WARN else RuleState.OK))
             } else {
-                result.add(RuleStatus("baseline", "Abweichung vom Schnitt",
-                    "Noch nicht genug Daten (mind. 5 Tage mit Einträgen in den letzten 14 Tagen)",
+                result.add(RuleStatus("baseline", tr("Abweichung vom Schnitt"),
+                    tr("Noch nicht genug Daten (mind. 5 Tage mit Einträgen in den letzten 14 Tagen)"),
                     RuleState.NO_DATA))
             }
         }
@@ -195,8 +195,8 @@ object AlertEngine {
         if (urgent.isEmpty()) return
         val names = urgent.joinToString(", ") { it.label }
         notifyOnce(context, "utiUrgent_${entry.id}",
-            "Auffälligkeit erfasst",
-            "$names — bei ISK bitte zeitnah ärztlich abklären.")
+            tr("Auffälligkeit erfasst"),
+            trf("{0} — bei ISK bitte zeitnah ärztlich abklären.", names))
     }
 
     fun checkUtiDay(context: Context, entries: List<ToiletEntry>, dateKey: String, uti: UtiSettings = UtiSettings.load(context)) {
@@ -211,8 +211,8 @@ object AlertEngine {
         val y = daySymptoms(1)
         if (t.isNotEmpty() && y.isNotEmpty() && (t + y).size >= 2) {
             notifyOnce(context, "utiPattern_$dateKey",
-                "Auffälligkeiten seit zwei Tagen",
-                "Mehrere Anzeichen an zwei Tagen in Folge — das kann bei ISK auf einen Harnwegsinfekt hindeuten. Ggf. ärztlich abklären.")
+                tr("Auffälligkeiten seit zwei Tagen"),
+                tr("Mehrere Anzeichen an zwei Tagen in Folge — das kann bei ISK auf einen Harnwegsinfekt hindeuten. Ggf. ärztlich abklären."))
         }
 
         var darkDays = 0
@@ -225,8 +225,8 @@ object AlertEngine {
         }
         if (darkDays >= 2) {
             notifyOnce(context, "utiColor_$dateKey",
-                "Urin auffällig dunkel oder trüb",
-                "An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären.")
+                tr("Urin auffällig dunkel oder trüb"),
+                tr("An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären."))
         }
     }
 
@@ -236,8 +236,8 @@ object AlertEngine {
         if (!ad.enabled) return
         if (entry.adSignList.isEmpty() || entry.urineMl > 0) return
         notifyOnce(context, "adSigns_${entry.id}",
-            "Vegetative Zeichen erfasst",
-            "Bei voller Blase können das Füllungssignale sein — Blase entleeren und mögliche Auslöser prüfen.")
+            tr("Vegetative Zeichen erfasst"),
+            tr("Bei voller Blase können das Füllungssignale sein — Blase entleeren und mögliche Auslöser prüfen."))
     }
 
     // MARK: Katheterbestand
@@ -249,10 +249,10 @@ object AlertEngine {
         val count = stock.currentStock(entries)
         val empty = stock.estimatedEmptyDate(entries)
         val body = if (empty != null)
-            "Noch $count Katheter — reicht etwa bis ${empty.format(DateTimeFormatter.ofPattern("d.M."))}. Zeit fürs Rezept."
+            trf("Noch {0} Katheter — reicht etwa bis {1}. Zeit fürs Rezept.", count, empty.format(DateTimeFormatter.ofPattern("d.M.")))
         else
-            "Noch $count Katheter. Zeit fürs Rezept."
-        notifyOnce(context, "cathLow_$dateKey", "Katheter werden knapp", body)
+            trf("Noch {0} Katheter. Zeit fürs Rezept.", count)
+        notifyOnce(context, "cathLow_$dateKey", tr("Katheter werden knapp"), body)
     }
 
     // MARK: Benachrichtigung mit Dedup (pro Regel/Tag genau einmal)
@@ -266,7 +266,7 @@ object AlertEngine {
         ensureChannel(context)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("💡 $title")
+            .setContentTitle(trf("💡 {0}", title))
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -284,10 +284,10 @@ object AlertEngine {
     private fun ensureChannel(context: Context) {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Hinweise",
+            tr("Hinweise"),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Warnungen bei auffälligen Mengen oder Häufigkeiten"
+            description = tr("Warnungen bei auffälligen Mengen oder Häufigkeiten")
         }
         context.getSystemService(NotificationManager::class.java)
             .createNotificationChannel(channel)

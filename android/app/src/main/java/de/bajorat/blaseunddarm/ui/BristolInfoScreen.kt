@@ -1,5 +1,7 @@
 package de.bajorat.blaseunddarm.ui
 
+import de.bajorat.blaseunddarm.data.tr
+
 import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.border
@@ -26,24 +28,24 @@ data class BristolInfo(
 )
 
 val bristolInfoList = listOf(
-    BristolInfo("Typ 1", "Einzelne harte Klumpen", "Einzelne, harte Klumpen wie Nüsse. Schwer auszuscheiden. Zeichen für starke Verstopfung.", "Verstopfung", Orange),
-    BristolInfo("Typ 2", "Wurstartig, klumpig", "Wurstartig, aber klumpig zusammengesetzt. Zeichen für leichte Verstopfung.", "Verstopfung", Orange),
-    BristolInfo("Typ 3", "Wurstartig, rissig", "Wie eine Wurst mit Rissen an der Oberfläche. Normal.", "Normal", Color(0xFF5A9A6E)),
-    BristolInfo("Typ 4", "Glatt und weich", "Wie eine Wurst oder Schlange, glatt und weich. Ideale Form.", "Normal — Ideal", Color(0xFF5A9A6E)),
-    BristolInfo("Typ 5", "Weiche Klümpchen", "Weiche Klümpchen mit klaren Rändern. Neigung zu Durchfall.", "Durchfall", Color(0xFFC0392B)),
-    BristolInfo("Typ 6", "Breiig, aufgelöst", "Breiige Konsistenz mit unscharfen Rändern. Leichter Durchfall.", "Durchfall", Color(0xFFC0392B)),
-    BristolInfo("Typ 7", "Wässrig, flüssig", "Wässrig, keine festen Bestandteile. Starker Durchfall.", "Durchfall", Color(0xFFC0392B)),
+    BristolInfo(tr("Typ 1"), tr("Einzelne harte Klumpen"), tr("Einzelne, harte Klumpen wie Nüsse. Schwer auszuscheiden. Zeichen für starke Verstopfung."), tr("Verstopfung"), Orange),
+    BristolInfo(tr("Typ 2"), tr("Wurstartig, klumpig"), tr("Wurstartig, aber klumpig zusammengesetzt. Zeichen für leichte Verstopfung."), tr("Verstopfung"), Orange),
+    BristolInfo(tr("Typ 3"), tr("Wurstartig, rissig"), tr("Wie eine Wurst mit Rissen an der Oberfläche. Normal."), tr("Normal"), Color(0xFF5A9A6E)),
+    BristolInfo(tr("Typ 4"), tr("Glatt und weich"), tr("Wie eine Wurst oder Schlange, glatt und weich. Ideale Form."), tr("Normal — Ideal"), Color(0xFF5A9A6E)),
+    BristolInfo(tr("Typ 5"), tr("Weiche Klümpchen"), tr("Weiche Klümpchen mit klaren Rändern. Neigung zu Durchfall."), tr("Durchfall"), Color(0xFFC0392B)),
+    BristolInfo(tr("Typ 6"), tr("Breiig, aufgelöst"), tr("Breiige Konsistenz mit unscharfen Rändern. Leichter Durchfall."), tr("Durchfall"), Color(0xFFC0392B)),
+    BristolInfo(tr("Typ 7"), tr("Wässrig, flüssig"), tr("Wässrig, keine festen Bestandteile. Starker Durchfall."), tr("Durchfall"), Color(0xFFC0392B)),
 )
 
 @Composable
 fun BristolInfoDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Bristol-Stuhlformen-Skala", fontWeight = FontWeight.Bold) },
+        title = { Text(tr("Bristol-Stuhlformen-Skala"), fontWeight = FontWeight.Bold) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Die Bristol-Skala wurde 1997 an der Universität Bristol entwickelt und ist ein medizinisches Hilfsmittel zur Klassifikation der Stuhlform.",
+                    tr("Die Bristol-Skala wurde 1997 an der Universität Bristol entwickelt und ist ein medizinisches Hilfsmittel zur Klassifikation der Stuhlform."),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -59,13 +61,13 @@ fun BristolInfoDialog(onDismiss: () -> Unit) {
                         Column(Modifier.padding(14.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 val imgId = when(info.type) {
-                                    "Typ 1" -> R.drawable.bristol_type1
-                                    "Typ 2" -> R.drawable.bristol_type2
-                                    "Typ 3" -> R.drawable.bristol_type3
-                                    "Typ 4" -> R.drawable.bristol_type4
-                                    "Typ 5" -> R.drawable.bristol_type5
-                                    "Typ 6" -> R.drawable.bristol_type6
-                                    "Typ 7" -> R.drawable.bristol_type7
+                                    tr("Typ 1") -> R.drawable.bristol_type1
+                                    tr("Typ 2") -> R.drawable.bristol_type2
+                                    tr("Typ 3") -> R.drawable.bristol_type3
+                                    tr("Typ 4") -> R.drawable.bristol_type4
+                                    tr("Typ 5") -> R.drawable.bristol_type5
+                                    tr("Typ 6") -> R.drawable.bristol_type6
+                                    tr("Typ 7") -> R.drawable.bristol_type7
                                     else -> R.drawable.bristol_type4
                                 }
                                 Image(painter = painterResource(imgId), contentDescription = info.type, modifier = Modifier.size(48.dp))
@@ -89,22 +91,22 @@ fun BristolInfoDialog(onDismiss: () -> Unit) {
 
                 Spacer(Modifier.height(8.dp))
 
-                Text("Bedeutung", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                BristolLegendRow(Orange, "Typ 1–2", "Verstopfung — zu wenig Flüssigkeit oder Ballaststoffe")
-                BristolLegendRow(Color(0xFF5A9A6E), "Typ 3–4", "Normal — ideale Stuhlform, gesunde Verdauung")
-                BristolLegendRow(Color(0xFFC0392B), "Typ 5–7", "Durchfall — zu schnelle Passage")
+                Text(tr("Bedeutung"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                BristolLegendRow(Orange, tr("Typ 1–2"), tr("Verstopfung — zu wenig Flüssigkeit oder Ballaststoffe"))
+                BristolLegendRow(Color(0xFF5A9A6E), tr("Typ 3–4"), tr("Normal — ideale Stuhlform, gesunde Verdauung"))
+                BristolLegendRow(Color(0xFFC0392B), tr("Typ 5–7"), tr("Durchfall — zu schnelle Passage"))
 
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    "Diese Informationen dienen der Selbstbeobachtung und ersetzen keine ärztliche Beratung.",
+                    tr("Diese Informationen dienen der Selbstbeobachtung und ersetzen keine ärztliche Beratung."),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fertig") }
+            TextButton(onClick = onDismiss) { Text(tr("Fertig")) }
         }
     )
 }
@@ -112,7 +114,7 @@ fun BristolInfoDialog(onDismiss: () -> Unit) {
 @Composable
 private fun BristolLegendRow(color: Color, label: String, desc: String) {
     Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("●", color = color, fontSize = 12.sp)
+        Text(tr("●"), color = color, fontSize = 12.sp)
         Column {
             Text(label, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             Text(desc, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

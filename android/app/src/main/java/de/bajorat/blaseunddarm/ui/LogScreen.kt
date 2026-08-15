@@ -20,6 +20,9 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.focus.onFocusChanged
 import de.bajorat.blaseunddarm.data.*
 import kotlinx.coroutines.delay
 import java.time.Duration
@@ -50,6 +53,7 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
     val adSettings = AdSettings.load(alarmContext)
     var adSigns by remember { mutableStateOf(setOf<AdSign>()) }
     var bpText by remember { mutableStateOf("") }
+    var bpFocused by remember { mutableStateOf(false) }
     var stoolAmount by remember { mutableStateOf<StoolAmount?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
     val hasAccess = true
@@ -108,25 +112,25 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
         // Header with timer
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                Text("Blase & Darm Manager", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("Dein tägliches Protokoll", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text(tr("Blase & Darm Manager"), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Dein tägliches Protokoll"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
             if (settings.reminderEnabled && dataStore.lastEntry != null) {
                 if (settings.quietHoursEnabled && settings.isInQuietHours()) {
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("🌙", fontSize = 16.sp)
-                        Text("Ruhezeit", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("🌙"), fontSize = 16.sp)
+                        Text(tr("Ruhezeit"), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else if (timeRemaining <= 0) {
                     val overdue = (-timeRemaining).toInt()
                     Column(horizontalAlignment = Alignment.End) {
                         Text(formatTime(-timeRemaining), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                        Text("überfällig", fontSize = 9.sp, color = MaterialTheme.colorScheme.error)
+                        Text(tr("überfällig"), fontSize = 9.sp, color = MaterialTheme.colorScheme.error)
                     }
                 } else {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(formatTime(timeRemaining), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Orange)
-                        Text("nächste Erinnerung", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("nächste Erinnerung"), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -138,8 +142,8 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
         if (settings.reminderEnabled && timeRemaining <= 0 && dataStore.lastEntry != null) {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Orange.copy(alpha = 0.12f)), border = BorderStroke(1.dp, Orange.copy(alpha = 0.3f))) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("⚠️", fontSize = 16.sp)
-                    Text("Zeit für den Toilettengang!", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Orange)
+                    Text(tr("⚠️"), fontSize = 16.sp)
+                    Text(tr("Zeit für den Toilettengang!"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Orange)
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -149,49 +153,67 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
         if (!isPremium) {
             Card(onClick = { showPaywall = true }, modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Orange.copy(alpha = 0.08f)), border = BorderStroke(1.dp, Orange.copy(alpha = 0.15f))) {
                 Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("⭐", fontSize = 14.sp)
+                    Text(tr("⭐"), fontSize = 14.sp)
                     Spacer(Modifier.width(8.dp))
                     Text(if (isTrialActive) "Testphase: noch $trialDaysLeft Tage" else "Testphase abgelaufen", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.weight(1f))
-                    Text("Premium", fontSize = 10.sp, color = Orange, fontWeight = FontWeight.Bold)
+                    Text(tr("Premium"), fontSize = 10.sp, color = Orange, fontWeight = FontWeight.Bold)
                 }
             }
             Spacer(Modifier.height(14.dp))
         }
 
         // Today summary
-        Text("Heute", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(tr("Heute"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             Row(Modifier.padding(vertical = 12.dp)) {
-                SummaryItem("${dataStore.todayMl}", "ml", "Urin", Orange, Modifier.weight(1f))
+                SummaryItem("${dataStore.todayMl}", tr("ml"), tr("Urin"), Orange, Modifier.weight(1f))
                 Box(Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
-                SummaryItem("${dataStore.todayBowel}×", null, "Stuhl", Purple, Modifier.weight(1f))
+                SummaryItem("${dataStore.todayBowel}×", null, tr("Stuhl"), Purple, Modifier.weight(1f))
                 Box(Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
                 if (drinkSettings.enabled) {
-                    SummaryItem("${dataStore.todayDrink}", "ml", "Getrunken", androidx.compose.ui.graphics.Color(0xFF2A9D8F), Modifier.weight(1f))
+                    SummaryItem("${dataStore.todayDrink}", tr("ml"), tr("Getrunken"), androidx.compose.ui.graphics.Color(0xFF2A9D8F), Modifier.weight(1f))
                     Box(Modifier.width(1.dp).height(30.dp).background(MaterialTheme.colorScheme.outline))
                 }
-                SummaryItem("${dataStore.todayCount}", null, "Einträge", MaterialTheme.colorScheme.onSurfaceVariant, Modifier.weight(1f))
+                SummaryItem("${dataStore.todayCount}", null, tr("Einträge"), MaterialTheme.colorScheme.onSurfaceVariant, Modifier.weight(1f))
             }
         }
 
         Spacer(Modifier.height(14.dp))
 
         // Entry form
+        val iskPrefs = alarmContext.getSharedPreferences("bdm_ui", android.content.Context.MODE_PRIVATE)
+        var iskHintDismissed by remember { mutableStateOf(iskPrefs.getBoolean("isk_hint_dismissed", false)) }
+        val anyIskModule = utiSettings.enabled || adSettings.enabled || PalpationSettings.load(alarmContext).enabled || CatheterStock.load(alarmContext).enabled
+        if (!iskHintDismissed && !anyIskModule) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f).padding(top = 8.dp)) {
+                        Text(tr("Nutzt du ISK?"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(tr("In den Einstellungen kannst du Katheterbestand, HWI-Frühwarnung, Tastbefund und vegetative Zeichen zuschalten."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    }
+                    IconButton(onClick = { iskHintDismissed = true; iskPrefs.edit().putBoolean("isk_hint_dismissed", true).apply() }) {
+                        Icon(Icons.Default.Close, contentDescription = tr("Hinweis ausblenden"))
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("Neuer Eintrag", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Neuer Eintrag"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
 
                 // Urine ml
-                Text("Urin-Menge (ml)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Urin-Menge (ml)"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
-                OutlinedTextField(value = urineMl, onValueChange = { urineMl = it.filter { c -> c.isDigit() } }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("ml eingeben") }, singleLine = true)
+                OutlinedTextField(value = urineMl, onValueChange = { urineMl = it.filter { c -> c.isDigit() } }, modifier = Modifier.fillMaxWidth(), placeholder = { Text(tr("ml eingeben")) }, singleLine = true)
                 Spacer(Modifier.height(6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     settings.quickValues.forEach { v ->
-                        FilterChip(selected = urineMl == v.toString(), onClick = { urineMl = v.toString() }, label = { Text("$v", fontWeight = FontWeight.SemiBold) })
+                        FilterChip(selected = urineMl == v.toString(), onClick = { urineMl = v.toString() }, label = { Text(trf("{0}", v), fontWeight = FontWeight.SemiBold) })
                     }
                 }
 
@@ -199,20 +221,20 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 // Urine color
                 if (hasAccess) {
-                Text("Urinfarbe", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Urinfarbe"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     UrineColor.displayValues().forEach { color ->
-                        FilterChip(selected = urineColor == color, onClick = { urineColor = if (urineColor == color) UrineColor.NONE else color }, label = { Text("${color.emoji} ${color.label}", fontSize = 11.sp) })
+                        FilterChip(selected = urineColor == color, onClick = { urineColor = if (urineColor == color) UrineColor.NONE else color }, label = { Text(trf("{0} {1}", color.emoji, tr(color.label)), fontSize = 11.sp) })
                     }
                 }
 
                 } else {
                     Card(onClick = { showPaywall = true }, modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Orange.copy(alpha = 0.06f))) {
                         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("💧 Urinfarbe", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr("💧 Urinfarbe"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.weight(1f))
-                            Text("Premium", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Orange)
+                            Text(tr("Premium"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Orange)
                         }
                     }
                 }
@@ -221,14 +243,14 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 // Tastbefund (optional)
                 if (palpSettings.enabled) {
-                    Text("Tastbefund", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Tastbefund"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PalpationFinding.entries.forEach { f ->
                             FilterChip(
                                 selected = palpation == f,
                                 onClick = { palpation = if (palpation == f) null else f },
-                                label = { Text(f.label, fontSize = 12.sp) }
+                                label = { Text(tr(f.label), fontSize = 12.sp) }
                             )
                         }
                     }
@@ -237,14 +259,14 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 // Auffälligkeiten (HWI-Frühwarnung, optional)
                 if (utiSettings.enabled) {
-                    Text("Auffälligkeiten", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Auffälligkeiten"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         UtiSymptom.entries.forEach { sym ->
                             FilterChip(
                                 selected = symptoms.contains(sym),
                                 onClick = { symptoms = if (symptoms.contains(sym)) symptoms - sym else symptoms + sym },
-                                label = { Text(sym.label, fontSize = 12.sp) }
+                                label = { Text(tr(sym.label), fontSize = 12.sp) }
                             )
                         }
                     }
@@ -253,25 +275,29 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 // Vegetative Zeichen / AD (optional)
                 if (adSettings.enabled) {
-                    Text("Vegetative Zeichen", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Vegetative Zeichen"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         AdSign.entries.forEach { z ->
                             FilterChip(
                                 selected = adSigns.contains(z),
                                 onClick = { adSigns = if (adSigns.contains(z)) adSigns - z else adSigns + z },
-                                label = { Text(z.label, fontSize = 12.sp) }
+                                label = { Text(tr(z.label), fontSize = 12.sp) }
                             )
                         }
                     }
+                    val bpNum = bpText.toIntOrNull()
+                    val bpShowError = bpNum != null && (bpNum > 300 || (bpNum < 60 && !bpFocused))
                     if (adSettings.bpEnabled) {
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = bpText,
                             onValueChange = { bpText = it.filter { c -> c.isDigit() } },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("RR systolisch (mmHg)") },
-                            singleLine = true
+                            modifier = Modifier.fillMaxWidth().onFocusChanged { bpFocused = it.isFocused },
+                            label = { Text(tr("RR systolisch (mmHg)")) },
+                            singleLine = true,
+                            isError = bpShowError,
+                            supportingText = { if (bpShowError) Text(tr("Gültig sind 60–300 mmHg — der Wert wird sonst nicht gespeichert.")) }
                         )
                     }
                     Spacer(Modifier.height(14.dp))
@@ -279,13 +305,13 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 // Getrunken (optional)
                 if (drinkSettings.enabled) {
-                    Text("Getrunken (ml)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Getrunken (ml)"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
-                    OutlinedTextField(value = drinkText, onValueChange = { drinkText = it.filter { c -> c.isDigit() } }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("ml eingeben") }, singleLine = true)
+                    OutlinedTextField(value = drinkText, onValueChange = { drinkText = it.filter { c -> c.isDigit() } }, modifier = Modifier.fillMaxWidth(), placeholder = { Text(tr("ml eingeben")) }, singleLine = true)
                     Spacer(Modifier.height(6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         drinkSettings.presets.forEach { v ->
-                            FilterChip(selected = drinkText == v.toString(), onClick = { drinkText = v.toString() }, label = { Text("$v", fontWeight = FontWeight.SemiBold) })
+                            FilterChip(selected = drinkText == v.toString(), onClick = { drinkText = v.toString() }, label = { Text(trf("{0}", v), fontWeight = FontWeight.SemiBold) })
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -293,20 +319,20 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 // Bowel
                 OutlinedButton(onClick = { bowel = !bowel; if (!bowel) { bristolType = BristolType.NONE; stoolAmount = null } }, modifier = Modifier.fillMaxWidth().height(48.dp), colors = if (bowel) ButtonDefaults.outlinedButtonColors(containerColor = Purple.copy(alpha = 0.12f)) else ButtonDefaults.outlinedButtonColors(), border = BorderStroke(1.dp, if (bowel) Purple else MaterialTheme.colorScheme.outline)) {
-                    Text(if (bowel) "✅ Stuhlgang" else "⬜ Stuhlgang", color = if (bowel) Purple else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(if (bowel) tr("✅ Stuhlgang") else tr("⬜ Stuhlgang"), color = if (bowel) Purple else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 // Stuhlmenge (nur wenn Stuhlgang aktiv)
                 if (bowel) {
                     Spacer(Modifier.height(10.dp))
-                    Text("Stuhlmenge", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Stuhlmenge"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         StoolAmount.entries.forEach { a ->
                             FilterChip(
                                 selected = stoolAmount == a,
                                 onClick = { stoolAmount = if (stoolAmount == a) null else a },
-                                label = { Text("${a.emoji} ${a.label}", fontSize = 12.sp) }
+                                label = { Text(trf("{0} {1}", a.emoji, tr(a.label)), fontSize = 12.sp) }
                             )
                         }
                     }
@@ -317,16 +343,16 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                     Spacer(Modifier.height(10.dp))
                     if (hasAccess) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Bristol-Skala", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("Bristol-Skala"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         TextButton(onClick = { showBristolInfo = true }) {
-                            Text("Was ist das?", fontSize = 11.sp, color = Orange)
+                            Text(tr("Was ist das?"), fontSize = 11.sp, color = Orange)
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         BristolType.displayValues().chunked(4).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                                 row.forEach { type ->
-                                    FilterChip(selected = bristolType == type, onClick = { bristolType = if (bristolType == type) BristolType.NONE else type }, label = { Text(type.label, fontSize = 10.sp) }, modifier = Modifier.weight(1f))
+                                    FilterChip(selected = bristolType == type, onClick = { bristolType = if (bristolType == type) BristolType.NONE else type }, label = { Text(tr(type.label), fontSize = 10.sp) }, modifier = Modifier.weight(1f))
                                 }
                                 // Fill empty slots
                                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -336,9 +362,9 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                     } else {
                         Card(onClick = { showPaywall = true }, modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Orange.copy(alpha = 0.06f))) {
                             Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("📋 Bristol-Skala", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(tr("📋 Bristol-Skala"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.weight(1f))
-                                Text("Premium", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Orange)
+                                Text(tr("Premium"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Orange)
                             }
                         }
                     }
@@ -347,7 +373,7 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                 Spacer(Modifier.height(14.dp))
 
                 // Note
-                OutlinedTextField(value = note, onValueChange = { note = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Notiz (optional)") }, singleLine = true)
+                OutlinedTextField(value = note, onValueChange = { note = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text(tr("Notiz (optional)")) }, singleLine = true)
 
                 Spacer(Modifier.height(14.dp))
 
@@ -362,7 +388,7 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                     onScheduleReminder()
                     urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; symptoms = setOf(); palpation = null; adSigns = setOf(); bpText = ""; stoolAmount = null; drinkText = ""; showSaved = true
                 }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = canSave, colors = ButtonDefaults.buttonColors(containerColor = Orange)) {
-                    Text(if (showSaved) "✓ Gespeichert" else "Speichern", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(if (showSaved) tr("✓ Gespeichert") else tr("Speichern"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
                 LaunchedEffect(showSaved) { if (showSaved) { delay(2000); showSaved = false } }
             }
@@ -379,16 +405,16 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
             onDismissRequest = { showAlarm = false },
             title = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("⚠️", fontSize = 48.sp)
-                    Text("Toiletten-Erinnerung", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(tr("⚠️"), fontSize = 48.sp)
+                    Text(tr("Toiletten-Erinnerung"), fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 }
             },
             text = {
-                Text("Zeit für den nächsten Toilettengang!", textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text(tr("Zeit für den nächsten Toilettengang!"), textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             confirmButton = {
                 Button(onClick = { showAlarm = false }, colors = ButtonDefaults.buttonColors(containerColor = Orange)) {
-                    Text("OK", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(tr("OK"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         )
@@ -400,7 +426,7 @@ private fun SummaryItem(value: String, unit: String?, label: String, color: andr
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = color)
-            if (unit != null) Text(" $unit", fontSize = 10.sp, color = color.copy(alpha = 0.7f))
+            if (unit != null) Text(trf(" {0}", unit), fontSize = 10.sp, color = color.copy(alpha = 0.7f))
         }
         Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

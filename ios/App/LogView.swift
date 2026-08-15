@@ -23,6 +23,11 @@ struct LogView: View {
     @State private var bpText = ""
     @State private var entryTime: Date = .now
     @State private var showSaved = false
+
+    /// Ziffernblock hat keine Return-Taste — Fokus-Steuerung + Fertig-Leiste
+    private enum NumField: Hashable { case urine, bp, drink }
+    @FocusState private var numFocus: NumField?
+
     @State private var timer: Timer?
     @State private var timeRemaining: TimeInterval = 0
     @Environment(\.scenePhase) private var scenePhase
@@ -197,8 +202,60 @@ struct LogView: View {
         .frame(maxWidth: .infinity)
     }
 
+    @ToolbarContentBuilder
+    private var doneToolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .keyboard) {
+            Spacer()
+            Button(String(localized: "Fertig")) { numFocus = nil }
+        }
+    }
+
+    /// RR-Eingabe sichtbar validieren statt still verwerfen
+    private var bpInvalid: Bool {
+        guard !bpText.isEmpty else { return false }
+        guard let v = Int(bpText) else { return true }
+        if v > 300 { return true }                       // kann nie mehr gültig werden -> sofort
+        if v < 60 && numFocus != .bp { return true }     // zu klein -> erst nach Verlassen des Felds
+        return false
+    }
+
+    @AppStorage("iskHintDismissed") private var iskHintDismissed = false
+
+    /// Einmaliger Hinweis auf die ISK-Module — sie sind Opt-in und sonst unsichtbar
+    @ViewBuilder
+    private var iskHintCard: some View {
+        let anyOn = CatheterStock.load().enabled || UtiSettings.load().enabled
+            || PalpationSettings.load().enabled || AdSettings.load().enabled
+        if !iskHintDismissed && !anyOn {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "cross.case.fill")
+                    .foregroundStyle(Color.accent)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: "Nutzt du ISK?"))
+                        .font(.subheadline.weight(.semibold))
+                    Text(String(localized: "Katheterbestand, HWI-Frühwarnung, Tastbefund und vegetative Zeichen kannst du in den Einstellungen dazuschalten."))
+                        .font(.caption)
+                        .foregroundStyle(Color.subtleText)
+                }
+                Spacer()
+                Button {
+                    withAnimation { iskHintDismissed = true }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Hinweis ausblenden"))
+            }
+            .padding(12)
+            .background(Color.cardBg, in: .rect(cornerRadius: 12))
+        }
+    }
+
     private var entryForm: some View {
         VStack(alignment: .leading, spacing: 16) {
+            iskHintCard
+
             Text(String(localized: "new_entry"))
                 .font(.subheadline.weight(.bold))
 
@@ -211,6 +268,8 @@ struct LogView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.subtleText)
                 TextField("ml", text: $urineMl)
+                    .focused($numFocus, equals: .urine)
+                    .toolbar { doneToolbar }
                     .keyboardType(.numberPad)
                     .font(.body)
                     .padding(10)
@@ -335,12 +394,20 @@ struct LogView: View {
                                 .font(.caption)
                                 .foregroundStyle(Color.subtleText)
                             TextField("mmHg", text: $bpText)
+                                .focused($numFocus, equals: .bp)
+                                .toolbar { doneToolbar }
                                 .keyboardType(.numberPad)
                                 .multilineTextAlignment(.trailing)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(bpInvalid ? Color.red : Color.clear, lineWidth: 1))
                         }
                         .padding(.vertical, 6).padding(.horizontal, 10)
                         .background(Color.pageBg, in: .rect(cornerRadius: 8))
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
+                        if bpInvalid {
+                            Text(String(localized: "Gültig sind 60–300 mmHg — der Wert wird sonst nicht gespeichert."))
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                        }
                     }
                 }
             }
@@ -352,6 +419,8 @@ struct LogView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.subtleText)
                     TextField("ml", text: $drinkText)
+                        .focused($numFocus, equals: .drink)
+                        .toolbar { doneToolbar }
                         .keyboardType(.numberPad)
                         .font(.body)
                         .padding(10)
@@ -392,7 +461,7 @@ struct LogView: View {
                     Text("Stuhlmenge")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.subtleText)
-                    HStack(spacing: 6) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 6)], spacing: 6) {
                         ForEach(StoolAmount.allCases) { amount in
                             Button {
                                 stoolAmount = stoolAmount == amount ? nil : amount
@@ -400,9 +469,9 @@ struct LogView: View {
                                 VStack(spacing: 2) {
                                     Text(amount.emoji).font(.title3)
                                     Text(amount.label)
-                                        .font(.system(size: 9))
+                                        .font(.caption2)
                                         .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
+                                        .minimumScaleFactor(0.6)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 6)

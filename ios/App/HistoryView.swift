@@ -91,6 +91,8 @@ struct EntryRow: View {
 
             if entry.urineMl > 0 {
                 Label("\(entry.urineMl) ml", systemImage: "drop.fill")
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.urine)
                     .padding(.horizontal, 8)
@@ -105,6 +107,8 @@ struct EntryRow: View {
 
             if let drink = entry.drinkMl, drink > 0 {
                 Label("\(drink) ml", systemImage: "cup.and.saucer.fill")
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.teal)
                     .padding(.horizontal, 8)
@@ -115,10 +119,12 @@ struct EntryRow: View {
             if entry.bowel {
                 HStack(spacing: 3) {
                     Label("Stuhl", systemImage: "checkmark.circle.fill")
+                        .lineLimit(1)
                     if entry.bristolType != .none {
                         Text(entry.bristolType.emoji)
                     }
                 }
+                    .fixedSize(horizontal: true, vertical: false)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.bowel)
                     .padding(.horizontal, 8)
@@ -183,6 +189,25 @@ struct EditEntryView: View {
     @State private var adSigns: Set<AdSign>
     @State private var bpText: String
     @State private var stoolAmount: StoolAmount?
+
+    private enum NumField: Hashable { case urine, bp, drink }
+    @FocusState private var numFocus: NumField?
+
+    private var bpInvalid: Bool {
+        guard !bpText.isEmpty else { return false }
+        guard let v = Int(bpText) else { return true }
+        if v > 300 { return true }                       // kann nie mehr gültig werden -> sofort
+        if v < 60 && numFocus != .bp { return true }     // zu klein -> erst nach Verlassen des Felds
+        return false
+    }
+
+    @ToolbarContentBuilder
+    private var doneToolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .keyboard) {
+            Spacer()
+            Button(String(localized: "Fertig")) { numFocus = nil }
+        }
+    }
     private let drinkSettings = DrinkSettings.load()
     private let utiSettings = UtiSettings.load()
     private let palpSettings = PalpationSettings.load()
@@ -220,6 +245,8 @@ struct EditEntryView: View {
 
                 Section("Urin-Menge (ml)") {
                     TextField("ml eingeben", text: $urineMl)
+                        .focused($numFocus, equals: .urine)
+                        .toolbar { doneToolbar }
                         .keyboardType(.numberPad)
 
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -337,9 +364,17 @@ struct EditEntryView: View {
                                 Text("RR systolisch (mmHg)")
                                 Spacer()
                                 TextField("optional", text: $bpText)
+                                    .focused($numFocus, equals: .bp)
+                                    .toolbar { doneToolbar }
+                                    .foregroundStyle(bpInvalid ? Color.red : Color.primary)
                                     .keyboardType(.numberPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(maxWidth: 100)
+                            }
+                            if bpInvalid {
+                                Text(String(localized: "Gültig sind 60–300 mmHg — der Wert wird sonst nicht gespeichert."))
+                                    .font(.caption2)
+                                    .foregroundStyle(.red)
                             }
                         }
                     }
@@ -349,9 +384,11 @@ struct EditEntryView: View {
                     Section("Getrunken (ml)") {
                         TextField("ml eingeben", text: $drinkText)
                             .keyboardType(.numberPad)
+                            .focused($numFocus, equals: .drink)
+                            .toolbar { doneToolbar }
 
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 8)], spacing: 8) {
+                            Group {
                                 ForEach(drinkSettings.presets, id: \.self) { val in
                                     Button(String(val)) {
                                         drinkText = String(val)
@@ -415,7 +452,7 @@ struct EditEntryView: View {
                                 .font(.subheadline)
                             Spacer()
                         }
-                        HStack(spacing: 6) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 6)], spacing: 6) {
                             ForEach(StoolAmount.allCases) { amount in
                                 Button {
                                     stoolAmount = stoolAmount == amount ? nil : amount
@@ -423,9 +460,9 @@ struct EditEntryView: View {
                                     VStack(spacing: 2) {
                                         Text(amount.emoji).font(.title3)
                                         Text(amount.label)
-                                            .font(.system(size: 9))
+                                            .font(.caption2)
                                             .lineLimit(1)
-                                            .minimumScaleFactor(0.7)
+                                            .minimumScaleFactor(0.6)
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 6)

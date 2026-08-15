@@ -305,19 +305,23 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(String(localized: "visits_per_day")).font(.caption.weight(.bold)).foregroundStyle(Color.subtleText)
             Chart(summaries) { day in
-                BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Urin", day.count - day.bowelCount))
+                // Nebeneinander statt gestapelt — die Stapelung mischte
+                // Urin- und Stuhl-Gänge und widersprach der Tagesübersicht.
+                BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Anzahl", day.count))
                     .foregroundStyle(Color.accent.gradient).cornerRadius(2)
+                    .position(by: .value("Art", "gesamt"))
                 if day.bowelCount > 0 {
-                    BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Stuhl", day.bowelCount))
+                    BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Anzahl", day.bowelCount))
                         .foregroundStyle(Color.bowel.gradient).cornerRadius(2)
+                        .position(by: .value("Art", "stuhl"))
                 }
             }
             .chartXAxis { AxisMarks(values: .stride(by: xAxisStride)) { _ in AxisValueLabel(format: xAxisFormat); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2)) } }
             .chartYAxis { AxisMarks { _ in AxisValueLabel(); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2, dash: [4])) } }
             .frame(height: 150)
             HStack(spacing: 14) {
-                HStack(spacing: 4) { Circle().fill(Color.accent).frame(width: 6, height: 6); Text(String(localized: "urine")).font(.caption2).foregroundStyle(Color.subtleText) }
-                HStack(spacing: 4) { Circle().fill(Color.bowel).frame(width: 6, height: 6); Text(String(localized: "stool")).font(.caption2).foregroundStyle(Color.subtleText) }
+                HStack(spacing: 4) { Circle().fill(Color.accent).frame(width: 6, height: 6); Text(String(localized: "Gänge gesamt")).font(.caption2).foregroundStyle(Color.subtleText) }
+                HStack(spacing: 4) { Circle().fill(Color.bowel).frame(width: 6, height: 6); Text(String(localized: "davon mit Stuhl")).font(.caption2).foregroundStyle(Color.subtleText) }
             }.frame(maxWidth: .infinity)
         }
         .padding(16).background(Color.cardBg, in: .rect(cornerRadius: 10))
