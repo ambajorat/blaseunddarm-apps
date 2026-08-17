@@ -81,6 +81,15 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static func rescheduleReminder(afterMinutes minutes: Int, settings: AppSettings? = nil) {
         let center = UNUserNotificationCenter.current()
 
+        // Wecker-Modus: feste Uhrzeiten laufen als wiederkehrende Kalender-Trigger —
+        // ein neuer Eintrag verschiebt sie NICHT. Intervall-Erinnerung dann entfernen.
+        if let settings, settings.fixedTimesEnabled {
+            center.removePendingNotificationRequests(withIdentifiers: [reminderID])
+            scheduleFixedTimeReminders(settings: settings)
+            return
+        }
+        removeFixedTimeReminders()
+
         // Nur die eigene Erinnerung ersetzen — NICHT alles löschen,
         // sonst fliegen die wiederkehrenden Ruhezeit-Benachrichtigungen mit raus.
         center.removePendingNotificationRequests(withIdentifiers: [reminderID])
@@ -136,6 +145,49 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         )
 
         center.add(request)
+    }
+
+    // MARK: - Wecker-Modus (feste Uhrzeiten)
+
+    private static let fixedIDPrefix = "bb_fixed_"
+
+    static func removeFixedTimeReminders() {
+        let center = UNUserNotificationCenter.current()
+        center.getPendingNotificationRequests { requests in
+            let ids = requests.map(\.identifier).filter { $0.hasPrefix(fixedIDPrefix) }
+            if !ids.isEmpty { center.removePendingNotificationRequests(withIdentifiers: ids) }
+        }
+    }
+
+    /// Plant je feste Uhrzeit eine täglich wiederkehrende Erinnerung.
+    static func scheduleFixedTimeReminders(settings: AppSettings) {
+        let center = UNUserNotificationCenter.current()
+        center.getPendingNotificationRequests { requests in
+            let old = requests.map(\.identifier).filter { $0.hasPrefix(fixedIDPrefix) }
+            if !old.isEmpty { center.removePendingNotificationRequests(withIdentifiers: old) }
+            guard settings.reminderEnabled, settings.fixedTimesEnabled else { return }
+            for minutes in settings.sortedFixedTimes {
+                let content = UNMutableNotificationContent()
+                content.title = String(localized: "⚠️ Toiletten-Erinnerung")
+                content.body = String(localized: "Zeit für den nächsten Toilettengang!")
+                content.categoryIdentifier = "TOILET_REMINDER"
+                content.interruptionLevel = .timeSensitive
+                content.sound = UNNotificationSound.criticalSoundNamed(
+                    UNNotificationSoundName("toilet_alert.wav"),
+                    withAudioVolume: 1.0
+                )
+                var comps = DateComponents()
+                comps.hour = minutes / 60
+                comps.minute = minutes % 60
+                let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+                let request = UNNotificationRequest(
+                    identifier: "\(fixedIDPrefix)\(minutes)",
+                    content: content,
+                    trigger: trigger
+                )
+                center.add(request)
+            }
+        }
     }
 
     func scheduleQuietHoursNotifications(settings: AppSettings) {

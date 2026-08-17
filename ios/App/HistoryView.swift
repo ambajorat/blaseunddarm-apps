@@ -82,17 +82,18 @@ struct EntryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Text(entry.timestamp, format: .dateTime.hour().minute())
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
-                .frame(width: 48, alignment: .leading)
+                .frame(width: 44, alignment: .leading)
 
             if entry.urineMl > 0 {
                 Label("\(entry.urineMl) ml", systemImage: "drop.fill")
                     .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
+                    .minimumScaleFactor(0.8)
+                    .layoutPriority(1)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.urine)
                     .padding(.horizontal, 8)
@@ -108,7 +109,8 @@ struct EntryRow: View {
             if let drink = entry.drinkMl, drink > 0 {
                 Label("\(drink) ml", systemImage: "cup.and.saucer.fill")
                     .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
+                    .minimumScaleFactor(0.8)
+                    .layoutPriority(1)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.teal)
                     .padding(.horizontal, 8)
@@ -120,11 +122,12 @@ struct EntryRow: View {
                 HStack(spacing: 3) {
                     Label("Stuhl", systemImage: "checkmark.circle.fill")
                         .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     if entry.bristolType != .none {
                         Text(entry.bristolType.emoji)
                     }
                 }
-                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(1)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.bowel)
                     .padding(.horizontal, 8)

@@ -28,14 +28,17 @@ struct BDMEntry: TimelineEntry {
     let data: WidgetData?
 
     var timeRemaining: Int? {
-        guard let data, let last = data.lastEntryDate, data.reminderEnabled else { return nil }
-        let elapsed = Int(date.timeIntervalSince(last))
-        let remaining = (data.intervalMinutes * 60) - elapsed
-        return remaining
+        guard let due = dueDate else { return nil }
+        return Int(due.timeIntervalSince(date))
     }
 
     var dueDate: Date? {
-        guard let data, let last = data.lastEntryDate, data.reminderEnabled else { return nil }
+        guard let data, data.reminderEnabled else { return nil }
+        // Wecker-Modus: nächste feste Uhrzeit
+        if data.useFixedTimes == true, let times = data.fixedTimes, !times.isEmpty {
+            return AppSettings.nextFixedDue(after: date, times: times)
+        }
+        guard let last = data.lastEntryDate else { return nil }
         return last.addingTimeInterval(TimeInterval(data.intervalMinutes * 60))
     }
 

@@ -11,6 +11,9 @@ struct WidgetData: Codable {
     let quietFrom: Int
     let quietTo: Int
     let updatedAt: Date
+    // Wecker-Modus (Optionals: alte Snapshots decodieren sauber)
+    var useFixedTimes: Bool? = nil
+    var fixedTimes: [Int]? = nil
 
     static let groupID = "group.blase-und-darm.Blase-und-Darm"
     static let key = "widget_data"

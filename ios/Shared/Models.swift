@@ -215,6 +215,27 @@ struct AppSettings: Codable, Equatable {
     var quietHoursEnabled: Bool = true
     var quietFrom: Int = 22  // Stunde (0-23)
     var quietTo: Int = 6     // Stunde (0-23)
+    // Wecker-Modus: Erinnerungen zu festen Uhrzeiten statt Intervall
+    // (Optionals: Bestandsdaten ohne diese Felder decodieren sauber zu nil)
+    var useFixedTimes: Bool? = nil
+    var fixedTimes: [Int]? = nil  // Minuten seit Mitternacht, z.B. 420 = 07:00
+
+    var fixedTimesEnabled: Bool { (useFixedTimes ?? false) && !(fixedTimes ?? []).isEmpty }
+    var sortedFixedTimes: [Int] { (fixedTimes ?? []).sorted() }
+
+    /// Nächste feste Erinnerungszeit nach `date` (heute oder morgen früh).
+    static func nextFixedDue(after date: Date, times: [Int]) -> Date? {
+        guard !times.isEmpty else { return nil }
+        let sorted = times.sorted()
+        let cal = Calendar.current
+        let startOfDay = cal.startOfDay(for: date)
+        let nowMin = cal.component(.hour, from: date) * 60 + cal.component(.minute, from: date)
+        if let next = sorted.first(where: { $0 > nowMin }) {
+            return startOfDay.addingTimeInterval(TimeInterval(next * 60))
+        }
+        guard let tomorrow = cal.date(byAdding: .day, value: 1, to: startOfDay) else { return nil }
+        return tomorrow.addingTimeInterval(TimeInterval(sorted[0] * 60))
+    }
 
     var isInQuietHours: Bool {
         let hour = Calendar.current.component(.hour, from: .now)

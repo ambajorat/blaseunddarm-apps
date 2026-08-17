@@ -119,14 +119,14 @@ struct LogView: View {
             }
             Spacer()
             // Timer inline in header
-            if store.settings.reminderEnabled && store.lastEntry != nil {
+            if store.settings.reminderEnabled && store.lastBladderEntry != nil {
                 if store.settings.quietHoursEnabled && store.settings.isInQuietHours {
                     Label("Ruhezeit", systemImage: "moon.fill")
                         .font(.caption)
                         .foregroundStyle(Color.subtleText)
                 } else if timeRemaining <= 0 {
                     VStack(alignment: .trailing, spacing: 1) {
-                        let overdue = overdueMinutes(since: store.lastEntry!.timestamp)
+                        let overdue = overdueMinutes(since: store.lastBladderEntry!.timestamp)
                         Text(formatTime(Double(overdue * 60)))
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .monospacedDigit()
@@ -153,7 +153,7 @@ struct LogView: View {
     @ViewBuilder
     private var reminderBanner: some View {
         // Only show overdue alert as separate banner (timer is now in header)
-        if store.settings.reminderEnabled && timeRemaining <= 0 && store.lastEntry != nil {
+        if store.settings.reminderEnabled && timeRemaining <= 0 && store.lastBladderEntry != nil {
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.body)
@@ -570,7 +570,9 @@ struct LogView: View {
             stoolAmount: bowel ? stoolAmount : nil
         ))
         // store.add(...) startet die Live Activity bereits selbst.
-        if store.settings.reminderEnabled {
+        // Erinnerung nur neu takten, wenn wirklich die Blase entleert wurde —
+        // reine Stuhl-/Trink-/Symptom-Einträge lassen den Rhythmus unberührt.
+        if store.settings.reminderEnabled, (Int(urineMl) ?? 0) > 0 {
             notifications.scheduleReminder(afterMinutes: store.settings.intervalMinutes, settings: store.settings)
         }
         urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; palpation = nil; adSigns = []; bpText = ""; stoolAmount = nil; entryTime = .now; showSaved = true
@@ -583,7 +585,7 @@ struct LogView: View {
     }
 
     private func updateTimeRemaining() {
-        guard let last = store.lastEntry else { timeRemaining = 0; return }
+        guard let last = store.lastBladderEntry else { timeRemaining = 0; return }
         timeRemaining = max(0, TimeInterval(store.settings.intervalMinutes * 60) - Date.now.timeIntervalSince(last.timestamp))
     }
 

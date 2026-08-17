@@ -31,6 +31,7 @@ final class SharedDataStore {
     var todayBowel: Int { todayEntries.filter(\.bowel).count }
     var todayCount: Int { todayEntries.count }
     var lastEntry: ToiletEntry? { entries.first }
+    var lastBladderEntry: ToiletEntry? { entries.first(where: { $0.urineMl > 0 }) }
 
     func addEntry(_ entry: ToiletEntry) {
         var current = entries
@@ -48,13 +49,15 @@ final class SharedDataStore {
             todayMl: todayMl,
             todayBowel: todayBowel,
             todayCount: todayCount,
-            lastEntryDate: entry.timestamp,
+            lastEntryDate: lastBladderEntry?.timestamp,
             intervalMinutes: s.intervalMinutes,
             reminderEnabled: s.reminderEnabled,
             quietHoursEnabled: s.quietHoursEnabled,
             quietFrom: s.quietFrom,
             quietTo: s.quietTo,
-            updatedAt: .now
+            updatedAt: .now,
+            useFixedTimes: s.useFixedTimes,
+            fixedTimes: s.fixedTimes
         )
         widgetData.save()
 

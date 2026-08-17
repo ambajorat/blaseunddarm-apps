@@ -56,12 +56,14 @@ struct LogEntryIntent: LiveActivityIntent {
         store.addEntry(entry)
         AlertEngine.checkEntry(entry)
         AlertEngine.checkDay(entries: store.entries)
-        NotificationManager.rescheduleReminder(
-            afterMinutes: store.settings.intervalMinutes,
-            settings: store.settings
-        )
+        if entry.urineMl > 0 {
+            NotificationManager.rescheduleReminder(
+                afterMinutes: store.settings.intervalMinutes,
+                settings: store.settings
+            )
+        }
         await LiveActivityManager.shared.startTimer(
-            from: entry.timestamp,
+            from: store.lastBladderEntry?.timestamp ?? entry.timestamp,
             intervalMinutes: store.settings.intervalMinutes,
             todayMl: store.todayMl,
             todayCount: store.todayCount,
@@ -102,12 +104,14 @@ struct QuickUrineIntent: LiveActivityIntent {
         store.addEntry(entry)
         AlertEngine.checkEntry(entry)
         AlertEngine.checkDay(entries: store.entries)
-        NotificationManager.rescheduleReminder(
-            afterMinutes: store.settings.intervalMinutes,
-            settings: store.settings
-        )
+        if entry.urineMl > 0 {
+            NotificationManager.rescheduleReminder(
+                afterMinutes: store.settings.intervalMinutes,
+                settings: store.settings
+            )
+        }
         await LiveActivityManager.shared.startTimer(
-            from: entry.timestamp,
+            from: store.lastBladderEntry?.timestamp ?? entry.timestamp,
             intervalMinutes: store.settings.intervalMinutes,
             todayMl: store.todayMl,
             todayCount: store.todayCount,
@@ -130,12 +134,14 @@ struct QuickBowelIntent: LiveActivityIntent {
         store.addEntry(entry)
         AlertEngine.checkEntry(entry)
         AlertEngine.checkDay(entries: store.entries)
-        NotificationManager.rescheduleReminder(
-            afterMinutes: store.settings.intervalMinutes,
-            settings: store.settings
-        )
+        if entry.urineMl > 0 {
+            NotificationManager.rescheduleReminder(
+                afterMinutes: store.settings.intervalMinutes,
+                settings: store.settings
+            )
+        }
         await LiveActivityManager.shared.startTimer(
-            from: entry.timestamp,
+            from: store.lastBladderEntry?.timestamp ?? entry.timestamp,
             intervalMinutes: store.settings.intervalMinutes,
             todayMl: store.todayMl,
             todayCount: store.todayCount,
@@ -173,8 +179,14 @@ struct TimerStatusIntent: AppIntent {
         guard let last = store.lastEntry else {
             return .result(dialog: "Kein Eintrag vorhanden. Erfasse zuerst einen Toilettengang.")
         }
-        let elapsed = Int(Date.now.timeIntervalSince(last.timestamp))
-        let remaining = (store.settings.intervalMinutes * 60) - elapsed
+        let remaining: Int
+        if store.settings.fixedTimesEnabled,
+           let due = AppSettings.nextFixedDue(after: .now, times: store.settings.sortedFixedTimes) {
+            remaining = Int(due.timeIntervalSinceNow)
+        } else {
+            let elapsed = Int(Date.now.timeIntervalSince(last.timestamp))
+            remaining = (store.settings.intervalMinutes * 60) - elapsed
+        }
         if remaining <= 0 {
             let overdue = abs(remaining) / 60
             return .result(dialog: "Überfällig seit \(overdue) Minuten!")

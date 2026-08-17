@@ -406,6 +406,17 @@
         }
       }
     },
+    "%lld,5 Std" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld.5 h"
+          }
+        }
+      }
+    },
     "%lld×" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1820,6 +1831,16 @@
         }
       }
     },
+    "Erinnerungen kommen täglich zu diesen Uhrzeiten — unabhängig vom letzten Eintrag. Die Ruhezeit wird dabei nicht angewendet." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminders arrive daily at these times — independent of your last entry. Quiet hours are not applied here."
+          }
+        }
+      }
+    },
     "Erinnerungen sind bis %lld:00 Uhr pausiert. Gute Nacht!" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1838,6 +1859,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reminders are active again."
+          }
+        }
+      }
+    },
+    "Erinnerungsart" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminder type"
           }
         }
       }
@@ -1888,6 +1920,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
+          }
+        }
+      }
+    },
+    "Feste Zeiten" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed times"
           }
         }
       }
@@ -5059,6 +5101,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time for your next toilet visit!"
+          }
+        }
+      }
+    },
+    "Zeit hinzufügen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add time"
+          }
+        }
+      }
+    },
+    "Zeit löschen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete time"
           }
         }
       }

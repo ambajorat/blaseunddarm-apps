@@ -8,6 +8,11 @@ final class LiveActivityManager {
     // MARK: - Ruhezeit-Verschiebung (gleiche Logik wie im App-Header)
 
     static func quietAdjustedDueDate(start: Date, intervalMinutes: Int, settings: AppSettings?) -> Date {
+        // Wecker-Modus: nächste feste Uhrzeit statt Intervallrechnung
+        if let settings, settings.fixedTimesEnabled,
+           let due = AppSettings.nextFixedDue(after: max(start, .now), times: settings.sortedFixedTimes) {
+            return due
+        }
         var dueDate = start.addingTimeInterval(TimeInterval(intervalMinutes * 60))
         guard let settings, settings.quietHoursEnabled else { return dueDate }
 

@@ -82,7 +82,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
         todayMl += entry.urineMl
         todayCount += 1
         if entry.bowel { todayBowel += 1 }
-        lastEntryDate = entry.timestamp
+        // Nur Blasen-Einträge takten Timer/Erinnerung neu
+        if entry.urineMl > 0 { lastEntryDate = entry.timestamp }
         writeWidgetData()
     }
 
@@ -175,7 +176,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         writeWidgetData()
 
         // iPhone-Eintrag verschiebt auch die Watch-Erinnerung nach hinten
-        if let last = entries.first {
+        if let last = entries.first(where: { $0.urineMl > 0 }) {
             lastEntryDate = last.timestamp
             scheduleWatchReminder(from: last.timestamp)
         }

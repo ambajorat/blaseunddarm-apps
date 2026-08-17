@@ -112,6 +112,13 @@ struct SettingsView: View {
             }
 
             if store.settings.reminderEnabled {
+                reminderModePicker
+
+                if store.settings.useFixedTimes ?? false {
+                    fixedTimesEditor
+                }
+
+                if !(store.settings.useFixedTimes ?? false) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Schnellwahl")
                         .font(.subheadline.weight(.medium))
@@ -164,6 +171,7 @@ struct SettingsView: View {
                             .monospacedDigit()
                     }
                 }
+                }
 
                 if !notifications.permissionGranted {
                     HStack(spacing: 8) {
@@ -177,13 +185,10 @@ struct SettingsView: View {
                 }
 
                 // Quiet hours
-                if let sug = SuggestionEngine.compute(entries: store.entries), let mins = sug.intervalMinutes,
+                if !(store.settings.useFixedTimes ?? false),
+                   let sug = SuggestionEngine.compute(entries: store.entries), let mins = sug.intervalMinutes,
                    mins != store.settings.intervalMinutes {
-                    let h = mins / 60
-                    let m = mins % 60
-                    let durationText = m == 0
-                        ? String(localized: "\(h) Std")
-                        : (h == 0 ? String(localized: "\(m) Min") : String(localized: "\(h) Std \(m) Min"))
+                    let durationText = formatInterval(mins)
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Vorschlag aus deinen Daten")
@@ -243,11 +248,88 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Wecker-Modus (feste Erinnerungszeiten)
+
+    private var reminderModePicker: some View {
+        Picker(String(localized: "Erinnerungsart"), selection: Binding(
+            get: { (store.settings.useFixedTimes ?? false) ? 1 : 0 },
+            set: { store.settings.useFixedTimes = ($0 == 1) }
+        )) {
+            Text("Intervall").tag(0)
+            Text("Feste Zeiten").tag(1)
+        }
+        .pickerStyle(.segmented)
+        .padding(.vertical, 2)
+    }
+
+    private var fixedTimesEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(store.settings.sortedFixedTimes, id: \.self) { minutes in
+                HStack {
+                    Image(systemName: "alarm")
+                        .foregroundStyle(Color.accentBlue)
+                    DatePicker("", selection: Binding(
+                        get: { Self.dateFor(minutes: minutes) },
+                        set: { replaceFixedTime(minutes, with: Self.minutesOf($0)) }
+                    ), displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                    Spacer()
+                    Button {
+                        removeFixedTime(minutes)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(String(localized: "Zeit löschen"))
+                }
+            }
+            Button {
+                addFixedTime()
+            } label: {
+                Label(String(localized: "Zeit hinzufügen"), systemImage: "plus.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            Text("Erinnerungen kommen täglich zu diesen Uhrzeiten — unabhängig vom letzten Eintrag. Die Ruhezeit wird dabei nicht angewendet.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private static func dateFor(minutes: Int) -> Date {
+        Calendar.current.startOfDay(for: .now).addingTimeInterval(TimeInterval(minutes * 60))
+    }
+
+    private static func minutesOf(_ date: Date) -> Int {
+        let c = Calendar.current
+        return c.component(.hour, from: date) * 60 + c.component(.minute, from: date)
+    }
+
+    private func replaceFixedTime(_ old: Int, with newMinutes: Int) {
+        var t = store.settings.fixedTimes ?? []
+        if let i = t.firstIndex(of: old) { t[i] = newMinutes }
+        store.settings.fixedTimes = Array(Set(t)).sorted()
+    }
+
+    private func removeFixedTime(_ minutes: Int) {
+        store.settings.fixedTimes = (store.settings.fixedTimes ?? []).filter { $0 != minutes }
+    }
+
+    private func addFixedTime() {
+        var t = store.settings.fixedTimes ?? []
+        let next = t.isEmpty ? 480 : min((t.max() ?? 480) + 180, 1425)
+        if !t.contains(next) { t.append(next) }
+        store.settings.fixedTimes = t.sorted()
+    }
+
     private func formatInterval(_ minutes: Int) -> String {
         let h = minutes / 60
         let m = minutes % 60
         if h == 0 { return String(localized: "\(m) Min") }
         if m == 0 { return String(localized: "\(h) Std") }
+        if m == 30 { return String(localized: "\(h),5 Std") }
         return String(localized: "\(h) Std \(m) Min")
     }
 

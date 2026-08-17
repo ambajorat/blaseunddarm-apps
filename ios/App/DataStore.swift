@@ -95,6 +95,10 @@ final class DataStore {
 
     var lastEntry: ToiletEntry? { entries.first }
 
+    /// Letzter BLASEN-Eintrag — nur der taktet Erinnerung, Countdown und Live Activity.
+    /// Reine Stuhl-, Trink- oder Symptom-Einträge verschieben den ISK-Rhythmus nicht.
+    var lastBladderEntry: ToiletEntry? { entries.first(where: { $0.urineMl > 0 }) }
+
     // MARK: - Persistence
 
     private func saveEntries() {
@@ -122,7 +126,7 @@ final class DataStore {
         syncToWatch()
         updateWidget()
         // Intervall-/Ruhezeitänderung in eine ggf. laufende Live Activity spiegeln
-        if let last = lastEntry {
+        if let last = lastBladderEntry {
             let snap = settings
             Task { await LiveActivityManager.shared.updateStats(
                 startTime: last.timestamp,
@@ -145,13 +149,15 @@ final class DataStore {
             todayMl: todayMl,
             todayBowel: todayBowel,
             todayCount: todayCount,
-            lastEntryDate: lastEntry?.timestamp,
+            lastEntryDate: lastBladderEntry?.timestamp,
             intervalMinutes: settings.intervalMinutes,
             reminderEnabled: settings.reminderEnabled,
             quietHoursEnabled: settings.quietHoursEnabled,
             quietFrom: settings.quietFrom,
             quietTo: settings.quietTo,
-            updatedAt: .now
+            updatedAt: .now,
+            useFixedTimes: settings.useFixedTimes,
+            fixedTimes: settings.fixedTimes
         )
         data.save()
         WidgetCenter.shared.reloadAllTimelines()
@@ -160,7 +166,7 @@ final class DataStore {
     /// Live Activity nach jedem Eintrag ab dem letzten Eintragszeitpunkt (neu) starten.
     /// Fälligkeit ruhezeitbewusst. Ohne Einträge wird eine laufende Activity beendet.
     private func updateLiveActivity() {
-        if let last = lastEntry {
+        if let last = lastBladderEntry {
             let snap = settings
             let ml = todayMl, cnt = todayCount
             Task { await LiveActivityManager.shared.startTimer(
