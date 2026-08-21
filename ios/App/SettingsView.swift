@@ -41,10 +41,15 @@ struct SettingsView: View {
     /// Fertig-Leiste über dem Ziffernblock — direkt an den Feldern
     /// angebracht, weil sie an der List hängend nicht zuverlässig erscheint.
     @ToolbarContentBuilder
-    private var doneToolbar: some ToolbarContent {
+    private func doneToolbar(for field: NumField) -> some ToolbarContent {
+        // Jede Feld-Toolbar zeigt ihren Knopf nur, wenn IHR Feld den Fokus hat —
+        // sonst rendert SwiftUI alle registrierten Keyboard-Toolbars gleichzeitig
+        // (doppelte "Fertig"-Knöpfe).
         ToolbarItemGroup(placement: .keyboard) {
-            Spacer()
-            Button("Fertig") { numFocus = nil }
+            if numFocus == field {
+                Spacer()
+                Button("Fertig") { numFocus = nil }
+            }
         }
     }
 
@@ -361,7 +366,7 @@ struct SettingsView: View {
                 TextField("Neuer Wert", text: $newQuickValue)
                     .keyboardType(.numberPad)
                     .focused($numFocus, equals: .quick)
-                    .toolbar { doneToolbar }
+                    .toolbar { doneToolbar(for: .quick) }
 
                 Button {
                     if let val = Int(newQuickValue), val > 0 {
@@ -432,7 +437,7 @@ struct SettingsView: View {
                     TextField("Neuer Wert", text: $newDrinkValue)
                         .keyboardType(.numberPad)
                         .focused($numFocus, equals: .drink)
-                    .toolbar { doneToolbar }
+                    .toolbar { doneToolbar(for: .drink) }
 
                     Button {
                         if let val = Int(newDrinkValue), val > 0 {
@@ -504,7 +509,7 @@ struct SettingsView: View {
             TextField("Bestand eintragen", text: inputBinding($stockInputs, id))
                 .keyboardType(.numberPad)
                 .focused($numFocus, equals: .stock(id))
-            .toolbar { doneToolbar }
+            .toolbar { doneToolbar(for: .stock(id)) }
 
             Button {
                 if let val = Int(stockInputs[id] ?? ""), val >= 0 {
@@ -531,6 +536,7 @@ struct SettingsView: View {
             TextField("Lieferung erfassen (Stück)", text: inputBinding($deliveryInputs, id))
                 .keyboardType(.numberPad)
                 .focused($numFocus, equals: .delivery(id))
+                .toolbar { doneToolbar(for: .delivery(id)) }
 
             Button {
                 if let val = Int(deliveryInputs[id] ?? ""), val > 0 {

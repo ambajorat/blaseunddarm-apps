@@ -1,0 +1,17 @@
+BDM-411-Fix10-HinweisText — App/AlertsView.swift + App/Localizable.xcstrings
+(kumulativ NACH Fix6–Fix9; die xcstrings ERSETZT den Fix8-Stand und enthält
+dessen Änderungen sowie die Fix6-Plurale)
+
+Andrés Screenshot 01:17: Der Erklärtext im Hinweise-Reiter sagte noch
+"prüft die App ab 18 Uhr" — seit Fix8 bewerten die Unter-Checks aber den
+abgeschlossenen Vortag. Text jetzt: "... bewertet die App für den
+abgeschlossenen Vortag — morgens beim ersten Eintrag oder Öffnen. Ein
+laufender Tag wird nie als 'zu wenig' gewertet." (DE+EN)
+
+Einspielen (vom ios-Ordner):
+  unzip -o ~/Downloads/BDM-411-Fix10-HinweisText.zip
+Preflight-greps:
+  grep -c "abgeschlossenen Vortag" App/AlertsView.swift  -> 1
+  grep -c "ab 18 Uhr\|underCheckHour) Uhr" App/AlertsView.swift -> 0
+Katalog-Zählung: 472 (zwei Alt-Varianten raus, ein neuer Key rein).
+Test: Hinweise-Reiter unten — Text nennt den Vortag, kein "18 Uhr" mehr.

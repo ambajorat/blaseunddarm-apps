@@ -277,7 +277,7 @@ struct AlertsView: View {
     private var footerSection: some View {
         Section {
         } footer: {
-            Text("Grenzen nach unten und Abweichungen unter den Schnitt prüft die App ab \(AlertEngine.underCheckHour) Uhr — vorher wäre jeder Morgen automatisch \u{201E}zu wenig\u{201C}. Geprüft wird bei jedem Eintrag und beim Öffnen der App.\n\nDiese Hinweise ersetzen keine ärztliche Beratung.")
+            Text("Grenzen nach unten und Abweichungen unter den Schnitt bewertet die App für den abgeschlossenen Vortag — morgens beim ersten Eintrag oder Öffnen. Ein laufender Tag wird nie als \u{201E}zu wenig\u{201C} gewertet.\n\nDiese Hinweise ersetzen keine ärztliche Beratung.")
                 .font(.caption)
         }
     }

@@ -532,6 +532,12 @@ struct StatsView: View {
         let ph: CGFloat = 842  // A4 height
         let m: CGFloat = 40    // margin
         let cw = pw - 2 * m    // content width
+        // PDF ist immer "hell" — KEINE dynamischen Systemfarben (.label, .systemGray6,
+        // .separator) verwenden: die lösen im Dunkelmodus der App zu Weiß/Dunkelgrau
+        // auf und machen das Protokoll unlesbar. Nur feste Farben.
+        let inkColor = UIColor(white: 0.12, alpha: 1)      // statt .label
+        let stripeColor = UIColor(white: 0.94, alpha: 1)   // statt .systemGray6
+        let ruleColor = UIColor(white: 0.78, alpha: 1)     // statt .separator
         let orange = UIColor(red: 0.91, green: 0.57, blue: 0.23, alpha: 1)
         let purple = UIColor(red: 0.61, green: 0.49, blue: 0.78, alpha: 1)
 
@@ -545,11 +551,11 @@ struct StatsView: View {
                 "Blase & Darm Manager — blaseunddarm.de — Erstellt am \(df.string(from: .now))".draw(at: CGPoint(x: m, y: ph - 30), withAttributes: f)
             }
 
-            func drawLine(at y: CGFloat, color: UIColor = .separator) {
+            func drawLine(at y: CGFloat, color: UIColor? = nil) {
                 let p = UIBezierPath()
                 p.move(to: CGPoint(x: m, y: y))
                 p.addLine(to: CGPoint(x: pw - m, y: y))
-                color.setStroke()
+                (color ?? ruleColor).setStroke()
                 p.lineWidth = 0.5
                 p.stroke()
             }
@@ -601,8 +607,8 @@ struct StatsView: View {
 
             // Gänge box
             let bx2 = m + boxW + 10
-            drawRect(x: bx2, y: y, w: boxW, h: boxH, color: UIColor.systemGray6)
-            let boxValue2: [NSAttributedString.Key: Any] = [.font: UIFont.boldSystemFont(ofSize: 22), .foregroundColor: UIColor.label]
+            drawRect(x: bx2, y: y, w: boxW, h: boxH, color: stripeColor)
+            let boxValue2: [NSAttributedString.Key: Any] = [.font: UIFont.boldSystemFont(ofSize: 22), .foregroundColor: inkColor]
             "⌀ Gänge / Tag".draw(at: CGPoint(x: bx2 + 10, y: y + 8), withAttributes: boxLabel)
             String(format: "%.1f", avgCount).draw(at: CGPoint(x: bx2 + 10, y: y + 25), withAttributes: boxValue2)
 
@@ -654,7 +660,7 @@ struct StatsView: View {
             y += 24
 
             // Table rows
-            let tdAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular), .foregroundColor: UIColor.label]
+            let tdAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular), .foregroundColor: inkColor]
             let tdBold: [NSAttributedString.Key: Any] = [.font: UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .semibold), .foregroundColor: orange]
             let tdPurple: [NSAttributedString.Key: Any] = [.font: UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .semibold), .foregroundColor: purple]
             let tdSmall: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 8), .foregroundColor: UIColor.gray]
@@ -664,7 +670,7 @@ struct StatsView: View {
 
                 // Alternating row background
                 if i % 2 == 0 {
-                    drawRect(x: m, y: y - 2, w: cw, h: 18, color: UIColor.systemGray6.withAlphaComponent(0.5))
+                    drawRect(x: m, y: y - 2, w: cw, h: 18, color: stripeColor.withAlphaComponent(0.5))
                 }
 
                 df.string(from: day.date).draw(at: CGPoint(x: m + 8, y: y), withAttributes: tdAttrs)
@@ -707,7 +713,7 @@ struct StatsView: View {
                 if y > ph - 60 { y = newPage() }
 
                 if i % 2 == 0 {
-                    drawRect(x: m, y: y - 2, w: cw, h: 16, color: UIColor.systemGray6.withAlphaComponent(0.5))
+                    drawRect(x: m, y: y - 2, w: cw, h: 16, color: stripeColor.withAlphaComponent(0.5))
                 }
 
                 tf.string(from: entry.timestamp).draw(at: CGPoint(x: m + 8, y: y), withAttributes: tdAttrs)

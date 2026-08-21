@@ -208,10 +208,15 @@ struct EditEntryView: View {
     }
 
     @ToolbarContentBuilder
-    private var doneToolbar: some ToolbarContent {
+    private func doneToolbar(for field: NumField) -> some ToolbarContent {
+        // Jede Feld-Toolbar zeigt ihren Knopf nur, wenn IHR Feld den Fokus hat —
+        // sonst rendert SwiftUI alle registrierten Keyboard-Toolbars gleichzeitig
+        // (doppelte "Fertig"-Knöpfe).
         ToolbarItemGroup(placement: .keyboard) {
-            Spacer()
-            Button(String(localized: "Fertig")) { numFocus = nil }
+            if numFocus == field {
+                Spacer()
+                Button(String(localized: "Fertig")) { numFocus = nil }
+            }
         }
     }
     private let drinkSettings = DrinkSettings.load()
@@ -256,7 +261,7 @@ struct EditEntryView: View {
                 Section("Urin-Menge (ml)") {
                     TextField("ml eingeben", text: $urineMl)
                         .focused($numFocus, equals: .urine)
-                        .toolbar { doneToolbar }
+                        .toolbar { doneToolbar(for: .urine) }
                         .keyboardType(.numberPad)
 
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -399,7 +404,7 @@ struct EditEntryView: View {
                                 Spacer()
                                 TextField("optional", text: $bpText)
                                     .focused($numFocus, equals: .bp)
-                                    .toolbar { doneToolbar }
+                                    .toolbar { doneToolbar(for: .bp) }
                                     .foregroundStyle(bpInvalid ? Color.red : Color.primary)
                                     .keyboardType(.numberPad)
                                     .multilineTextAlignment(.trailing)
@@ -419,7 +424,7 @@ struct EditEntryView: View {
                         TextField("ml eingeben", text: $drinkText)
                             .keyboardType(.numberPad)
                             .focused($numFocus, equals: .drink)
-                            .toolbar { doneToolbar }
+                            .toolbar { doneToolbar(for: .drink) }
 
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 8)], spacing: 8) {
                             Group {

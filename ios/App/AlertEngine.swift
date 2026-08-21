@@ -25,6 +25,8 @@ enum AlertEngine {
     /// Ab dieser Stunde werden "Unter"-Grenzen und Abweichungen nach unten
     /// bewertet — vorher wäre jeder Morgen automatisch "zu wenig".
     static let underCheckHour = 18
+    /// Ab dieser Uhrzeit wird der Vortag bewertet (nicht mitten in der Nacht).
+    static let morningCheckHour = 9
 
     // MARK: Baseline
 
@@ -66,14 +68,14 @@ enum AlertEngine {
         )
     }
 
-    /// Tages-Checks: "Über" sofort, "Unter" und Abweichungen nach unten ab 18 Uhr.
+    /// Tages-Checks: "Über" sofort (Grenze schon gerissen = aussagekräftig),
+    /// "Unter" und Abweichungen nach unten bewerten den ABGESCHLOSSENEN Vortag.
     static func checkDay(entries: [ToiletEntry], settings: AlertSettings = .load()) {
         let cal = Calendar.current
         let today = entries.filter { cal.isDateInToday($0.timestamp) }
         let ml = today.reduce(0) { $0 + $1.urineMl }
         let count = today.count
         let dateKey = Date.now.formatted(.iso8601.year().month().day())
-        let lateEnough = cal.component(.hour, from: .now) >= underCheckHour
         let base = settings.baselineEnabled ? baseline(entries: entries) : nil
         let dev = Double(settings.baselineDeviationPercent) / 100.0
 
@@ -103,28 +105,38 @@ enum AlertEngine {
         checkCatheterStock(entries: entries, dateKey: dateKey)
         checkUtiDay(entries: entries, dateKey: dateKey)
 
-        guard lateEnough else { return }
+        // "Unter" bewertet den ABGESCHLOSSENEN Vortag — ein Teiltag ("heute erst
+        // 4 Gänge um 18 Uhr") sagt nichts aus. Ausgewertet ab morgens beim ersten
+        // Check des Tages; Vortage ganz ohne Einträge werden übersprungen
+        // (App-Pause ist kein "zu wenig").
+        guard cal.component(.hour, from: .now) >= morningCheckHour else { return }
+        let yesterday = entries.filter { cal.isDateInYesterday($0.timestamp) }
+        guard !yesterday.isEmpty else { return }
+        let yMl = yesterday.reduce(0) { $0 + $1.urineMl }
+        let yCount = yesterday.count
+        let yKey = cal.date(byAdding: .day, value: -1, to: .now)!
+            .formatted(.iso8601.year().month().day())
 
-        if settings.dayUnderEnabled, ml < settings.dayUnderMl {
-            notifyOnce(rule: "dayUnder_\(dateKey)",
+        if settings.dayUnderEnabled, yMl < settings.dayUnderMl {
+            notifyOnce(rule: "dayUnder_\(yKey)",
                        title: String(localized: "Niedrige Tagesmenge"),
-                       body: String(localized: "Bis jetzt \(ml) ml — unter deiner Grenze von \(settings.dayUnderMl) ml. Genug getrunken?"))
+                       body: String(localized: "Gestern \(yMl) ml — unter deiner Grenze von \(settings.dayUnderMl) ml. Genug getrunken?"))
         }
-        if settings.countUnderEnabled, count < settings.countUnderLimit {
-            notifyOnce(rule: "countUnder_\(dateKey)",
+        if settings.countUnderEnabled, yCount < settings.countUnderLimit {
+            notifyOnce(rule: "countUnder_\(yKey)",
                        title: String(localized: "Wenige Toilettengänge"),
-                       body: String(localized: "Bis jetzt \(count) Gänge — unter deiner Grenze von \(settings.countUnderLimit)."))
+                       body: String(localized: "Gestern \(yCount) Gänge — unter deiner Grenze von \(settings.countUnderLimit)."))
         }
         if let base {
-            if Double(ml) < Double(base.avgMl) * (1 - dev) {
-                notifyOnce(rule: "baseMlUnder_\(dateKey)",
+            if Double(yMl) < Double(base.avgMl) * (1 - dev) {
+                notifyOnce(rule: "baseMlUnder_\(yKey)",
                            title: String(localized: "Deutlich unter deinem Schnitt"),
-                           body: String(localized: "Bis jetzt \(ml) ml — dein 14-Tage-Schnitt liegt bei \(base.avgMl) ml."))
+                           body: String(localized: "Gestern \(yMl) ml — dein 14-Tage-Schnitt liegt bei \(base.avgMl) ml."))
             }
-            if Double(count) < base.avgCount * (1 - dev) {
-                notifyOnce(rule: "baseCountUnder_\(dateKey)",
+            if Double(yCount) < base.avgCount * (1 - dev) {
+                notifyOnce(rule: "baseCountUnder_\(yKey)",
                            title: String(localized: "Seltener als sonst"),
-                           body: String(localized: "Bis jetzt \(count) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount))."))
+                           body: String(localized: "Gestern \(yCount) Gänge — dein Schnitt liegt bei \(String(format: "%.0f", base.avgCount))."))
             }
         }
     }

@@ -254,10 +254,15 @@ struct LogView: View {
     }
 
     @ToolbarContentBuilder
-    private var doneToolbar: some ToolbarContent {
+    private func doneToolbar(for field: NumField) -> some ToolbarContent {
+        // Jede Feld-Toolbar zeigt ihren Knopf nur, wenn IHR Feld den Fokus hat —
+        // sonst rendert SwiftUI alle registrierten Keyboard-Toolbars gleichzeitig
+        // (doppelte "Fertig"-Knöpfe).
         ToolbarItemGroup(placement: .keyboard) {
-            Spacer()
-            Button(String(localized: "Fertig")) { numFocus = nil }
+            if numFocus == field {
+                Spacer()
+                Button(String(localized: "Fertig")) { numFocus = nil }
+            }
         }
     }
 
@@ -320,7 +325,7 @@ struct LogView: View {
                     .foregroundStyle(Color.subtleText)
                 TextField("ml", text: $urineMl)
                     .focused($numFocus, equals: .urine)
-                    .toolbar { doneToolbar }
+                    .toolbar { doneToolbar(for: .urine) }
                     .keyboardType(.numberPad)
                     .font(.body)
                     .padding(10)
@@ -446,7 +451,7 @@ struct LogView: View {
                                 .foregroundStyle(Color.subtleText)
                             TextField("mmHg", text: $bpText)
                                 .focused($numFocus, equals: .bp)
-                                .toolbar { doneToolbar }
+                                .toolbar { doneToolbar(for: .bp) }
                                 .keyboardType(.numberPad)
                                 .multilineTextAlignment(.trailing)
                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(bpInvalid ? Color.red : Color.clear, lineWidth: 1))
@@ -471,7 +476,7 @@ struct LogView: View {
                         .foregroundStyle(Color.subtleText)
                     TextField("ml", text: $drinkText)
                         .focused($numFocus, equals: .drink)
-                        .toolbar { doneToolbar }
+                        .toolbar { doneToolbar(for: .drink) }
                         .keyboardType(.numberPad)
                         .font(.body)
                         .padding(10)
