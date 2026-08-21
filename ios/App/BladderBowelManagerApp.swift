@@ -30,6 +30,7 @@ struct BladderBowelManagerApp: App {
                         ) }
                     }
                 }
+                .modifier(ReviewRequester())
                 .environment(store)
                 .environment(notificationManager)
                 .environment(cloudBackup)

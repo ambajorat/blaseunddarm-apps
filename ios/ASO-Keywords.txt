@@ -1,0 +1,31 @@
+ASO-Paket für die nächste iOS-Version (4.8 oder 4.7 Build 4)
+============================================================
+
+1) KEYWORD-FELD (App Store Connect → Version → Schlüsselwörter)
+   Nur mit neuer Version änderbar — vor dem Einreichen eintragen.
+   Titel/Untertitel-Wörter bewusst NICHT wiederholt (werden separat indexiert).
+
+DEUTSCH (99/100 Zeichen):
+blasentagebuch,toilettentagebuch,katheter,harnwegsinfekt,inkontinenz,querschnitt,bristol,trinkmenge
+
+ENGLISCH (100/100 Zeichen):
+catheter,self catheterization,uti,urinary,incontinence,spinal cord injury,bowel,bristol,fluid intake
+
+2) KATEGORIE prüfen (App-Informationen → Kategorie):
+   Primär "Medizin" (weniger umkämpft als "Gesundheit & Fitness").
+   Sekundär: "Gesundheit & Fitness".
+
+3) REVIEW-PROMPT (dieses ZIP):
+   - App/ReviewManager.swift NEU (Gate-Logik + ViewModifier, keine UI-Strings,
+     daher kein xcstrings-Update nötig)
+   - App/BladderBowelManagerApp.swift: eine Zeile ergänzt
+     (.modifier(ReviewRequester()) vor .environment(store))
+   Verhalten: fragt nach dem 20., 60. und 150. Eintrag (je einmal),
+   frühestens alle 60 Tage, max. 3x/Jahr — zusätzlich zu Apples eigenem Deckel.
+   WICHTIG zum Testen: In Debug-Builds und TestFlight zeigt iOS den Dialog NIE an —
+   das ist normal. Prüfbar ist nur, dass die App normal läuft.
+
+Einspielen: ZIP über ios/ entpacken, xcodegen generate falls nötig, bauen,
+Gerätetest, committen ("Review-Prompt + ASO"), pushen.
+Version: André entscheidet — sauberster Träger ist die 4.8-Karte
+(dann Keywords + Kategorie im selben Zug).

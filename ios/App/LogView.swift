@@ -23,6 +23,14 @@ struct LogView: View {
     @State private var bpText = ""
     @State private var entryTime: Date = .now
     @State private var showSaved = false
+    // Schnellerfassung (Scheibe 1, Design v4)
+    @State private var quickToastMessage: String? = nil
+    @State private var lastQuickEntry: ToiletEntry? = nil
+    @State private var showQuickEditor = false
+    @State private var showDetailForm = false
+    @State private var quickToastTask: Task<Void, Never>? = nil
+    @AppStorage("bb_firstrun_done") private var firstRunDone = false
+    @State private var showFirstRun = false
 
     /// Ziffernblock hat keine Return-Taste — Fokus-Steuerung + Fertig-Leiste
     private enum NumField: Hashable { case urine, bp, drink }
@@ -39,9 +47,19 @@ struct LogView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     headerArea
+                    TimerCard()
+                    QuickCaptureCard(
+                        quickValues: quickValues,
+                        drinkEnabled: drinkSettings.enabled,
+                        drinkAmount: drinkSettings.presets.first ?? 250,
+                        onUrine: { quickSave(urine: $0) },
+                        onBowel: { quickSave(bowel: true) },
+                        onDrink: { quickSave(drink: $0) }
+                    )
                     reminderBanner
                     todaySummary
-                    entryForm
+                    detailFormToggle
+                    if showDetailForm { entryForm }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -60,6 +78,14 @@ struct LogView: View {
                 }
             }
             .onAppear {
+                if !firstRunDone {
+                    if store.entries.isEmpty {
+                        showFirstRun = true
+                    } else {
+                        // Bestandsnutzer: Frage nicht stellen, Module sind gewählt
+                        firstRunDone = true
+                    }
+                }
                 entryTime = .now
                 drinkSettings = DrinkSettings.load()
                 utiSettings = UtiSettings.load()
@@ -82,6 +108,26 @@ struct LogView: View {
                     alarmOverlay
                 }
             }
+            .overlay(alignment: .bottom) {
+                if let msg = quickToastMessage {
+                    QuickToast(
+                        message: msg,
+                        onAddDetails: {
+                            quickToastTask?.cancel()
+                            quickToastMessage = nil
+                            showQuickEditor = true
+                        },
+                        onUndo: { undoQuickEntry() }
+                    )
+                    .padding(.bottom, 12)
+                }
+            }
+            .sheet(isPresented: $showQuickEditor) {
+                if let entry = lastQuickEntry {
+                    EditEntryView(entry: entry)
+                }
+            }
+            .sheet(isPresented: $showFirstRun) { FirstRunSetupView() }
         }
     }
 
@@ -577,6 +623,71 @@ struct LogView: View {
         }
         urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; palpation = nil; adSigns = []; bpText = ""; stoolAmount = nil; entryTime = .now; showSaved = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { showSaved = false }
+    }
+
+    // MARK: - Schnellerfassung (Scheibe 1)
+
+    private var detailFormToggle: some View {
+        Button {
+            withAnimation(.snappy) { showDetailForm.toggle() }
+        } label: {
+            HStack {
+                Image(systemName: showDetailForm ? "chevron.down" : "square.and.pencil")
+                Text(showDetailForm ? String(localized: "detail_close") : String(localized: "detail_open"))
+                    .font(.subheadline.weight(.bold))
+                Spacer()
+            }
+            .padding(14)
+            .background(Color.cardBg, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickSave(urine: Int = 0, bowel: Bool = false, drink: Int = 0) {
+        let entry = ToiletEntry(
+            urineMl: urine,
+            bowel: bowel,
+            drinkMl: drink > 0 ? drink : nil
+        )
+        store.add(entry)
+        // Gleiche Regel wie im Formular: nur echte Blaseneinträge takten neu.
+        if store.settings.reminderEnabled, urine > 0 {
+            notifications.scheduleReminder(afterMinutes: store.settings.intervalMinutes, settings: store.settings)
+        }
+        lastQuickEntry = entry
+        let time = entry.timestamp.formatted(date: .omitted, time: .shortened)
+        if urine > 0 {
+            quickToastMessage = String(format: String(localized: "quick_saved_fmt"), urine, time)
+        } else if bowel {
+            quickToastMessage = String(format: String(localized: "quick_saved_bowel_fmt"), time)
+        } else {
+            quickToastMessage = String(format: String(localized: "quick_saved_drink_fmt"), drink, time)
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        quickToastTask?.cancel()
+        quickToastTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            withAnimation { quickToastMessage = nil }
+        }
+    }
+
+    private func undoQuickEntry() {
+        guard let entry = lastQuickEntry else { return }
+        quickToastTask?.cancel()
+        store.delete(entry)
+        // Erinnerung auf den vorherigen Blaseneintrag zurücktakten
+        if store.settings.reminderEnabled, entry.urineMl > 0 {
+            if let previous = store.lastBladderEntry {
+                let elapsed = Int(Date.now.timeIntervalSince(previous.timestamp)) / 60
+                let remaining = max(1, store.settings.intervalMinutes - elapsed)
+                notifications.scheduleReminder(afterMinutes: remaining, settings: store.settings)
+            }
+        }
+        lastQuickEntry = nil
+        withAnimation { quickToastMessage = nil }
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 
     private func startTimer() {

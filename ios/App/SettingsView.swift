@@ -724,6 +724,12 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
+            Button {
+                UserDefaults.standard.set(false, forKey: "bb_firstrun_done")
+            } label: {
+                Label(String(localized: "firstrun_replay"), systemImage: "arrow.counterclockwise")
+            }
+
             HStack {
                 Text("Version")
                 Spacer()

@@ -1,0 +1,39 @@
+BDM 4.9 — Scheibe 1: Schnellerfassung + Timer-Karte + Erstfrage
+================================================================
+Basis: Monorepo-HEAD d6a784e. Vier Dateien, ZIP über ios/ entpacken.
+
+GEÄNDERT / NEU:
+- App/QuickCapture.swift        NEU (TimerCard, QuickCaptureCard, QuickToast, FirstRunSetupView)
+- App/LogView.swift             gepatcht (Karten oben, Formular hinter "Ausführlich erfassen",
+                                 quickSave/undo, Erstfrage-Sheet nur bei leerer Datenbank)
+- App/SettingsView.swift        1 Zeile: "Ersteinrichtung erneut zeigen" (About-Sektion)
+- App/Localizable.xcstrings     441 Keys (30 neue, Bestand unangetastet)
+
+VERHALTEN:
+- Timer-Karte oben: Countdown groß, überfällig rot, Intervall+zuletzt, Ruhezeit-Mond;
+  kann Wecker-Modus (feste Zeiten) und "Erinnerung aus".
+- Schnellerfassung: persönliche Schnellwerte (settings.quickValues) + Stuhlgang +
+  Trinken (erster Preset, nur wenn Trink-Modul an). Ein Tipp speichert sofort.
+- Toast 6 s mit "Ergänzen" (öffnet EditEntryView mit dem frischen Eintrag) und
+  "Rückgängig" (löscht; Erinnerung wird auf den vorherigen Blaseneintrag zurückgetaktet).
+- Nur Urin-Quick-Saves takten die Erinnerung neu (gleiche Regel wie Formular/Siri).
+- Erstfrage: erscheint nur bei firstRunDone=false UND leerer Eintragsliste —
+  Bestandsnutzer sehen sie nie ungefragt; Antwort setzt nur die enabled-Flags
+  (Uti/Palpation/Ad/CatheterStock), Detailwerte bleiben.
+- Ausführliches Formular: kompletter 4.6er-Stand, unverändert, nur eingeklappt.
+
+GERÄTETEST (Reihenfolge):
+1. Bestandsgerät: Update einspielen → KEINE Erstfrage, Daten vollständig.
+2. Quick 200 ml → Toast, Widget/Live Activity zeigen neuen Countdown.
+3. "Rückgängig" → Eintrag weg, Countdown zeigt wieder den alten Stand.
+4. Quick Stuhlgang → Timer bleibt unangetastet (Toast "Rhythmus unverändert" gibt es
+   bewusst nicht — die Karte zeigt es).
+5. "Ergänzen" → Editor öffnet mit dem Quick-Eintrag, Bristol nachtragen, sichern.
+6. "Ausführlich erfassen" → altes Formular vollständig (RR-Validierung, Fertig-Leiste).
+7. Frische Installation (Simulator reicht hier): Erstfrage erscheint, ISK wählen →
+   Erfassen zeigt Tastbefund/HWI-Blöcke; Einstellungen → "Ersteinrichtung erneut zeigen".
+8. EN-Sichttest der neuen Texte (Sprache umstellen).
+
+DANACH: Version project.yml auf 4.9/Build 1, xcodegen generate, bauen, committen
+("4.9: Schnellerfassung, Timer-Karte, Erstfrage"), pushen.
+ANDROID: Parität als 2.4/2.5 eingeplant — Schnellerfassung ist additiv, CSV unverändert.
