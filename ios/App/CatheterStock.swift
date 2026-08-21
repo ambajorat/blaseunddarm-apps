@@ -21,6 +21,10 @@ struct CatheterStock: Codable, Equatable {
     var packSize: Int = 30
     /// Warnen, wenn die Reichweite unter diese Tageszahl fällt.
     var warnDays: Int = 10
+    /// Optional (4.10, decoding-sicher): Charrière-Größe, Material, Rezept-Ablaufdatum.
+    var sizeCharriere: Int? = nil
+    var material: String? = nil
+    var prescriptionDate: Date? = nil
 
     static let storageKey = "bb_catheter_stock"
 
@@ -48,6 +52,20 @@ struct CatheterStock: Codable, Equatable {
     /// Aktueller rechnerischer Bestand, nie negativ.
     func currentStock(entries: [ToiletEntry]) -> Int {
         max(0, stockAtAdjustment - usedSince(entries: entries))
+    }
+
+    /// Lieferung zubuchen: neue Korrektur = aktueller Bestand + Stückzahl.
+    /// Bleibt im selbstheilenden Prinzip (kein Decrement-Zähler).
+    mutating func addDelivery(_ pieces: Int, entries: [ToiletEntry]) {
+        stockAtAdjustment = currentStock(entries: entries) + pieces
+        adjustmentDate = .now
+    }
+
+    /// Resttage bis zum Rezept-Ablauf (negativ = abgelaufen). nil ohne Datum.
+    var prescriptionDaysLeft: Int? {
+        guard let date = prescriptionDate else { return nil }
+        let cal = Calendar.current
+        return cal.dateComponents([.day], from: cal.startOfDay(for: .now), to: cal.startOfDay(for: date)).day
     }
 
     /// Ø Katheterisierungen pro Tag über die letzten 14 vollen Tage

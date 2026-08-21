@@ -1,0 +1,43 @@
+BDM 4.10 — Darm-Statistik + Katheter-Ausbau
+============================================
+Basis: Monorepo-HEAD aa8d929 (4.9). Vier Dateien, ZIP über ios/ entpacken.
+
+GEÄNDERT:
+- App/CatheterStock.swift   +sizeCharriere/material/prescriptionDate (Optionals,
+                             Bestandsdaten decodieren unverändert), addDelivery()
+                             (Zubuchung = neue Korrektur, selbstheilendes Prinzip
+                             bleibt), prescriptionDaysLeft
+- App/SettingsView.swift    Katheter-Sektion: "Lieferung erfassen (Stück)" mit
+                             Plus-Knopf, Charrière-Stepper (6–24, Anzeige "Ch 12"),
+                             Material-Feld, Rezept-Erinnerung (Toggle + Datum;
+                             Toggle an setzt +1 Monat als Startwert)
+- App/StatsView.swift       Katheterkarte: Ch/Material-Zeile + Rezept-Zeile
+                             ("Rezept: noch N Tage (bis 3. Sep.)", rot ab ≤14 Tagen,
+                             "abgelaufen" in Rot); NEU Darm-Karte nach den
+                             Auffälligkeiten: Ø Abstand in Tagen + "zuletzt vor N
+                             Tagen", Bristol-Bänder Zu fest (1–2)/Unauffällig (3–5)/
+                             Zu weich (6–7) mit Anteilsbalken + Einordnungssatz
+- App/Localizable.xcstrings 460 Keys (16 neue, 444er-Bestand unangetastet)
+
+BEWUSSTE ABWEICHUNGEN vom Design v4.2:
+- Meldeschwelle bleibt in TAGEN (warnDays) — Stück-Schwelle nicht übernommen,
+  Tage rechnen den Verbrauch mit ein.
+- Kein Zubuchungs-Toast in den Einstellungen — die Bestandszeile aktualisiert
+  sich sichtbar direkt darüber.
+
+GERÄTETEST:
+1. Update: Katheter-Einstellungen zeigen alte Werte unverändert (Bestand,
+   Packungsgröße, Warn-Tage) — die neuen Felder leer/aus.
+2. Lieferung 40 Stück zubuchen → Bestandszeile springt sofort, Statistik-Karte auch.
+3. Ch 12 + Material setzen → erscheinen als Zeile in der Statistik-Karte.
+4. Rezept-Erinnerung an, Datum in 10 Tagen → Statistik-Zeile ROT mit Resttagen;
+   Datum in 60 Tagen → grau; Datum gestern → "abgelaufen" rot.
+5. Statistik: Darm-Karte zeigt Ø Abstand + Bänder; Zeitraum 7/30/90 umschalten.
+6. Eintrag ohne Bristol-Typ → zählt beim Abstand mit, fehlt in den Bändern (gewollt).
+7. EN-Sichttest (neue Texte).
+
+DANACH: project.yml sed 4.9→4.10, xcodegen generate, bauen, committen
+("4.10: Darm-Statistik + Katheter-Lieferung/Rezept"), pushen.
+WICHTIG: Die 4.10 erst in ASC einreichen, wenn die 4.9 freigegeben ist
+(zwei offene Versionen gehen nicht).
+ANDROID: Merkposten 2.4 (Darm-Statistik + Katheter-Felder, CSV unverändert).

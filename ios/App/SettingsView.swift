@@ -14,13 +14,15 @@ struct SettingsView: View {
     @State private var showRestoreConfirm = false
     /// Fokus-Steuerung für die Ziffernblock-Felder — der numberPad hat
     /// keine Return-Taste, ohne das hier bleibt die Tastatur stehen.
-    private enum NumField: Hashable { case quick, drink, stock }
+    private enum NumField: Hashable { case quick, drink, stock, delivery }
     @FocusState private var numFocus: NumField?
 
     @State private var newQuickValue = ""
     @State private var drink = DrinkSettings.load()
     @State private var newDrinkValue = ""
     @State private var catheter = CatheterStock.load()
+    @State private var deliveryValue = ""
+    @State private var showFirstRunSheet = false
     @State private var newStockValue = ""
     @State private var uti = UtiSettings.load()
     @State private var palp = PalpationSettings.load()
@@ -521,6 +523,26 @@ struct SettingsView: View {
                     Label("+1 Packung (\(catheter.packSize) Stück)", systemImage: "plus.circle.fill")
                 }
 
+                HStack {
+                    TextField("Lieferung erfassen (Stück)", text: $deliveryValue)
+                        .keyboardType(.numberPad)
+                        .focused($numFocus, equals: .delivery)
+
+                    Button {
+                        if let val = Int(deliveryValue), val > 0 {
+                            catheter.addDelivery(val, entries: store.entries)
+                            deliveryValue = ""
+                            numFocus = nil
+                        }
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(Color.accentBlue)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(Int(deliveryValue) == nil || Int(deliveryValue)! <= 0)
+                }
+
                 Stepper(value: $catheter.packSize, in: 5...120, step: 5) {
                     HStack {
                         Text("Packungsgröße")
@@ -541,6 +563,33 @@ struct SettingsView: View {
                     }
                 }
 
+            
+                Stepper(value: Binding(get: { catheter.sizeCharriere ?? 12 },
+                                       set: { catheter.sizeCharriere = $0 }), in: 6...24) {
+                    HStack {
+                        Text("Charrière (Ch)")
+                        Spacer()
+                        Text(catheter.sizeCharriere.map { "Ch \($0)" } ?? "—")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                TextField("Material (z. B. hydrophil beschichtet)", text: Binding(
+                    get: { catheter.material ?? "" },
+                    set: { catheter.material = $0.isEmpty ? nil : $0 }))
+
+                Toggle(isOn: Binding(
+                    get: { catheter.prescriptionDate != nil },
+                    set: { catheter.prescriptionDate = $0 ? Calendar.current.date(byAdding: .month, value: 1, to: .now) : nil })) {
+                    Label("Rezept-Erinnerung", systemImage: "doc.text.fill")
+                }
+
+                if catheter.prescriptionDate != nil {
+                    DatePicker("Rezept läuft aus", selection: Binding(
+                        get: { catheter.prescriptionDate ?? .now },
+                        set: { catheter.prescriptionDate = $0 }), displayedComponents: .date)
+                }
             }
         } header: {
             Text("Katheterbestand")
@@ -725,10 +774,18 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section {
             Button {
-                UserDefaults.standard.set(false, forKey: "bb_firstrun_done")
+                showFirstRunSheet = true
             } label: {
                 Label(String(localized: "firstrun_replay"), systemImage: "arrow.counterclockwise")
             }
+            .sheet(isPresented: $showFirstRunSheet, onDismiss: {
+                // Erstfrage schreibt direkt in den Speicher — lokale Kopien nachziehen,
+                // sonst zeigen die Toggles einen veralteten Stand (Bestand nicht korrigierbar)
+                catheter = CatheterStock.load()
+                uti = UtiSettings.load()
+                palp = PalpationSettings.load()
+                ad = AdSettings.load()
+            }) { FirstRunSetupView() }
 
             HStack {
                 Text("Version")

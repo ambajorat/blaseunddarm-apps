@@ -64,6 +64,7 @@ struct StatsView: View {
                             catheterCard
                             palpationCard
                             symptomsCard
+                            bowelCard
                             balanceCard
                             urineChart
                             toiletCountChart
@@ -116,6 +117,25 @@ struct StatsView: View {
                         Text("Reichweite folgt nach ein paar Tagen mit Einträgen")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    if stock.sizeCharriere != nil || stock.material != nil {
+                        Text([stock.sizeCharriere.map { "Ch \($0)" }, stock.material]
+                            .compactMap { $0 }.joined(separator: " · "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let days = stock.prescriptionDaysLeft, let date = stock.prescriptionDate {
+                        if days >= 0 {
+                            Text(String(format: String(localized: "Rezept: noch %lld Tage (bis %@)"),
+                                        days, date.formatted(.dateTime.day().month())))
+                                .font(.caption)
+                                .foregroundStyle(days <= 14 ? Color.red : Color.secondary)
+                        } else {
+                            Text(String(format: String(localized: "Rezept abgelaufen am %@"),
+                                        date.formatted(.dateTime.day().month())))
+                                .font(.caption)
+                                .foregroundStyle(Color.red)
+                        }
                     }
                 }
                 Spacer()
@@ -218,6 +238,96 @@ struct StatsView: View {
     }
 
     /// Bilanz-Berechnung außerhalb des ViewBuilders (Schleifen sind dort nicht erlaubt).
+    // MARK: - Darm (4.10): Ø Abstand + Bristol-Bänder
+
+    @ViewBuilder
+    private var bowelCard: some View {
+        let cal = Calendar.current
+        let cutoff = cal.date(byAdding: .day, value: -range.days, to: cal.startOfDay(for: .now)) ?? .distantPast
+        let bowelEntries = store.entries.filter { $0.bowel && $0.timestamp >= cutoff }.sorted { $0.timestamp < $1.timestamp }
+        VStack(alignment: .leading, spacing: 10) {
+            Text(String(localized: "Darm"))
+                .font(.subheadline.weight(.bold))
+            if bowelEntries.isEmpty {
+                Text(String(localized: "Noch keine Stuhlgänge im Zeitraum"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                let days = bowelEntries.map { cal.startOfDay(for: $0.timestamp) }
+                let uniqueDays = Array(Set(days)).sorted()
+                let gaps: [Int] = uniqueDays.count > 1
+                    ? zip(uniqueDays.dropFirst(), uniqueDays).compactMap {
+                        cal.dateComponents([.day], from: $1, to: $0).day
+                      }
+                    : []
+                let lastAgo = cal.dateComponents([.day], from: uniqueDays.last ?? .now, to: cal.startOfDay(for: .now)).day ?? 0
+                let perDay = Double(bowelEntries.count) / Double(uniqueDays.count)
+                HStack(spacing: 14) {
+                    if perDay >= 1.5 {
+                        // Mehrfach täglich (z. B. neurogener Darm): Frequenz statt Tages-Abstand
+                        Text(String(format: String(localized: "Ø %@× pro Tag"),
+                                    String(format: "%.1f", perDay)))
+                            .font(.caption.weight(.semibold))
+                    } else if !gaps.isEmpty {
+                        let avg = Double(gaps.reduce(0, +)) / Double(gaps.count)
+                        Text(String(format: String(localized: "Ø Abstand %@ Tage"),
+                                    String(format: "%.1f", avg)))
+                            .font(.caption.weight(.semibold))
+                    }
+                    if lastAgo == 0 {
+                        let hrs = max(1, Int(Date.now.timeIntervalSince(bowelEntries.last?.timestamp ?? .now) / 3600))
+                        Text(String(format: String(localized: "zuletzt vor %lld Std"), hrs))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(String(format: String(localized: "zuletzt vor %lld Tagen"), lastAgo))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                let typed = bowelEntries.filter { $0.bristolType != BristolType.none }
+                if !typed.isEmpty {
+                    Text(String(format: String(localized: "%lld Stuhlgänge im Zeitraum, nach Bristol-Typ erfasst."), typed.count))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    let hard = typed.filter { (1...2).contains($0.bristolType.rawValue) }.count
+                    let ok = typed.filter { (3...5).contains($0.bristolType.rawValue) }.count
+                    let loose = typed.filter { (6...7).contains($0.bristolType.rawValue) }.count
+                    bristolBand(String(localized: "Zu fest (Typ 1–2)"), hard, of: typed.count, color: .orange)
+                    bristolBand(String(localized: "Unauffällig (Typ 3–5)"), ok, of: typed.count, color: .green)
+                    bristolBand(String(localized: "Zu weich (Typ 6–7)"), loose, of: typed.count, color: .blue)
+                    Text(String(localized: "Typ 3 bis 5 gilt als unauffällig. Häufungen bei Typ 1 und 2 sprechen für zu wenig Flüssigkeit oder zu lange Abstände."))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.cardBg, in: .rect(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+    }
+
+    private func bristolBand(_ label: String, _ count: Int, of total: Int, color: Color) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .frame(width: 150, alignment: .leading)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.pillBg)
+                    Capsule().fill(color.opacity(0.75))
+                        .frame(width: total > 0 ? geo.size.width * CGFloat(count) / CGFloat(total) : 0)
+                }
+            }
+            .frame(height: 8)
+            Text("\(count)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 24, alignment: .trailing)
+        }
+    }
+
     private func balanceData() -> (days: Int, avgDrink: Int, avgUrine: Int)? {
         let cal = Calendar.current
         let start = cal.date(byAdding: .day, value: -range.days, to: .now) ?? .distantPast

@@ -29,7 +29,7 @@ struct TimerCard: View {
                 countdown(to: due, now: now)
                 Text(String(format: String(localized: "timer_interval_fmt"),
                             intervalLabel(s.intervalMinutes),
-                            last.timestamp.formatted(date: .omitted, time: .shortened)))
+                            clockString(last.timestamp)))
                     .font(.caption)
                     .foregroundStyle(Color.subtleText)
             } else {
@@ -62,7 +62,7 @@ struct TimerCard: View {
                     .foregroundStyle(Color.subtleText)
             }
             Text(String(format: String(localized: "timer_next_at_fmt"),
-                        due.formatted(date: .omitted, time: .shortened)))
+                        clockString(due)))
                 .font(.caption)
                 .foregroundStyle(Color.subtleText)
         } else {
@@ -76,10 +76,15 @@ struct TimerCard: View {
                     .foregroundStyle(.red)
             }
             Text(String(format: String(localized: "timer_due_was_fmt"),
-                        due.formatted(date: .omitted, time: .shortened)))
+                        clockString(due)))
                 .font(.caption)
                 .foregroundStyle(Color.subtleText)
         }
+    }
+
+    /// Uhrzeit immer zweistellig ("02:37"), passend zur Ruhezeit-Zeile und zur iOS-Statusleiste.
+    private func clockString(_ date: Date) -> String {
+        date.formatted(.dateTime.hour(.twoDigits(amPM: .abbreviated)).minute(.twoDigits))
     }
 
     private func clock(_ s: TimeInterval) -> String {
@@ -225,7 +230,7 @@ struct FirstRunSetupView: View {
 
                     optionButton(title: String(localized: "firstrun_isk_title"),
                                  detail: String(localized: "firstrun_isk_detail")) {
-                        apply(uti: true, palpation: true, ad: true, catheter: true)
+                        apply(uti: true, palpation: true, ad: true, catheter: false)
                     }
                     optionButton(title: String(localized: "firstrun_spont_title"),
                                  detail: String(localized: "firstrun_spont_detail")) {
