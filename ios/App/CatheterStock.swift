@@ -11,6 +11,17 @@ import Foundation
 /// Das ist selbstheilend (Korrektur überschreibt alles) und immun gegen
 /// doppelte Zustellungen, weil es auf den bereits deduplizierten
 /// Einträgen im DataStore basiert.
+/// Eine Kathetersorte (4.11). Einträge referenzieren die Sorte über ihren NAMEN
+/// (menschenlesbar in CSV, robust bei Sorten-Löschung: unbekannter Name → Standardsorte).
+struct CatheterSort: Codable, Equatable, Identifiable, Hashable {
+    var id: UUID = UUID()
+    var name: String = "Sorte 1"
+    var sizeCharriere: Int? = nil
+    var material: String? = nil
+    var stockAtAdjustment: Int = 0
+    var adjustmentDate: Date = .now
+}
+
 struct CatheterStock: Codable, Equatable {
     var enabled: Bool = false
     /// Bestand zum Zeitpunkt der letzten Korrektur/Auffüllung.
@@ -25,6 +36,10 @@ struct CatheterStock: Codable, Equatable {
     var sizeCharriere: Int? = nil
     var material: String? = nil
     var prescriptionDate: Date? = nil
+    /// Sortenliste (4.11, decoding-sicher). nil/leer = Alt-Daten → eine Sorte aus den Legacy-Feldern.
+    var sorts: [CatheterSort]? = nil
+    /// Zuletzt beim Erfassen gewählte Sorte (Vorbelegung der Chips).
+    var lastUsedSortId: UUID? = nil
 
     static let storageKey = "bb_catheter_stock"
 
@@ -42,35 +57,100 @@ struct CatheterStock: Codable, Equatable {
         }
     }
 
-    // MARK: - Bestandslogik
+    // MARK: - Sorten (4.11)
 
-    /// Blaseneinträge (Katheterisierungen) seit der letzten Korrektur.
-    func usedSince(entries: [ToiletEntry]) -> Int {
-        entries.filter { $0.urineMl > 0 && $0.timestamp > adjustmentDate }.count
+    /// Gültige Sortenliste. Alt-Daten (ohne sorts) erscheinen als EINE Sorte
+    /// mit den Legacy-Werten — Migration passiert lesend, gespeichert wird
+    /// sie erst, wenn die Einstellungen die Liste anfassen (ensureSorts).
+    var effectiveSorts: [CatheterSort] {
+        if let s = sorts, !s.isEmpty { return s }
+        return [CatheterSort(name: "Sorte 1",
+                             sizeCharriere: sizeCharriere,
+                             material: material,
+                             stockAtAdjustment: stockAtAdjustment,
+                             adjustmentDate: adjustmentDate)]
     }
 
-    /// Aktueller rechnerischer Bestand, nie negativ.
-    func currentStock(entries: [ToiletEntry]) -> Int {
-        max(0, stockAtAdjustment - usedSince(entries: entries))
+    /// Migration festschreiben (vor UI-Bearbeitung der Liste aufrufen).
+    mutating func ensureSorts() {
+        if sorts == nil || sorts!.isEmpty { sorts = effectiveSorts }
     }
 
-    /// Lieferung zubuchen: neue Korrektur = aktueller Bestand + Stückzahl.
-    /// Bleibt im selbstheilenden Prinzip (kein Decrement-Zähler).
-    mutating func addDelivery(_ pieces: Int, entries: [ToiletEntry]) {
-        stockAtAdjustment = currentStock(entries: entries) + pieces
-        adjustmentDate = .now
+    /// Gehört ein Eintrag zu dieser Sorte? Ohne (oder mit unbekanntem)
+    /// Sortennamen zählt er auf die Standardsorte (erste der Liste).
+    func belongs(_ entry: ToiletEntry, to sort: CatheterSort) -> Bool {
+        let list = effectiveSorts
+        if let n = entry.catheterSort, !n.isEmpty, list.contains(where: { $0.name == n }) {
+            return n == sort.name
+        }
+        return sort.id == list.first?.id
     }
 
-    /// Resttage bis zum Rezept-Ablauf (negativ = abgelaufen). nil ohne Datum.
-    var prescriptionDaysLeft: Int? {
-        guard let date = prescriptionDate else { return nil }
+    func usedSince(entries: [ToiletEntry], sort: CatheterSort) -> Int {
+        entries.filter { $0.urineMl > 0 && $0.timestamp > sort.adjustmentDate && belongs($0, to: sort) }.count
+    }
+
+    func stock(of sort: CatheterSort, entries: [ToiletEntry]) -> Int {
+        max(0, sort.stockAtAdjustment - usedSince(entries: entries, sort: sort))
+    }
+
+    /// Ø tägliche Katheterisierungen dieser Sorte (14 Tage, min. 3 Datentage).
+    func dailyUsage(of sort: CatheterSort, entries: [ToiletEntry]) -> Double? {
         let cal = Calendar.current
-        return cal.dateComponents([.day], from: cal.startOfDay(for: .now), to: cal.startOfDay(for: date)).day
+        let today = cal.startOfDay(for: .now)
+        var counts: [Int] = []
+        for i in 1...14 {
+            guard let day = cal.date(byAdding: .day, value: -i, to: today) else { continue }
+            let n = entries.filter { $0.urineMl > 0 && cal.isDate($0.timestamp, inSameDayAs: day) && belongs($0, to: sort) }.count
+            if n > 0 { counts.append(n) }
+        }
+        guard counts.count >= 3 else { return nil }
+        return Double(counts.reduce(0, +)) / Double(counts.count)
     }
 
-    /// Ø Katheterisierungen pro Tag über die letzten 14 vollen Tage
-    /// (ohne heute, nur Tage mit Blaseneinträgen). Mindestens 3 Datentage,
-    /// sonst nil — gleiche Denkweise wie die Baseline der Hinweise.
+    func daysRemaining(of sort: CatheterSort, entries: [ToiletEntry]) -> Int? {
+        guard let usage = dailyUsage(of: sort, entries: entries), usage > 0 else { return nil }
+        return Int(Double(stock(of: sort, entries: entries)) / usage)
+    }
+
+    func estimatedEmptyDate(of sort: CatheterSort, entries: [ToiletEntry]) -> Date? {
+        guard let days = daysRemaining(of: sort, entries: entries) else { return nil }
+        return Calendar.current.date(byAdding: .day, value: days, to: .now)
+    }
+
+    /// Sortenbezogene Änderungen (selbstheilendes Prinzip je Sorte).
+    mutating func setStock(_ value: Int, forSort id: UUID) {
+        ensureSorts()
+        guard let i = sorts!.firstIndex(where: { $0.id == id }) else { return }
+        sorts![i].stockAtAdjustment = max(0, value)
+        sorts![i].adjustmentDate = .now
+    }
+
+    mutating func addPack(forSort id: UUID, entries: [ToiletEntry]) {
+        ensureSorts()
+        guard let i = sorts!.firstIndex(where: { $0.id == id }) else { return }
+        let current = stock(of: sorts![i], entries: entries)
+        sorts![i].stockAtAdjustment = current + packSize
+        sorts![i].adjustmentDate = .now
+    }
+
+    mutating func addDelivery(_ pieces: Int, forSort id: UUID, entries: [ToiletEntry]) {
+        ensureSorts()
+        guard let i = sorts!.firstIndex(where: { $0.id == id }) else { return }
+        let current = stock(of: sorts![i], entries: entries)
+        sorts![i].stockAtAdjustment = current + pieces
+        sorts![i].adjustmentDate = .now
+    }
+
+    // MARK: - Bestandslogik (Gesamtsicht über alle Sorten)
+
+    /// Aktueller rechnerischer Gesamtbestand über alle Sorten, nie negativ.
+    func currentStock(entries: [ToiletEntry]) -> Int {
+        effectiveSorts.reduce(0) { $0 + stock(of: $1, entries: entries) }
+    }
+
+    /// Ø Katheterisierungen pro Tag über ALLE Sorten (14 Tage, min. 3 Datentage) —
+    /// Gesamtsicht für den Einstellungs-Footer.
     func dailyUsage(entries: [ToiletEntry]) -> Double? {
         let cal = Calendar.current
         let today = cal.startOfDay(for: .now)
@@ -84,28 +164,20 @@ struct CatheterStock: Codable, Equatable {
         return Double(counts.reduce(0, +)) / Double(counts.count)
     }
 
-    /// Reichweite in Tagen, abgerundet. nil ohne belastbaren Verbrauch.
-    func daysRemaining(entries: [ToiletEntry]) -> Int? {
-        guard let usage = dailyUsage(entries: entries), usage > 0 else { return nil }
-        return Int(Double(currentStock(entries: entries)) / usage)
+    /// Resttage bis zum Rezept-Ablauf (negativ = abgelaufen). nil ohne Datum.
+    var prescriptionDaysLeft: Int? {
+        guard let date = prescriptionDate else { return nil }
+        let cal = Calendar.current
+        return cal.dateComponents([.day], from: cal.startOfDay(for: .now), to: cal.startOfDay(for: date)).day
     }
 
-    /// Voraussichtliches "leer"-Datum. nil ohne belastbaren Verbrauch.
+    /// Kleinste Sorten-Reichweite (die knappste Sorte bestimmt die Warnung).
+    func daysRemaining(entries: [ToiletEntry]) -> Int? {
+        effectiveSorts.compactMap { daysRemaining(of: $0, entries: entries) }.min()
+    }
+
     func estimatedEmptyDate(entries: [ToiletEntry]) -> Date? {
         guard let days = daysRemaining(entries: entries) else { return nil }
         return Calendar.current.date(byAdding: .day, value: days, to: .now)
-    }
-
-    // MARK: - Änderungen
-
-    /// Bestand von Hand setzen (Korrektur). Setzt den Zählpunkt auf jetzt.
-    mutating func setStock(_ value: Int) {
-        stockAtAdjustment = max(0, value)
-        adjustmentDate = .now
-    }
-
-    /// Eine Packung auffüllen — auf Basis des aktuellen rechnerischen Bestands.
-    mutating func addPack(entries: [ToiletEntry]) {
-        setStock(currentStock(entries: entries) + packSize)
     }
 }

@@ -186,8 +186,10 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
     var systolicBp: Int?
     /// Optional, damit alte gespeicherte Einträge weiter decodieren
     var stoolAmount: StoolAmount?
+    /// Kathetersorte des Eintrags (4.11, Name aus CatheterStock.sorts; nil = Standardsorte)
+    var catheterSort: String? = nil
 
-    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "", drinkMl: Int? = nil, symptoms: [UtiSymptom]? = nil, palpation: PalpationFinding? = nil, adSigns: [AdSign]? = nil, systolicBp: Int? = nil, stoolAmount: StoolAmount? = nil) {
+    init(id: UUID = UUID(), timestamp: Date = .now, urineMl: Int = 0, bowel: Bool = false, bristolType: BristolType = .none, urineColor: UrineColor = .none, note: String = "", drinkMl: Int? = nil, symptoms: [UtiSymptom]? = nil, palpation: PalpationFinding? = nil, adSigns: [AdSign]? = nil, systolicBp: Int? = nil, stoolAmount: StoolAmount? = nil, catheterSort: String? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.urineMl = urineMl
@@ -201,6 +203,7 @@ struct ToiletEntry: Identifiable, Codable, Equatable {
         self.adSigns = adSigns
         self.systolicBp = systolicBp
         self.stoolAmount = stoolAmount
+        self.catheterSort = catheterSort
     }
 
     var dateKey: String {

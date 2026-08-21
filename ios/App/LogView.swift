@@ -41,6 +41,9 @@ struct LogView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private var quickValues: [Int] { store.settings.quickValues }
+    /// Sortenwahl (4.11): nur sichtbar, wenn mehr als eine Kathetersorte angelegt ist.
+    @State private var catheterSortNames: [String] = []
+    @State private var selectedCatheterSort: String? = nil
 
     var body: some View {
         NavigationStack {
@@ -48,6 +51,7 @@ struct LogView: View {
                 VStack(spacing: 14) {
                     headerArea
                     TimerCard()
+                    catheterSortPicker
                     QuickCaptureCard(
                         quickValues: quickValues,
                         drinkEnabled: drinkSettings.enabled,
@@ -78,6 +82,7 @@ struct LogView: View {
                 }
             }
             .onAppear {
+                refreshCatheterSorts()
                 if !firstRunDone {
                     if store.entries.isEmpty {
                         showFirstRun = true
@@ -613,7 +618,8 @@ struct LogView: View {
                 guard adSettings.enabled, adSettings.bpEnabled, let v = Int(bpText), (60...300).contains(v) else { return nil }
                 return v
             }(),
-            stoolAmount: bowel ? stoolAmount : nil
+            stoolAmount: bowel ? stoolAmount : nil,
+            catheterSort: (Int(urineMl) ?? 0) > 0 ? activeCatheterSort : nil
         ))
         // store.add(...) startet die Live Activity bereits selbst.
         // Erinnerung nur neu takten, wenn wirklich die Blase entleert wurde —
@@ -626,6 +632,66 @@ struct LogView: View {
     }
 
     // MARK: - Schnellerfassung (Scheibe 1)
+
+    /// Nur bei >1 Sorte relevant: Name für neue Blaseneinträge, sonst nil.
+    private var activeCatheterSort: String? {
+        catheterSortNames.count > 1 ? selectedCatheterSort : nil
+    }
+
+    /// Chips zur Sortenwahl — erscheinen erst ab zwei angelegten Sorten.
+    /// Die Auswahl bleibt für Folge-Einträge stehen (praktisch für Unterwegs-Tage)
+    /// und wird als lastUsedSortId gemerkt (Vorbelegung beim nächsten Start).
+    @ViewBuilder private var catheterSortPicker: some View {
+        if catheterSortNames.count > 1 {
+            HStack(spacing: 8) {
+                Text(String(localized: "Katheter:"))
+                    .font(.caption)
+                    .foregroundStyle(Color.subtleText)
+                ForEach(catheterSortNames, id: \.self) { name in
+                    Button {
+                        selectedCatheterSort = name
+                        rememberCatheterSort(name)
+                    } label: {
+                        Text(name)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(selectedCatheterSort == name ? Color.accent : Color.pillBg,
+                                        in: Capsule())
+                            .foregroundStyle(selectedCatheterSort == name ? Color.pillActiveText : Color.primary)
+                            .overlay(Capsule().stroke(Color.pillBorder, lineWidth: selectedCatheterSort == name ? 0 : 0.5))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selectedCatheterSort == name ? .isSelected : [])
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 2)
+        }
+    }
+
+    private func refreshCatheterSorts() {
+        let cs = CatheterStock.load()
+        guard cs.enabled else { catheterSortNames = []; selectedCatheterSort = nil; return }
+        let sorts = cs.effectiveSorts
+        catheterSortNames = sorts.count > 1 ? sorts.map(\.name) : []
+        if catheterSortNames.count > 1 {
+            let lastName = sorts.first(where: { $0.id == cs.lastUsedSortId })?.name
+            if selectedCatheterSort == nil || !catheterSortNames.contains(selectedCatheterSort!) {
+                selectedCatheterSort = lastName ?? catheterSortNames.first
+            }
+        }
+    }
+
+    /// Schreibt direkt in den Speicher — bewusst nur lastUsedSortId
+    /// (die Settings-Kopie zeigt dieses Feld nicht, kein Fix5-Konflikt).
+    private func rememberCatheterSort(_ name: String) {
+        var cs = CatheterStock.load()
+        guard let id = cs.effectiveSorts.first(where: { $0.name == name })?.id else { return }
+        cs.lastUsedSortId = id
+        cs.save()
+    }
 
     private var detailFormToggle: some View {
         Button {
@@ -648,7 +714,8 @@ struct LogView: View {
         let entry = ToiletEntry(
             urineMl: urine,
             bowel: bowel,
-            drinkMl: drink > 0 ? drink : nil
+            drinkMl: drink > 0 ? drink : nil,
+            catheterSort: urine > 0 ? activeCatheterSort : nil
         )
         store.add(entry)
         // Gleiche Regel wie im Formular: nur echte Blaseneinträge takten neu.
@@ -697,7 +764,12 @@ struct LogView: View {
 
     private func updateTimeRemaining() {
         guard let last = store.lastBladderEntry else { timeRemaining = 0; return }
-        timeRemaining = max(0, TimeInterval(store.settings.intervalMinutes * 60) - Date.now.timeIntervalSince(last.timestamp))
+        // Ruhezeit-verschobene Fälligkeit — sonst meldet das Banner sich
+        // mitten in der Ruhezeit und läuft gegen eine andere Uhr als der Header.
+        let due = LiveActivityManager.quietAdjustedDueDate(start: last.timestamp,
+                                                           intervalMinutes: store.settings.intervalMinutes,
+                                                           settings: store.settings)
+        timeRemaining = max(0, due.timeIntervalSince(.now))
     }
 
     private func formatTime(_ s: TimeInterval) -> String {

@@ -168,6 +168,7 @@ struct EntryRow: View {
         if let ad = entry.adSigns, !ad.isEmpty { parts.append(String(localized: "Vegetativ: \(ad.map(\.label).joined(separator: ", "))")) }
         if let bp = entry.systolicBp { parts.append(String(localized: "RR \(bp)")) }
         if entry.bowel, let amount = entry.stoolAmount { parts.append("\(amount.emoji) \(amount.label)") }
+        if let sort = entry.catheterSort, !sort.isEmpty { parts.append(String(localized: "Katheter: \(sort)")) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -192,6 +193,8 @@ struct EditEntryView: View {
     @State private var adSigns: Set<AdSign>
     @State private var bpText: String
     @State private var stoolAmount: StoolAmount?
+    @State private var catheterSort: String?
+    @State private var catheterSortNames: [String] = []
 
     private enum NumField: Hashable { case urine, bp, drink }
     @FocusState private var numFocus: NumField?
@@ -232,6 +235,10 @@ struct EditEntryView: View {
         _adSigns = State(initialValue: Set(entry.adSigns ?? []))
         _bpText = State(initialValue: entry.systolicBp.map(String.init) ?? "")
         _stoolAmount = State(initialValue: entry.stoolAmount)
+        _catheterSort = State(initialValue: entry.catheterSort)
+        let cs = CatheterStock.load()
+        let names = cs.enabled ? cs.effectiveSorts.map(\.name) : []
+        _catheterSortNames = State(initialValue: names.count > 1 ? names : [])
     }
 
     private var quickValues: [Int] {
@@ -268,6 +275,30 @@ struct EditEntryView: View {
                         }
                     }
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
+                    if !catheterSortNames.isEmpty || catheterSort != nil {
+                        HStack(spacing: 8) {
+                            Text(String(localized: "Katheter:"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            ForEach(catheterSortNames.isEmpty ? [catheterSort ?? ""] : catheterSortNames, id: \.self) { name in
+                                Button {
+                                    catheterSort = (catheterSort == name) ? nil : name
+                                } label: {
+                                    Text(name)
+                                        .font(.caption.weight(.semibold))
+                                        .lineLimit(1)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(catheterSort == name ? Color.accent.opacity(0.15) : Color(.systemGroupedBackground),
+                                                    in: Capsule())
+                                        .foregroundStyle(catheterSort == name ? Color.accent : .secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
                 }
 
                 Section("Farbe des Urins") {
@@ -530,6 +561,7 @@ struct EditEntryView: View {
         updated.palpation = palpation
         updated.adSigns = adSigns.isEmpty ? nil : Array(adSigns)
         updated.stoolAmount = bowel ? stoolAmount : nil
+        updated.catheterSort = (Int(urineMl) ?? 0) > 0 ? catheterSort : nil
         updated.systolicBp = {
             guard let v = Int(bpText), (60...300).contains(v) else { return nil }
             return v

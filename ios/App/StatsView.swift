@@ -100,6 +100,7 @@ struct StatsView: View {
         let stock = CatheterStock.load()
         if stock.enabled {
             let count = stock.currentStock(entries: store.entries)
+            let sorts = stock.effectiveSorts
             HStack(spacing: 12) {
                 Image(systemName: "cross.vial.fill")
                     .font(.title3)
@@ -108,21 +109,51 @@ struct StatsView: View {
                     Text("\(count) Katheter im Bestand")
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
-                    if let days = stock.daysRemaining(entries: store.entries),
-                       let empty = stock.estimatedEmptyDate(entries: store.entries) {
-                        Text("Reicht etwa \(days) Tage — bis ca. \(empty.formatted(.dateTime.day().month()))")
-                            .font(.caption)
-                            .foregroundStyle(days <= stock.warnDays ? Color.red : Color.secondary)
+                    if sorts.count > 1 {
+                        // Eine Zeile je Sorte: Name, Bestand, Reichweite (rot wenn knapp)
+                        ForEach(sorts) { sort in
+                            let sCount = stock.stock(of: sort, entries: store.entries)
+                            let sDays = stock.daysRemaining(of: sort, entries: store.entries)
+                            HStack(spacing: 6) {
+                                Text(sort.name)
+                                    .font(.caption.weight(.semibold))
+                                    .lineLimit(1)
+                                Text("\(sCount) Stück")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                if let d = sDays {
+                                    Text(String(format: String(localized: "noch ~%lld Tage"), d))
+                                        .font(.caption)
+                                        .monospacedDigit()
+                                        .foregroundStyle(d <= stock.warnDays ? Color.red : Color.secondary)
+                                }
+                            }
+                            if sort.sizeCharriere != nil || sort.material != nil {
+                                Text([sort.sizeCharriere.map { "Ch \($0)" }, sort.material]
+                                    .compactMap { $0 }.joined(separator: " · "))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
                     } else {
-                        Text("Reichweite folgt nach ein paar Tagen mit Einträgen")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if stock.sizeCharriere != nil || stock.material != nil {
-                        Text([stock.sizeCharriere.map { "Ch \($0)" }, stock.material]
-                            .compactMap { $0 }.joined(separator: " · "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if let days = stock.daysRemaining(entries: store.entries),
+                           let empty = stock.estimatedEmptyDate(entries: store.entries) {
+                            Text("Reicht etwa \(days) Tage — bis ca. \(empty.formatted(.dateTime.day().month()))")
+                                .font(.caption)
+                                .foregroundStyle(days <= stock.warnDays ? Color.red : Color.secondary)
+                        } else {
+                            Text("Reichweite folgt nach ein paar Tagen mit Einträgen")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let first = sorts.first, first.sizeCharriere != nil || first.material != nil {
+                            Text([first.sizeCharriere.map { "Ch \($0)" }, first.material]
+                                .compactMap { $0 }.joined(separator: " · "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     if let days = stock.prescriptionDaysLeft, let date = stock.prescriptionDate {
                         if days >= 0 {

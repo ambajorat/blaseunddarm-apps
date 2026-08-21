@@ -25,7 +25,10 @@ struct TimerCard: View {
                     countdown(to: next, now: now)
                 }
             } else if let last = store.lastBladderEntry {
-                let due = last.timestamp.addingTimeInterval(TimeInterval(s.intervalMinutes * 60))
+                // Gleiche Fälligkeit wie Header/Live Activity: Ruhezeit verschiebt ans Ruhezeit-Ende.
+                let due = LiveActivityManager.quietAdjustedDueDate(start: last.timestamp,
+                                                                  intervalMinutes: s.intervalMinutes,
+                                                                  settings: s)
                 countdown(to: due, now: now)
                 Text(String(format: String(localized: "timer_interval_fmt"),
                             intervalLabel(s.intervalMinutes),

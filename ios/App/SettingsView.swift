@@ -14,16 +14,16 @@ struct SettingsView: View {
     @State private var showRestoreConfirm = false
     /// Fokus-Steuerung für die Ziffernblock-Felder — der numberPad hat
     /// keine Return-Taste, ohne das hier bleibt die Tastatur stehen.
-    private enum NumField: Hashable { case quick, drink, stock, delivery }
+    private enum NumField: Hashable { case quick, drink, stock(UUID), delivery(UUID) }
     @FocusState private var numFocus: NumField?
 
     @State private var newQuickValue = ""
     @State private var drink = DrinkSettings.load()
     @State private var newDrinkValue = ""
     @State private var catheter = CatheterStock.load()
-    @State private var deliveryValue = ""
+    @State private var deliveryInputs: [UUID: String] = [:]
     @State private var showFirstRunSheet = false
-    @State private var newStockValue = ""
+    @State private var stockInputs: [UUID: String] = [:]
     @State private var uti = UtiSettings.load()
     @State private var palp = PalpationSettings.load()
     @State private var ad = AdSettings.load()
@@ -481,103 +481,131 @@ struct SettingsView: View {
 
     // MARK: - Katheterbestand (optional)
 
+    /// Bedienzeilen für EINE Kathetersorte (Name, Bestand, Korrektur,
+    /// Packung, Lieferung, Ch, Material, Entfernen). Packungsgröße,
+    /// Warnschwelle und Rezept bleiben bewusst global (Andrés Modell).
+    @ViewBuilder private func catheterSortRows(_ sort: Binding<CatheterSort>) -> some View {
+        let id = sort.wrappedValue.id
+        TextField("Sortenname (z. B. Hersteller)", text: sort.name)
+            .font(.subheadline.weight(.semibold))
+
+        HStack {
+            Text("Aktueller Bestand")
+            Spacer()
+            Text("\(catheter.stock(of: sort.wrappedValue, entries: store.entries)) Stück")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        }
+
+        HStack {
+            TextField("Bestand eintragen", text: inputBinding($stockInputs, id))
+                .keyboardType(.numberPad)
+                .focused($numFocus, equals: .stock(id))
+            .toolbar { doneToolbar }
+
+            Button {
+                if let val = Int(stockInputs[id] ?? ""), val >= 0 {
+                    catheter.setStock(val, forSort: id)
+                    stockInputs[id] = ""
+                    numFocus = nil
+                }
+            } label: {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.accentBlue)
+                    .font(.title3)
+            }
+            .buttonStyle(.plain)
+            .disabled(Int(stockInputs[id] ?? "") == nil || Int(stockInputs[id] ?? "")! < 0)
+        }
+
+        Button {
+            catheter.addPack(forSort: id, entries: store.entries)
+        } label: {
+            Label("+1 Packung (\(catheter.packSize) Stück)", systemImage: "plus.circle.fill")
+        }
+
+        HStack {
+            TextField("Lieferung erfassen (Stück)", text: inputBinding($deliveryInputs, id))
+                .keyboardType(.numberPad)
+                .focused($numFocus, equals: .delivery(id))
+
+            Button {
+                if let val = Int(deliveryInputs[id] ?? ""), val > 0 {
+                    catheter.addDelivery(val, forSort: id, entries: store.entries)
+                    deliveryInputs[id] = ""
+                    numFocus = nil
+                }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(Color.accentBlue)
+                    .font(.title3)
+            }
+            .buttonStyle(.plain)
+            .disabled(Int(deliveryInputs[id] ?? "") == nil || Int(deliveryInputs[id] ?? "")! <= 0)
+        }
+
+        Stepper(value: Binding(get: { sort.wrappedValue.sizeCharriere ?? 12 },
+                               set: { sort.wrappedValue.sizeCharriere = $0 }), in: 6...24) {
+            HStack {
+                Text("Charrière (Ch)")
+                Spacer()
+                Text(sort.wrappedValue.sizeCharriere.map { "Ch \($0)" } ?? "—")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+        }
+
+        TextField("Material (z. B. hydrophil beschichtet)", text: Binding(
+            get: { sort.wrappedValue.material ?? "" },
+            set: { sort.wrappedValue.material = $0.isEmpty ? nil : $0 }))
+
+        if (catheter.sorts?.count ?? 0) > 1 {
+            Button(role: .destructive) {
+                catheter.sorts?.removeAll { $0.id == id }
+                if catheter.lastUsedSortId == id { catheter.lastUsedSortId = nil }
+                stockInputs[id] = nil
+                deliveryInputs[id] = nil
+            } label: {
+                Label("Sorte entfernen", systemImage: "minus.circle")
+            }
+        }
+
+        Divider()
+    }
+
+    private func inputBinding(_ dict: Binding<[UUID: String]>, _ id: UUID) -> Binding<String> {
+        Binding(get: { dict.wrappedValue[id] ?? "" },
+                set: { dict.wrappedValue[id] = $0 })
+    }
+
     private var catheterSection: some View {
         Section {
             Toggle(isOn: $catheter.enabled) {
                 Label("Katheterbestand verfolgen", systemImage: "cross.vial.fill")
             }
+            .onAppear {
+                if catheter.enabled && (catheter.sorts?.isEmpty ?? true) { catheter.ensureSorts() }
+            }
+            .onChange(of: catheter.enabled) { _, on in
+                if on && (catheter.sorts?.isEmpty ?? true) { catheter.ensureSorts() }
+            }
 
             if catheter.enabled {
-                HStack {
-                    Text("Aktueller Bestand")
-                    Spacer()
-                    Text("\(catheter.currentStock(entries: store.entries)) Stück")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack {
-                    TextField("Bestand eintragen", text: $newStockValue)
-                        .keyboardType(.numberPad)
-                        .focused($numFocus, equals: .stock)
-                    .toolbar { doneToolbar }
-
-                    Button {
-                        if let val = Int(newStockValue), val >= 0 {
-                            catheter.setStock(val)
-                            newStockValue = ""
-                            numFocus = nil
-                        }
-                    } label: {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(Color.accentBlue)
-                            .font(.title3)
+                // 4.11: Eine Karte je Sorte. Alt-Daten werden beim ersten
+                // Öffnen als "Sorte 1" festgeschrieben (ensureSorts via onAppear).
+                if let sortsBinding = Binding($catheter.sorts) {
+                    ForEach(sortsBinding) { $sort in
+                        catheterSortRows($sort)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(Int(newStockValue) == nil || Int(newStockValue)! < 0)
                 }
 
                 Button {
-                    catheter.addPack(entries: store.entries)
+                    catheter.ensureSorts()
+                    let n = (catheter.sorts?.count ?? 0) + 1
+                    catheter.sorts?.append(CatheterSort(name: "Sorte \(n)"))
                 } label: {
-                    Label("+1 Packung (\(catheter.packSize) Stück)", systemImage: "plus.circle.fill")
+                    Label("Sorte hinzufügen", systemImage: "plus.circle")
                 }
-
-                HStack {
-                    TextField("Lieferung erfassen (Stück)", text: $deliveryValue)
-                        .keyboardType(.numberPad)
-                        .focused($numFocus, equals: .delivery)
-
-                    Button {
-                        if let val = Int(deliveryValue), val > 0 {
-                            catheter.addDelivery(val, entries: store.entries)
-                            deliveryValue = ""
-                            numFocus = nil
-                        }
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundStyle(Color.accentBlue)
-                            .font(.title3)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(Int(deliveryValue) == nil || Int(deliveryValue)! <= 0)
-                }
-
-                Stepper(value: $catheter.packSize, in: 5...120, step: 5) {
-                    HStack {
-                        Text("Packungsgröße")
-                        Spacer()
-                        Text("\(catheter.packSize)")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Stepper(value: $catheter.warnDays, in: 3...30) {
-                    HStack {
-                        Text("Warnen unter")
-                        Spacer()
-                        Text("\(catheter.warnDays) Tagen")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-            
-                Stepper(value: Binding(get: { catheter.sizeCharriere ?? 12 },
-                                       set: { catheter.sizeCharriere = $0 }), in: 6...24) {
-                    HStack {
-                        Text("Charrière (Ch)")
-                        Spacer()
-                        Text(catheter.sizeCharriere.map { "Ch \($0)" } ?? "—")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                TextField("Material (z. B. hydrophil beschichtet)", text: Binding(
-                    get: { catheter.material ?? "" },
-                    set: { catheter.material = $0.isEmpty ? nil : $0 }))
 
                 Toggle(isOn: Binding(
                     get: { catheter.prescriptionDate != nil },
@@ -853,7 +881,7 @@ struct SettingsView: View {
     // MARK: - CSV Export
 
     private func exportCSV() {
-        var csv = "Datum;Uhrzeit;Urin_ml;Getrunken_ml;Stuhlgang;Notiz;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge\n"
+        var csv = "Datum;Uhrzeit;Urin_ml;Getrunken_ml;Stuhlgang;Notiz;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge;Kathetersorte\n"
         let df = DateFormatter()
         df.dateFormat = "dd.MM.yyyy"
         let tf = DateFormatter()
@@ -864,7 +892,7 @@ struct SettingsView: View {
             let syms = (e.symptoms ?? []).map(\.rawValue).joined(separator: ", ")
             let adS = (e.adSigns ?? []).map(\.rawValue).joined(separator: ", ")
             let bpS = e.systolicBp.map(String.init) ?? ""
-            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.drinkMl ?? 0);\(e.bowel ? "Ja" : "Nein");\(note);\(syms);\(e.palpation?.rawValue ?? "");\(adS);\(bpS);\(e.stoolAmount?.rawValue ?? "")\n"
+            csv += "\(df.string(from: e.timestamp));\(tf.string(from: e.timestamp));\(e.urineMl);\(e.drinkMl ?? 0);\(e.bowel ? "Ja" : "Nein");\(note);\(syms);\(e.palpation?.rawValue ?? "");\(adS);\(bpS);\(e.stoolAmount?.rawValue ?? "");\(e.catheterSort ?? "")\n"
         }
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("blasen_darm_protokoll.csv")
@@ -920,6 +948,7 @@ struct SettingsView: View {
         let adIdx = columns.firstIndex(where: { $0.contains("ad_zeichen") })
         let bpIdx = columns.firstIndex(where: { $0.contains("rr_syst") })
         let stoolIdx = columns.firstIndex(where: { $0.contains("stuhlmenge") })
+        let cathIdx = columns.firstIndex(where: { $0.contains("kathetersorte") })
 
         let df = DateFormatter()
         let dateFormats = ["dd.MM.yyyy", "yyyy-MM-dd", "d.M.yyyy", "dd/MM/yyyy"]
@@ -1003,7 +1032,13 @@ struct SettingsView: View {
                 stoolVal = StoolAmount(rawValue: fields[si].trimmingCharacters(in: .whitespaces))
             }
 
-            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note, drinkMl: drinkVal, symptoms: syms, palpation: palpVal, adSigns: adVals, systolicBp: bpVal, stoolAmount: stoolVal)
+            var cathVal: String? = nil
+            if let ci = cathIdx, ci < fields.count {
+                let s = fields[ci].trimmingCharacters(in: .whitespaces)
+                if !s.isEmpty { cathVal = s }
+            }
+
+            let entry = ToiletEntry(timestamp: date, urineMl: ml, bowel: bowel, note: note, drinkMl: drinkVal, symptoms: syms, palpation: palpVal, adSigns: adVals, systolicBp: bpVal, stoolAmount: stoolVal, catheterSort: cathVal)
             store.add(entry)
             imported += 1
         }
