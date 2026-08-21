@@ -486,8 +486,11 @@ struct SettingsView: View {
     /// Warnschwelle und Rezept bleiben bewusst global (Andrés Modell).
     @ViewBuilder private func catheterSortRows(_ sort: Binding<CatheterSort>) -> some View {
         let id = sort.wrappedValue.id
-        TextField("Sortenname (z. B. Hersteller)", text: sort.name)
-            .font(.subheadline.weight(.semibold))
+        HStack {
+            Text("Name")
+            TextField("z. B. Hersteller", text: sort.name)
+                .multilineTextAlignment(.trailing)
+        }
 
         HStack {
             Text("Aktueller Bestand")
@@ -570,7 +573,11 @@ struct SettingsView: View {
             }
         }
 
-        Divider()
+    }
+
+    private func sortTitle(_ id: UUID) -> String {
+        let idx = (catheter.sorts?.firstIndex(where: { $0.id == id }) ?? 0) + 1
+        return String(format: String(localized: "Sorte %lld"), idx)
     }
 
     private func inputBinding(_ dict: Binding<[UUID: String]>, _ id: UUID) -> Binding<String> {
@@ -578,7 +585,7 @@ struct SettingsView: View {
                 set: { dict.wrappedValue[id] = $0 })
     }
 
-    private var catheterSection: some View {
+    @ViewBuilder private var catheterSection: some View {
         Section {
             Toggle(isOn: $catheter.enabled) {
                 Label("Katheterbestand verfolgen", systemImage: "cross.vial.fill")
@@ -589,22 +596,55 @@ struct SettingsView: View {
             .onChange(of: catheter.enabled) { _, on in
                 if on && (catheter.sorts?.isEmpty ?? true) { catheter.ensureSorts() }
             }
+        } header: {
+            Text("Katheterbestand")
+        } footer: {
+            if !catheter.enabled {
+                Text(catheterFooterText)
+                    .font(.caption)
+            }
+        }
 
-            if catheter.enabled {
-                // 4.11: Eine Karte je Sorte. Alt-Daten werden beim ersten
-                // Öffnen als "Sorte 1" festgeschrieben (ensureSorts via onAppear).
-                if let sortsBinding = Binding($catheter.sorts) {
-                    ForEach(sortsBinding) { $sort in
+        if catheter.enabled {
+            // Eine eigene Sektion je Sorte — klare optische Trennung,
+            // Überschrift automatisch "Sorte 1"/"Sorte 2", Name als beschriftete Zeile.
+            if let sortsBinding = Binding($catheter.sorts) {
+                ForEach(sortsBinding) { $sort in
+                    Section {
                         catheterSortRows($sort)
+                    } header: {
+                        Text(sortTitle(sort.id))
                     }
                 }
+            }
 
+            Section {
                 Button {
                     catheter.ensureSorts()
                     let n = (catheter.sorts?.count ?? 0) + 1
                     catheter.sorts?.append(CatheterSort(name: "Sorte \(n)"))
                 } label: {
                     Label("Sorte hinzufügen", systemImage: "plus.circle")
+                }
+
+                Stepper(value: $catheter.packSize, in: 5...120, step: 5) {
+                    HStack {
+                        Text("Packungsgröße")
+                        Spacer()
+                        Text("\(catheter.packSize)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Stepper(value: $catheter.warnDays, in: 3...30) {
+                    HStack {
+                        Text("Warnen unter")
+                        Spacer()
+                        Text("\(catheter.warnDays) Tagen")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Toggle(isOn: Binding(
@@ -618,12 +658,12 @@ struct SettingsView: View {
                         get: { catheter.prescriptionDate ?? .now },
                         set: { catheter.prescriptionDate = $0 }), displayedComponents: .date)
                 }
+            } header: {
+                Text("Für alle Sorten")
+            } footer: {
+                Text(catheterFooterText)
+                    .font(.caption)
             }
-        } header: {
-            Text("Katheterbestand")
-        } footer: {
-            Text(catheterFooterText)
-                .font(.caption)
         }
     }
 
