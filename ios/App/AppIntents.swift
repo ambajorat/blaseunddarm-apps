@@ -5,6 +5,7 @@ import Foundation
 enum SiriUrineColor: String, AppEnum {
     case clear = "durchsichtig"
     case lightYellow = "hell gelb"
+    case yellow = "gelb"
     case darkYellow = "dunkel gelb"
     case cloudy = "trueb"
     case none = "keine"
@@ -13,6 +14,7 @@ enum SiriUrineColor: String, AppEnum {
     static var caseDisplayRepresentations: [SiriUrineColor: DisplayRepresentation] = [
         .clear: "Durchsichtig",
         .lightYellow: "Hell gelb",
+        .yellow: "Gelb",
         .darkYellow: "Dunkel gelb",
         .cloudy: "Trueb",
         .none: "Keine Angabe"
@@ -22,6 +24,7 @@ enum SiriUrineColor: String, AppEnum {
         switch self {
         case .clear: .clear
         case .lightYellow: .lightYellow
+        case .yellow: .yellow
         case .darkYellow: .darkYellow
         case .cloudy: .cloudy
         case .none: .none
@@ -176,7 +179,8 @@ struct TimerStatusIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = SharedDataStore.shared
-        guard let last = store.lastEntry else {
+        // Ab dem letzten BLASENEINTRAG rechnen — Trink-/Stuhl-Einträge takten nicht (Fix13).
+        guard let last = store.lastBladderEntry else {
             return .result(dialog: "Kein Eintrag vorhanden. Erfasse zuerst einen Toilettengang.")
         }
         let remaining: Int

@@ -92,7 +92,7 @@ final class LiveActivityManager {
             intervalMinutes: intervalMinutes,
             todayMl: todayMl,
             todayCount: todayCount,
-            dueDate: physDue,
+            dueDate: shifted,   // Fix15: die EINE ruhezeitbewusste Fälligkeit (wie App)
             quietEnd: shifted > physDue ? shifted : nil
         )
 
@@ -128,7 +128,7 @@ final class LiveActivityManager {
             intervalMinutes: intervalMinutes,
             todayMl: todayMl,
             todayCount: todayCount,
-            dueDate: physDue,
+            dueDate: shifted,   // Fix15: die EINE ruhezeitbewusste Fälligkeit (wie App)
             quietEnd: shifted > physDue ? shifted : nil
         )
         await activity.update(.init(state: state, staleDate: Self.nextStateChange(physDue: physDue, quietEnd: state.quietEnd)))

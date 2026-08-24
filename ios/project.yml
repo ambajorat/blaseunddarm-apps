@@ -139,6 +139,25 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
+  # ---------------------------------------------------------------
+  # Unit-Tests — Logik-Regressionen (Zählregeln, Timer, Migration).
+  # Laufen mit Cmd+U im Simulator; kein Gerät nötig.
+  # ---------------------------------------------------------------
+  BlaseUndDarmTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: BlaseUndDarm
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: blase-und-darm.Blase-und-Darm.Tests
+      GENERATE_INFOPLIST_FILE: YES
+      # PRODUCT_NAME der App ist "Blase und Darm" — XcodeGen wuerde den
+      # Host sonst aus dem Target-Namen raten (BlaseUndDarm.app, existiert nicht).
+      TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Blase und Darm.app/Blase und Darm"
+      BUNDLE_LOADER: "$(TEST_HOST)"
+
 schemes:
   BlaseUndDarm:
     build:
@@ -146,3 +165,7 @@ schemes:
         BlaseUndDarm: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - BlaseUndDarmTests

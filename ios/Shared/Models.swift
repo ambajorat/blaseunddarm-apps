@@ -4,6 +4,7 @@ enum UrineColor: String, Codable, CaseIterable, Identifiable {
     case none = "keine Angabe"
     case clear = "Durchsichtig"
     case lightYellow = "Hell gelb"
+    case yellow = "Gelb"
     case darkYellow = "Dunkel gelb"
     case cloudy = "Trüb"
 
@@ -13,7 +14,8 @@ enum UrineColor: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .none: "⚪️"
         case .clear: "💧"
-        case .lightYellow: "🟡"
+        case .lightYellow: "🍋"
+        case .yellow: "🟡"
         case .darkYellow: "🟠"
         case .cloudy: "🌫️"
         }
@@ -24,6 +26,7 @@ enum UrineColor: String, Codable, CaseIterable, Identifiable {
         case .none: String(localized: "color_none")
         case .clear: String(localized: "color_clear")
         case .lightYellow: String(localized: "color_light")
+        case .yellow: String(localized: "color_yellow")
         case .darkYellow: String(localized: "color_dark")
         case .cloudy: String(localized: "color_cloudy")
         }
@@ -270,6 +273,8 @@ struct DaySummary: Identifiable {
 
     var totalMl: Int { entries.reduce(0) { $0 + $1.urineMl } }
     var count: Int { entries.count }
+    /// Echte Toilettengänge (Urin oder Stuhl) — reine Trink-/Symptom-Einträge zählen nicht.
+    var visitCount: Int { entries.filter { $0.urineMl > 0 || $0.bowel }.count }
     var bowelCount: Int { entries.filter(\.bowel).count }
 }
 

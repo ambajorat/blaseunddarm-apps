@@ -30,9 +30,19 @@ struct ToiletTimerLiveActivity: Widget {
             // Lock Screen / Banner view
             let due = context.state.dueDate
             let quietEnd = context.state.quietEnd
-            let now = Date.now
-            let inQuietWindow = due <= now && (quietEnd.map { now < $0 } ?? false)
-            let overdue = due <= now && !inQuietWindow
+            // +1 s Toleranz: das staleDate-Re-Rendering feuert oft Millisekunden
+            // VOR dem Zielzeitpunkt — ohne Toleranz friert der Snapshot im alten
+            // Zustand ein (orange trotz überfällig). context.isStale bestätigt
+            // zusätzlich explizit den erreichten Wechselpunkt (Fix14).
+            let now = Date.now.addingTimeInterval(1)
+            // dueDate ist seit Fix15 die RUHEZEITBEWUSSTE Fälligkeit — dieselbe
+            // Zahl wie im App-Header. isStale taugt mit zwei Wechselpunkten
+            // (rohe Fälligkeit -> Mond, Ruhe-Ende -> rot) nicht mehr als
+            // Erreicht-Signal; die 1-s-Toleranz auf now trägt allein (Fix14/15).
+            let reached = due <= now
+            let physDue = context.state.startTime.addingTimeInterval(TimeInterval(context.state.intervalMinutes * 60))
+            let inQuietWindow = !reached && quietEnd != nil && physDue <= now
+            let overdue = reached
             // Ab wann "überfällig" zählt: nach Ruhezeit ab deren Ende, sonst ab Fälligkeit
             let overdueAnchor = quietEnd ?? due
 
@@ -83,9 +93,19 @@ struct ToiletTimerLiveActivity: Widget {
         } dynamicIsland: { context in
             let due = context.state.dueDate
             let quietEnd = context.state.quietEnd
-            let now = Date.now
-            let inQuietWindow = due <= now && (quietEnd.map { now < $0 } ?? false)
-            let overdue = due <= now && !inQuietWindow
+            // +1 s Toleranz: das staleDate-Re-Rendering feuert oft Millisekunden
+            // VOR dem Zielzeitpunkt — ohne Toleranz friert der Snapshot im alten
+            // Zustand ein (orange trotz überfällig). context.isStale bestätigt
+            // zusätzlich explizit den erreichten Wechselpunkt (Fix14).
+            let now = Date.now.addingTimeInterval(1)
+            // dueDate ist seit Fix15 die RUHEZEITBEWUSSTE Fälligkeit — dieselbe
+            // Zahl wie im App-Header. isStale taugt mit zwei Wechselpunkten
+            // (rohe Fälligkeit -> Mond, Ruhe-Ende -> rot) nicht mehr als
+            // Erreicht-Signal; die 1-s-Toleranz auf now trägt allein (Fix14/15).
+            let reached = due <= now
+            let physDue = context.state.startTime.addingTimeInterval(TimeInterval(context.state.intervalMinutes * 60))
+            let inQuietWindow = !reached && quietEnd != nil && physDue <= now
+            let overdue = reached
 
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {

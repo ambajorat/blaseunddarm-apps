@@ -30,7 +30,13 @@ enum AlertEngine {
 
     // MARK: Baseline
 
-    /// Ø der letzten 14 vollen Tage (ohne heute), nur Tage mit Einträgen.
+    /// Nur echte Blasenentleerungen — reine Trink-/Symptom-Einträge zählen
+    /// nicht als Gang (gleiche Definition wie in der SuggestionEngine).
+    private static func voids(_ entries: [ToiletEntry]) -> [ToiletEntry] {
+        entries.filter { $0.urineMl > 0 }
+    }
+
+    /// Ø der letzten 14 vollen Tage (ohne heute), nur Tage mit Blaseneinträgen.
     /// Mindestens 5 Datentage, sonst keine Baseline.
     static func baseline(entries: [ToiletEntry]) -> Baseline? {
         let cal = Calendar.current
@@ -39,10 +45,10 @@ enum AlertEngine {
         var counts: [Int] = []
         for i in 1...14 {
             guard let day = cal.date(byAdding: .day, value: -i, to: today) else { continue }
-            let dayEntries = entries.filter { cal.isDate($0.timestamp, inSameDayAs: day) }
-            guard !dayEntries.isEmpty else { continue }
-            mlValues.append(dayEntries.reduce(0) { $0 + $1.urineMl })
-            counts.append(dayEntries.count)
+            let dayVoids = voids(entries.filter { cal.isDate($0.timestamp, inSameDayAs: day) })
+            guard !dayVoids.isEmpty else { continue }
+            mlValues.append(dayVoids.reduce(0) { $0 + $1.urineMl })
+            counts.append(dayVoids.count)
         }
         guard mlValues.count >= 5 else { return nil }
         return Baseline(
@@ -72,7 +78,7 @@ enum AlertEngine {
     /// "Unter" und Abweichungen nach unten bewerten den ABGESCHLOSSENEN Vortag.
     static func checkDay(entries: [ToiletEntry], settings: AlertSettings = .load()) {
         let cal = Calendar.current
-        let today = entries.filter { cal.isDateInToday($0.timestamp) }
+        let today = voids(entries.filter { cal.isDateInToday($0.timestamp) })
         let ml = today.reduce(0) { $0 + $1.urineMl }
         let count = today.count
         let dateKey = Date.now.formatted(.iso8601.year().month().day())
@@ -110,7 +116,7 @@ enum AlertEngine {
         // Check des Tages; Vortage ganz ohne Einträge werden übersprungen
         // (App-Pause ist kein "zu wenig").
         guard cal.component(.hour, from: .now) >= morningCheckHour else { return }
-        let yesterday = entries.filter { cal.isDateInYesterday($0.timestamp) }
+        let yesterday = voids(entries.filter { cal.isDateInYesterday($0.timestamp) })
         guard !yesterday.isEmpty else { return }
         let yMl = yesterday.reduce(0) { $0 + $1.urineMl }
         let yCount = yesterday.count
@@ -249,7 +255,7 @@ enum AlertEngine {
 
     static func statusList(entries: [ToiletEntry], settings: AlertSettings) -> [RuleStatus] {
         let cal = Calendar.current
-        let today = entries.filter { cal.isDateInToday($0.timestamp) }
+        let today = voids(entries.filter { cal.isDateInToday($0.timestamp) })
         let ml = today.reduce(0) { $0 + $1.urineMl }
         let count = today.count
         let maxSingle = today.map(\.urineMl).max() ?? 0

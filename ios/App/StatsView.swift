@@ -26,9 +26,9 @@ struct StatsView: View {
     @State private var range: TimeRange = .week
 
     private var summaries: [DaySummary] { store.entries.summariesForRange(days: range.days) }
-    private var activeDays: [DaySummary] { summaries.filter { $0.count > 0 } }
+    private var activeDays: [DaySummary] { summaries.filter { $0.visitCount > 0 } }
     private var avgMl: Int { guard !activeDays.isEmpty else { return 0 }; return activeDays.reduce(0) { $0 + $1.totalMl } / activeDays.count }
-    private var avgCount: Double { guard !activeDays.isEmpty else { return 0 }; return Double(activeDays.reduce(0) { $0 + $1.count }) / Double(activeDays.count) }
+    private var avgCount: Double { guard !activeDays.isEmpty else { return 0 }; return Double(activeDays.reduce(0) { $0 + $1.visitCount }) / Double(activeDays.count) }
     private var avgBowel: Double { let w = activeDays.filter { $0.bowelCount > 0 }; guard !w.isEmpty else { return 0 }; return Double(w.reduce(0) { $0 + $1.bowelCount }) / Double(w.count) }
 
     private var xAxisStride: Calendar.Component {
@@ -448,7 +448,7 @@ struct StatsView: View {
             Chart(summaries) { day in
                 // Nebeneinander statt gestapelt — die Stapelung mischte
                 // Urin- und Stuhl-Gänge und widersprach der Tagesübersicht.
-                BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Anzahl", day.count))
+                BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Anzahl", day.visitCount))
                     .foregroundStyle(Color.accent.gradient).cornerRadius(2)
                     .position(by: .value("Art", "gesamt"))
                 if day.bowelCount > 0 {
@@ -484,7 +484,7 @@ struct StatsView: View {
                     HStack {
                         Text(day.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))).frame(maxWidth: .infinity, alignment: .leading)
                         Text("\(day.totalMl) ml").foregroundStyle(Color.accent).fontWeight(.semibold).frame(width: 60, alignment: .trailing)
-                        Text("\(day.count)").fontWeight(.semibold).frame(width: 42, alignment: .trailing)
+                        Text("\(day.visitCount)").fontWeight(.semibold).frame(width: 42, alignment: .trailing)
                         Text("\(day.bowelCount)").foregroundStyle(Color.bowel).fontWeight(.semibold).frame(width: 42, alignment: .trailing)
                     }.font(.caption).monospacedDigit().padding(.vertical, 5)
                     Divider()
@@ -588,7 +588,7 @@ struct StatsView: View {
             "Erstellt:".draw(at: CGPoint(x: m, y: y), withAttributes: boldInfoAttrs)
             df.string(from: .now).draw(at: CGPoint(x: m + 70, y: y), withAttributes: infoAttrs)
             "Einträge gesamt:".draw(at: CGPoint(x: 300, y: y), withAttributes: boldInfoAttrs)
-            "\(summaries.reduce(0) { $0 + $1.count })".draw(at: CGPoint(x: 410, y: y), withAttributes: infoAttrs)
+            "\(summaries.reduce(0) { $0 + $1.visitCount })".draw(at: CGPoint(x: 410, y: y), withAttributes: infoAttrs)
             y += 30
 
             drawLine(at: y)
@@ -675,7 +675,7 @@ struct StatsView: View {
 
                 df.string(from: day.date).draw(at: CGPoint(x: m + 8, y: y), withAttributes: tdAttrs)
                 "\(day.totalMl)".draw(at: CGPoint(x: 180, y: y), withAttributes: tdBold)
-                "\(day.count)".draw(at: CGPoint(x: 280, y: y), withAttributes: tdAttrs)
+                "\(day.visitCount)".draw(at: CGPoint(x: 280, y: y), withAttributes: tdAttrs)
                 "\(day.bowelCount)".draw(at: CGPoint(x: 360, y: y), withAttributes: tdPurple)
 
                 // Color summary
@@ -778,7 +778,7 @@ struct StatsView: View {
         csv += "\nTagesübersicht\n"
         csv += "Datum;Urin_ml;Gänge;Stuhlgang\n"
         for day in activeDays {
-            csv += "\(df.string(from: day.date));\(day.totalMl);\(day.count);\(day.bowelCount)\n"
+            csv += "\(df.string(from: day.date));\(day.totalMl);\(day.visitCount);\(day.bowelCount)\n"
         }
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("Blase_Darm_Export_\(df.string(from: .now)).csv")

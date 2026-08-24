@@ -1,17 +1,18 @@
-BDM-411-Fix10-HinweisText — App/AlertsView.swift + App/Localizable.xcstrings
-(kumulativ NACH Fix6–Fix9; die xcstrings ERSETZT den Fix8-Stand und enthält
-dessen Änderungen sowie die Fix6-Plurale)
+BDM-411-Fix17-ErinnerungHeilen — nur App/BladderBowelManagerApp.swift
+(kumulativ NACH Fix13/Fix16; kompletter 4.11-Stand der Datei)
 
-Andrés Screenshot 01:17: Der Erklärtext im Hinweise-Reiter sagte noch
-"prüft die App ab 18 Uhr" — seit Fix8 bewerten die Unter-Checks aber den
-abgeschlossenen Vortag. Text jetzt: "... bewertet die App für den
-abgeschlossenen Vortag — morgens beim ersten Eintrag oder Öffnen. Ein
-laufender Tag wird nie als 'zu wenig' gewertet." (DE+EN)
+Andrés Fund 24.08. früh: Die 07:00-Erinnerung kam nicht. Ursache: geplant
+wird nur beim Eintrag — und der Xcode-Build am Morgen ist eine
+NEUINSTALLATION, die alle anstehenden Mitteilungen entfernt (im
+Store-Alltag passiert das bei Updates nicht, wohl aber z. B. nach
+Backup-Restore). Fix: Beim Aktivwerden der App wird die Erinnerung aus
+letztem Blaseneintrag + Intervall neu geplant — idempotent (fester
+Identifier ersetzt die bestehende Planung), überfällig bleibt still,
+Wecker-Modus plant seine festen Zeiten über die vorhandene Weiche.
 
 Einspielen (vom ios-Ordner):
-  unzip -o ~/Downloads/BDM-411-Fix10-HinweisText.zip
-Preflight-greps:
-  grep -c "abgeschlossenen Vortag" App/AlertsView.swift  -> 1
-  grep -c "ab 18 Uhr\|underCheckHour) Uhr" App/AlertsView.swift -> 0
-Katalog-Zählung: 472 (zwei Alt-Varianten raus, ein neuer Key rein).
-Test: Hinweise-Reiter unten — Text nennt den Vortag, kein "18 Uhr" mehr.
+  unzip -o ~/Downloads/BDM-411-Fix17-ErinnerungHeilen.zip
+Preflight-grep:
+  grep -c "rescheduleReminder" App/BladderBowelManagerApp.swift  -> 1
+Test: bauen, App öffnen, sofort schließen — die nächste Erinnerung muss
+trotz des frischen Builds pünktlich kommen.
