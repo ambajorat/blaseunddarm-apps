@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.focus.onFocusChanged
 import de.bajorat.blaseunddarm.data.*
+import de.bajorat.blaseunddarm.data.ProductCategory
 import de.bajorat.blaseunddarm.notification.FixedTimeMath
 import kotlinx.coroutines.delay
 import java.time.Duration
@@ -311,7 +312,12 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
                 // Medikamente (2.5, optional)
                 if (medSettings.enabled && medSettings.medications.isNotEmpty()) {
-                    Text(tr("Medikamente"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("Medikamente"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                        ScanButton(category = ProductCategory.medication) { result ->
+                            selectedMeds = selectedMeds + result.name
+                        }
+                    }
                     Spacer(Modifier.height(6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         medSettings.medications.filter { it.name.isNotBlank() }.forEach { med ->

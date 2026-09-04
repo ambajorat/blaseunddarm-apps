@@ -287,6 +287,19 @@ object I18n {
         "Dein Schnitt ({0} Tage): {1} ml · {2} Gänge" to "Your average ({0} days): {1} ml · {2} visits",
         "Grenzen nach unten und Abweichungen unter den Schnitt prüft die App ab {0} Uhr — der tägliche Abend-Check läuft automatisch im Hintergrund.\n\nDiese Hinweise ersetzen keine ärztliche Beratung." to "Lower limits and below-average deviations are checked from {0}:00 — the daily evening check runs automatically in the background.\n\nThese alerts do not replace medical advice.",
         "Reicht etwa {0} Tage — bis ca. {1}" to "Lasts about {0} days — until approx. {1}",
+        "Packung scannen" to "Scan package",
+        "Bekannte Packung" to "Known package",
+        "Übernehmen" to "Use",
+        "Packung in die Kamera halten" to "Point camera at package",
+        "Text und Barcodes werden automatisch erkannt." to "Text and barcodes are detected automatically.",
+        "Erkannten Text antippen, um ihn zu übernehmen:" to "Tap recognized text to use it:",
+        "Kamera nicht verfügbar" to "Camera not available",
+        "Erlaube den Kamerazugriff in den Geräteeinstellungen, um Packungen zu scannen." to "Allow camera access in device settings to scan packages.",
+        "Gescannte Packungen" to "Scanned packages",
+        "Noch keine Scans" to "No scans yet",
+        "Gescannte Packungen erscheinen hier und werden beim nächsten Mal automatisch erkannt." to "Scanned packages appear here and are recognized automatically next time.",
+        "Katheter" to "Catheters",
+        "{0} Produkte im Katalog" to "{0} products in catalog",
     )
     val isGerman: Boolean get() = Locale.getDefault().language == "de"
     fun t(s: String): String = if (isGerman) s else en[s] ?: s

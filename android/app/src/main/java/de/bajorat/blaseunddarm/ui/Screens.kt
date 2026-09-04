@@ -634,6 +634,9 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("Katheterbestand"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    if (catheter.enabled) {
+                        ScanButton(category = ProductCategory.catheter) { /* Katalog füllen */ }
+                    }
                     Switch(checked = catheter.enabled, onCheckedChange = {
                         catheter = catheter.copy(enabled = it); catheter.save(context)
                     })
@@ -804,9 +807,14 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                         HorizontalDivider()
                     }
                     Spacer(Modifier.height(6.dp))
-                    TextButton(onClick = {
-                        medUpdate(medS.copy(medications = medS.medications + Medication(times = listOf(480))))
-                    }) { Text(tr("Medikament hinzufügen"), fontSize = 13.sp) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = {
+                            medUpdate(medS.copy(medications = medS.medications + Medication(times = listOf(480))))
+                        }) { Text(tr("Medikament hinzufügen"), fontSize = 13.sp) }
+                        ScanButton(category = ProductCategory.medication) { result ->
+                            medUpdate(medS.copy(medications = medS.medications + Medication(name = result.name, times = listOf(480))))
+                        }
+                    }
                     Text(
                         tr("Beim Erfassen antippen, was genommen wurde. Erinnerungen kommen täglich zu den festen Zeiten, auch in der Ruhezeit. Ohne Zeiten: Bedarfsmedikament."),
                         fontSize = 12.sp,
@@ -814,6 +822,26 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                     )
                 }
             }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Gescannte Packungen (Katalog)
+        var showCatalog by remember { mutableStateOf(false) }
+        val catalogCount = remember(showCatalog) { ProductCatalog.load(context).products.size }
+        Card(modifier = Modifier.fillMaxWidth(), onClick = { showCatalog = true }) {
+            Column(Modifier.padding(16.dp)) {
+                Text(tr("Gescannte Packungen"), fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    if (catalogCount == 0) tr("Noch keine Scans")
+                    else trf("{0} Produkte im Katalog", catalogCount),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        if (showCatalog) {
+            FullScreenCatalogDialog(onDismiss = { showCatalog = false })
         }
         Spacer(Modifier.height(12.dp))
 
@@ -939,5 +967,20 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
             text = { Text(trf("{0} Einträge werden unwiderruflich gelöscht.", entries.size)) },
             confirmButton = { TextButton(onClick = { dataStore.deleteAll(); showDeleteConfirm = false }) { Text(tr("Löschen"), color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text(tr("Abbrechen")) } })
+    }
+}
+
+@Composable
+private fun FullScreenCatalogDialog(onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Surface(Modifier.fillMaxSize()) {
+            ProductCatalogScreen(onBack = onDismiss)
+        }
     }
 }
