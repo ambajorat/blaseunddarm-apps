@@ -171,9 +171,14 @@ struct CatheterStock: Codable, Equatable {
         return cal.dateComponents([.day], from: cal.startOfDay(for: .now), to: cal.startOfDay(for: date)).day
     }
 
-    /// Kleinste Sorten-Reichweite (die knappste Sorte bestimmt die Warnung).
+    /// Gesamtreichweite: Gesamtbestand aller Sorten ÷ Gesamt-Verbrauch/Tag.
+    /// Vor 4.14 wurde hier die KLEINSTE Sorten-Reichweite genommen — das war
+    /// falsch, weil `belongs()` Einträge ohne Sortenname der ersten Sorte
+    /// zuordnet und die dadurch den gesamten Verbrauch abbekommt, während die
+    /// anderen Sorten rechnerisch nie leer werden.
     func daysRemaining(entries: [ToiletEntry]) -> Int? {
-        effectiveSorts.compactMap { daysRemaining(of: $0, entries: entries) }.min()
+        guard let usage = dailyUsage(entries: entries), usage > 0 else { return nil }
+        return Int(Double(currentStock(entries: entries)) / usage)
     }
 
     func estimatedEmptyDate(entries: [ToiletEntry]) -> Date? {

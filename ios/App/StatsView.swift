@@ -110,10 +110,11 @@ struct StatsView: View {
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
                     if sorts.count > 1 {
-                        // Eine Zeile je Sorte: Name, Bestand, Reichweite (rot wenn knapp)
+                        // Eine Zeile je Sorte: Name + Bestand (ohne per-Sorte-Tage,
+                        // weil die Zuordnung über belongs() unzuverlässig ist, wenn
+                        // Einträge keinen Sortennamen tragen).
                         ForEach(sorts) { sort in
                             let sCount = stock.stock(of: sort, entries: store.entries)
-                            let sDays = stock.daysRemaining(of: sort, entries: store.entries)
                             HStack(spacing: 6) {
                                 Text(sort.name)
                                     .font(.caption.weight(.semibold))
@@ -123,12 +124,6 @@ struct StatsView: View {
                                     .monospacedDigit()
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                if let d = sDays {
-                                    Text(String(format: String(localized: "noch ~%lld Tage"), d))
-                                        .font(.caption)
-                                        .monospacedDigit()
-                                        .foregroundStyle(d <= stock.warnDays ? Color.red : Color.secondary)
-                                }
                             }
                             if sort.sizeCharriere != nil || sort.material != nil {
                                 Text([sort.sizeCharriere.map { "Ch \($0)" }, sort.material]
@@ -136,6 +131,13 @@ struct StatsView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
+                        }
+                        // Gesamt-Reichweite über alle Sorten
+                        if let days = stock.daysRemaining(entries: store.entries),
+                           let empty = stock.estimatedEmptyDate(entries: store.entries) {
+                            Text("Reicht insgesamt etwa \(days) Tage — bis ca. \(empty.formatted(.dateTime.day().month()))")
+                                .font(.caption)
+                                .foregroundStyle(days <= stock.warnDays ? Color.red : Color.secondary)
                         }
                     } else {
                         if let days = stock.daysRemaining(entries: store.entries),

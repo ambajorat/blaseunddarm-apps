@@ -222,33 +222,21 @@ enum AlertEngine {
 
     // MARK: Katheterbestand
 
-    /// Warnt einmal am Tag, wenn die rechnerische Reichweite unter die
-    /// eingestellte Grenze fällt. Eigene Settings (CatheterStock), damit
-    /// AlertSettings von Bestandsnutzern unangetastet bleiben.
+    /// Warnt einmal am Tag, wenn die GESAMT-Reichweite (alle Sorten addiert)
+    /// unter die eingestellte Grenze fällt.
     static func checkCatheterStock(entries: [ToiletEntry], dateKey: String, stock: CatheterStock = .load()) {
         guard stock.enabled else { return }
-        let sorts = stock.effectiveSorts
-        for sort in sorts {
-            guard let days = stock.daysRemaining(of: sort, entries: entries), days <= stock.warnDays else { continue }
-            let count = stock.stock(of: sort, entries: entries)
-            let body: String
-            if sorts.count > 1 {
-                if let empty = stock.estimatedEmptyDate(of: sort, entries: entries) {
-                    body = String(localized: "Noch \(count) Katheter (\(sort.name)) — reicht etwa bis \(empty.formatted(.dateTime.day().month())). Zeit fürs Rezept.")
-                } else {
-                    body = String(localized: "Noch \(count) Katheter (\(sort.name)). Zeit fürs Rezept.")
-                }
-            } else {
-                if let empty = stock.estimatedEmptyDate(of: sort, entries: entries) {
-                    body = String(localized: "Noch \(count) Katheter — reicht etwa bis \(empty.formatted(.dateTime.day().month())). Zeit fürs Rezept.")
-                } else {
-                    body = String(localized: "Noch \(count) Katheter. Zeit fürs Rezept.")
-                }
-            }
-            notifyOnce(rule: "cathLow_\(dateKey)_\(sort.name)",
-                       title: String(localized: "Katheter werden knapp"),
-                       body: body)
+        guard let days = stock.daysRemaining(entries: entries), days <= stock.warnDays else { return }
+        let count = stock.currentStock(entries: entries)
+        let body: String
+        if let empty = stock.estimatedEmptyDate(entries: entries) {
+            body = String(localized: "Noch \(count) Katheter — reicht etwa bis \(empty.formatted(.dateTime.day().month())). Zeit fürs Rezept.")
+        } else {
+            body = String(localized: "Noch \(count) Katheter. Zeit fürs Rezept.")
         }
+        notifyOnce(rule: "cathLow_\(dateKey)",
+                   title: String(localized: "Katheter werden knapp"),
+                   body: body)
     }
 
     // MARK: Status-Liste für den Hinweise-Reiter
