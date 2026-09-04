@@ -8,7 +8,8 @@ import java.util.UUID
 enum class UrineColor(val label: String, val emoji: String) {
     NONE("", ""),
     CLEAR("Durchsichtig", "💧"),
-    LIGHT_YELLOW("Hell gelb", "🟡"),
+    LIGHT_YELLOW("Hell gelb", "🍋"),
+    YELLOW("Gelb", "🟡"),
     DARK_YELLOW("Dunkel gelb", "🟠"),
     CLOUDY("Trüb", "🌫️");
 
@@ -78,7 +79,9 @@ data class ToiletEntry(
     val palpation: String = "",
     val adSigns: List<String> = emptyList(),
     val systolicBp: Int = 0,
-    val stoolAmount: String = ""
+    val stoolAmount: String = "",
+    // Namen der genommenen Medikamente (2.5); kotlinx-Default = decoding-sicher.
+    val medications: List<String> = emptyList()
 ) {
     val utiSymptoms: List<UtiSymptom>
         get() = symptoms.mapNotNull { runCatching { UtiSymptom.valueOf(it) }.getOrNull() }
@@ -100,7 +103,11 @@ data class AppSettings(
     val quickValues: List<Int> = listOf(100, 200, 300, 400, 500),
     val quietHoursEnabled: Boolean = true,
     val quietFrom: Int = 22,
-    val quietTo: Int = 6
+    val quietTo: Int = 6,
+    // Wecker-Modus (iOS-4.7-Parität): feste Uhrzeiten als Minuten seit
+    // Mitternacht; kotlinx-Defaults halten Alt-Daten decoding-sicher.
+    val useFixedTimes: Boolean = false,
+    val fixedTimes: List<Int> = listOf(480, 720, 960, 1200)
 ) {
     fun isInQuietHours(): Boolean {
         val hour = LocalDateTime.now().hour

@@ -12,6 +12,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private let center = UNUserNotificationCenter.current()
     private let categoryID = "TOILET_REMINDER"
     static let reminderID = "toilet_reminder"
+    static let medReminderPrefix = "med_"
     private var audioPlayer: AVAudioPlayer?
 
     override init() {
@@ -71,6 +72,33 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     // MARK: - Schedule
+
+    /// Plant alle Einnahme-Erinnerungen neu (täglich wiederholende
+    /// Kalender-Trigger je Medikament und Uhrzeit). Bewusst OHNE
+    /// Ruhezeit-Verschiebung: feste Einnahmezeiten haben Vorrang.
+    static func rescheduleMedicationReminders(settings: MedicationSettings) {
+        let center = UNUserNotificationCenter.current()
+        center.getPendingNotificationRequests { requests in
+            let old = requests.map(\.identifier).filter { $0.hasPrefix(medReminderPrefix) }
+            if !old.isEmpty { center.removePendingNotificationRequests(withIdentifiers: old) }
+            guard settings.enabled else { return }
+            for med in settings.medications where med.remindersEnabled && !med.name.trimmingCharacters(in: .whitespaces).isEmpty {
+                for minutes in med.times {
+                    var comps = DateComponents()
+                    comps.hour = minutes / 60
+                    comps.minute = minutes % 60
+                    let content = UNMutableNotificationContent()
+                    content.title = "\u{1F48A} " + med.name
+                    content.body = String(localized: "Zeit für die Einnahme.")
+                    content.sound = .default
+                    content.interruptionLevel = .timeSensitive
+                    let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+                    let id = "\(medReminderPrefix)\(med.id.uuidString)_\(minutes)"
+                    center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+                }
+            }
+        }
+    }
 
     func scheduleReminder(afterMinutes minutes: Int, settings: AppSettings? = nil) {
         Self.rescheduleReminder(afterMinutes: minutes, settings: settings)

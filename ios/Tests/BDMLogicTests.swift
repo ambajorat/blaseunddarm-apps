@@ -176,6 +176,19 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertEqual(SiriUrineColor.yellow.toUrineColor, .yellow)
     }
 
+    // MARK: - 4.12: Medikamente
+
+    func testMedikamentenRoundtripUndAltdaten() throws {
+        var s = MedicationSettings()
+        s.enabled = true
+        s.medications = [Medication(name: "Oxybutynin 5 mg", times: [480, 1200])]
+        let back = try JSONDecoder().decode(MedicationSettings.self, from: JSONEncoder().encode(s))
+        XCTAssertEqual(back, s, "Einstellungen überleben den Roundtrip")
+        let entry = ToiletEntry(urineMl: 100, medications: ["Baclofen"])
+        let e2 = try JSONDecoder().decode(ToiletEntry.self, from: JSONEncoder().encode(entry))
+        XCTAssertEqual(e2.medications, ["Baclofen"])
+    }
+
     // MARK: - Datenmodell: Alt-Einträge decodieren ohne die neuen Felder
 
     func testAltEintragDecodiertOhneNeueFelder() throws {
@@ -183,7 +196,7 @@ final class BDMLogicTests: XCTestCase {
         var dict = try JSONSerialization.jsonObject(
             with: JSONEncoder().encode(full)) as! [String: Any]
         for key in ["drinkMl", "symptoms", "palpation", "adSigns",
-                    "systolicBp", "stoolAmount", "catheterSort"] {
+                    "systolicBp", "stoolAmount", "catheterSort", "medications"] {
             dict.removeValue(forKey: key)                          // Stand alter Versionen
         }
         let data = try JSONSerialization.data(withJSONObject: dict)

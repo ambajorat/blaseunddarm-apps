@@ -622,6 +622,23 @@ struct StatsView: View {
             y += boxH + 25
 
             // Auffälligkeiten (HWI-Frühwarnung) — nur wenn im Zeitraum vorhanden
+            // Dauermedikation (4.12): aktive Medikamentenliste im Berichtskopf —
+            // PDF bleibt bewusst deutsch (Datenformat-Regel wie CSV).
+            let medSettings = MedicationSettings.load()
+            if medSettings.enabled && !medSettings.medications.isEmpty {
+                let medTitle: [NSAttributedString.Key: Any] = [.font: UIFont.boldSystemFont(ofSize: 14), .foregroundColor: inkColor]
+                "Medikation".draw(at: CGPoint(x: m, y: y), withAttributes: medTitle)
+                y += 20
+                let medLine: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 10), .foregroundColor: UIColor.darkGray]
+                for med in medSettings.medications where !med.name.trimmingCharacters(in: .whitespaces).isEmpty {
+                    let times = med.times.sorted().map { String(format: "%02d:%02d", $0 / 60, $0 % 60) }.joined(separator: ", ")
+                    let line = med.times.isEmpty ? "\(med.name) — bei Bedarf" : "\(med.name) — \(times) Uhr"
+                    line.draw(at: CGPoint(x: m + 4, y: y), withAttributes: medLine)
+                    y += 14
+                }
+                y += 10
+            }
+
             let rangeStart = Calendar.current.date(byAdding: .day, value: -range.days, to: .now) ?? .distantPast
             let symptomEntries = store.entries
                 .filter { $0.timestamp >= rangeStart && !($0.symptoms ?? []).isEmpty }
@@ -756,7 +773,7 @@ struct StatsView: View {
         let tf = DateFormatter()
         tf.dateFormat = "dd.MM.yyyy;HH:mm"
 
-        var csv = "Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz\n"
+        var csv = "Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Medikamente\n"
 
         // Individual entries (not just daily summaries)
         let allEntries = summaries.flatMap(\.entries).sorted { $0.timestamp > $1.timestamp }
@@ -766,7 +783,8 @@ struct StatsView: View {
             let bowelStr = entry.bowel ? "Ja" : "Nein"
             let bristol = entry.bristolType != .none ? entry.bristolType.label : ""
             let note = entry.note.replacingOccurrences(of: ";", with: ",")
-            csv += "\(dateTime);\(entry.urineMl);\(color);\(bowelStr);\(bristol);\(note)\n"
+            let meds = (entry.medications ?? []).joined(separator: ", ").replacingOccurrences(of: ";", with: ",")
+            csv += "\(dateTime);\(entry.urineMl);\(color);\(bowelStr);\(bristol);\(note);\(meds)\n"
         }
 
         // Add summary section

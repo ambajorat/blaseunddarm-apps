@@ -37,6 +37,8 @@ struct BladderBowelManagerApp: App {
                         // bestehende Planung mit derselben Zeit; überfällig bleibt
                         // still (Guard interval > 0); Wecker-Modus plant seine
                         // festen Zeiten über die eingebaute Weiche neu.
+                        // Einnahme-Erinnerungen mit-heilen (gleiches Reinstall-Risiko).
+                        NotificationManager.rescheduleMedicationReminders(settings: MedicationSettings.load())
                         if store.settings.reminderEnabled {
                             let elapsed = Int(Date.now.timeIntervalSince(last.timestamp)) / 60
                             NotificationManager.rescheduleReminder(

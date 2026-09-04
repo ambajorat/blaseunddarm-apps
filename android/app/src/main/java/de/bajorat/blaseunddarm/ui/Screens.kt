@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -90,6 +92,7 @@ fun HistoryScreen(dataStore: BDMDataStore) {
                             if (entry.adSignList.isNotEmpty()) add(tr("Vegetativ: ") + entry.adSignList.joinToString(", ") { tr(it.label) })
                             if (entry.systolicBp > 0) add("RR ${entry.systolicBp}")
                             if (entry.bowel) entry.stoolAmountValue?.let { add("${it.emoji} ${tr(it.label)}") }
+                            if (entry.medications.isNotEmpty()) add("\uD83D\uDC8A " + entry.medications.joinToString(", "))
                         }
                         if (details.isNotEmpty()) {
                             Text(details.joinToString(" · "), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, modifier = Modifier.padding(top = 4.dp))
@@ -118,6 +121,7 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
     var urineMl by remember { mutableStateOf(if (entry.urineMl > 0) entry.urineMl.toString() else "") }
     var drinkMl by remember { mutableStateOf(if (entry.drinkMl > 0) entry.drinkMl.toString() else "") }
     var urineColor by remember { mutableStateOf(try { UrineColor.valueOf(entry.urineColor) } catch (_: Exception) { UrineColor.NONE }) }
+    var editMeds by remember { mutableStateOf(entry.medications.toSet()) }
     var bowel by remember { mutableStateOf(entry.bowel) }
     var bristolType by remember { mutableStateOf(try { BristolType.valueOf(entry.bristolType) } catch (_: Exception) { BristolType.NONE }) }
     var note by remember { mutableStateOf(entry.note) }
@@ -151,6 +155,20 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PalpationFinding.entries.forEach { f ->
                             FilterChip(selected = palpation == f, onClick = { palpation = if (palpation == f) null else f }, label = { Text(tr(f.label), fontSize = 10.sp) })
+                        }
+                    }
+                }
+                run {
+                    val medS = MedicationSettings.load(LocalContext.current)
+                    val known = (medS.medications.map { it.name }.filter { it.isNotBlank() } + editMeds).distinct().sorted()
+                    if (known.isNotEmpty()) {
+                        Text(tr("Medikamente"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            known.forEach { name ->
+                                FilterChip(selected = editMeds.contains(name), onClick = {
+                                    editMeds = if (editMeds.contains(name)) editMeds - name else editMeds + name
+                                }, label = { Text(name, fontSize = 10.sp) })
+                            }
                         }
                     }
                 }
@@ -200,7 +218,7 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
         },
         confirmButton = {
             TextButton(onClick = {
-                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, drinkMl = drinkMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note, symptoms = symptoms.map { it.name }, palpation = palpation?.name ?: "", adSigns = adSigns.map { it.name }, systolicBp = bpText.toIntOrNull()?.takeIf { it in 60..300 } ?: 0, stoolAmount = if (bowel) stoolAmount?.name ?: "" else ""))
+                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, drinkMl = drinkMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note, symptoms = symptoms.map { it.name }, palpation = palpation?.name ?: "", adSigns = adSigns.map { it.name }, systolicBp = bpText.toIntOrNull()?.takeIf { it in 60..300 } ?: 0, stoolAmount = if (bowel) stoolAmount?.name ?: "" else "", medications = editMeds.toList().sorted()))
                 onDismiss()
             }) { Text(tr("Sichern")) }
         },
@@ -361,9 +379,9 @@ fun StatsScreen(dataStore: BDMDataStore) {
                     Button(onClick = {
                         val tf = DateTimeFormatter.ofPattern("dd.MM.yyyy;HH:mm")
                         val csv = buildString {
-                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge")
+                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge;Medikamente")
                             filtered.sortedByDescending { it.timestamp }.forEach { e ->
-                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl};${e.utiSymptoms.joinToString(", ") { it.label }};${e.palpationFinding?.label ?: ""};${e.adSignList.joinToString(", ") { it.label }};${if (e.systolicBp > 0) e.systolicBp.toString() else ""};${e.stoolAmountValue?.label ?: ""}")
+                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl};${e.utiSymptoms.joinToString(", ") { it.label }};${e.palpationFinding?.label ?: ""};${e.adSignList.joinToString(", ") { it.label }};${if (e.systolicBp > 0) e.systolicBp.toString() else ""};${e.stoolAmountValue?.label ?: ""};${e.medications.joinToString(", ")}")
                             }
                         }
                         val file = File(context.cacheDir, "Blase_Darm_Export.csv")
@@ -457,6 +475,50 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                 }
                 if (settings.reminderEnabled) {
                     Spacer(Modifier.height(12.dp))
+                    // Erinnerungsart (iOS-4.7-Parität): Intervall oder feste Uhrzeiten
+                    val remCtx = androidx.compose.ui.platform.LocalContext.current
+                    Text(tr("Erinnerungsart"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = !settings.useFixedTimes, onClick = {
+                            val s = settings.copy(useFixedTimes = false)
+                            dataStore.updateSettings(s)
+                            dataStore.lastBladderEntry?.let { last ->
+                                val elapsed = java.time.Duration.between(last.dateTime, java.time.LocalDateTime.now()).toMinutes().toInt()
+                                val remaining = s.intervalMinutes - elapsed
+                                if (remaining > 0) reminderManager.scheduleReminder(remaining, s.quietFrom, s.quietTo, s.quietHoursEnabled)
+                            }
+                        }, label = { Text(tr("Intervall"), fontSize = 12.sp) })
+                        FilterChip(selected = settings.useFixedTimes, onClick = {
+                            val s = settings.copy(useFixedTimes = true)
+                            dataStore.updateSettings(s)
+                            reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
+                        }, label = { Text(tr("Feste Uhrzeiten"), fontSize = 12.sp) })
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    if (settings.useFixedTimes) {
+                        settings.fixedTimes.sorted().forEach { minutes ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(String.format("%02d:%02d", minutes / 60, minutes % 60), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                if (settings.fixedTimes.size > 1) {
+                                    IconButton(onClick = {
+                                        val s = settings.copy(fixedTimes = settings.fixedTimes - minutes)
+                                        dataStore.updateSettings(s)
+                                        reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
+                                    }) { Icon(Icons.Filled.Close, tr("Entfernen"), Modifier.size(16.dp)) }
+                                }
+                            }
+                        }
+                        TextButton(onClick = {
+                            val now = java.util.Calendar.getInstance()
+                            android.app.TimePickerDialog(remCtx, { _, h, m ->
+                                val s = settings.copy(fixedTimes = (settings.fixedTimes + (h * 60 + m)).distinct().sorted())
+                                dataStore.updateSettings(s)
+                                reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
+                            }, now.get(java.util.Calendar.HOUR_OF_DAY), 0, true).show()
+                        }) { Text(tr("Zeit hinzufügen"), fontSize = 13.sp) }
+                        Text(tr("Feste Zeiten erinnern unabhängig vom letzten Eintrag."), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
                     val hours = settings.intervalMinutes / 60
                     val mins = settings.intervalMinutes % 60
                     Text(trf("Intervall: {0} Std {1} Min", hours, mins), fontSize = 14.sp, color = Orange, fontWeight = FontWeight.Bold)
@@ -472,6 +534,7 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                             }
                             OutlinedButton(onClick = { dataStore.updateSettings(settings.copy(intervalMinutes = intervalSug)) }) { Text(tr("Übernehmen"), fontSize = 12.sp) }
                         }
+                    }
                     }
                     Spacer(Modifier.height(16.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -688,6 +751,72 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
         }
         Spacer(Modifier.height(12.dp))
 
+        // Medikamente (2.5): viertes Zusatzmodul — Doku + Einnahme-Erinnerungen
+        var medS by remember { mutableStateOf(MedicationSettings.load(context)) }
+        fun medUpdate(new: MedicationSettings) {
+            medS = new; new.save(context); reminderManager.scheduleMedicationReminders(new)
+        }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Medikamente"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Switch(checked = medS.enabled, onCheckedChange = { medUpdate(medS.copy(enabled = it)) })
+                }
+                if (medS.enabled) {
+                    medS.medications.forEach { med ->
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = med.name,
+                            onValueChange = { new ->
+                                medUpdate(medS.copy(medications = medS.medications.map { if (it.id == med.id) it.copy(name = new) else it }))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text(tr("Name des Medikaments")) },
+                            singleLine = true
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(tr("Einnahme-Erinnerungen"), fontSize = 12.sp, modifier = Modifier.weight(1f))
+                            Switch(checked = med.remindersEnabled, onCheckedChange = { on ->
+                                medUpdate(medS.copy(medications = medS.medications.map { if (it.id == med.id) it.copy(remindersEnabled = on) else it }))
+                            })
+                        }
+                        med.times.sorted().forEach { minutes ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(String.format("%02d:%02d", minutes / 60, minutes % 60), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                IconButton(onClick = {
+                                    medUpdate(medS.copy(medications = medS.medications.map { if (it.id == med.id) it.copy(times = it.times - minutes) else it }))
+                                }) { Icon(Icons.Filled.Close, tr("Entfernen"), Modifier.size(16.dp)) }
+                            }
+                        }
+                        Row {
+                            TextButton(onClick = {
+                                val now = java.util.Calendar.getInstance()
+                                android.app.TimePickerDialog(context, { _, h, m ->
+                                    val t = h * 60 + m
+                                    medUpdate(medS.copy(medications = medS.medications.map { if (it.id == med.id) it.copy(times = (it.times + t).distinct().sorted()) else it }))
+                                }, now.get(java.util.Calendar.HOUR_OF_DAY), 0, true).show()
+                            }) { Text(tr("Zeit hinzufügen"), fontSize = 12.sp) }
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = {
+                                medUpdate(medS.copy(medications = medS.medications.filter { it.id != med.id }))
+                            }) { Text(tr("Entfernen"), fontSize = 12.sp) }
+                        }
+                        HorizontalDivider()
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(onClick = {
+                        medUpdate(medS.copy(medications = medS.medications + Medication(times = listOf(480))))
+                    }) { Text(tr("Medikament hinzufügen"), fontSize = 13.sp) }
+                    Text(
+                        tr("Beim Erfassen antippen, was genommen wurde. Erinnerungen kommen täglich zu den festen Zeiten, auch in der Ruhezeit. Ohne Zeiten: Bedarfsmedikament."),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
         // Backup
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
@@ -731,7 +860,8 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                                             urineColor = p.getOrNull(3)?.trim()?.uppercase()?.replace(" ", "_") ?: "NONE",
                                             bristolType = p.getOrNull(5)?.trim()?.uppercase()?.replace(" ", "") ?: "NONE",
                                             note = p.getOrNull(6)?.trim() ?: "",
-                                            drinkMl = p.getOrNull(7)?.trim()?.toIntOrNull() ?: 0
+                                            drinkMl = p.getOrNull(7)?.trim()?.toIntOrNull() ?: 0,
+                                            medications = p.getOrNull(13)?.trim()?.takeIf { it.isNotEmpty() }?.split(", ")?.map { it.trim() } ?: emptyList()
                                         ))
                                     }
                                 }

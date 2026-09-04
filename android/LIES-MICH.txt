@@ -1,0 +1,10 @@
+BDM-Android-25-Fix3 — nur data/BDMDataStore.kt
+Die Ursache aller "Unresolved reference lastBladderEntry"-Fehler:
+Das 2.4-ZIP (BDM-Android-24) wurde nie eingespielt — und BDMDataStore.kt
+(mit dem neuen lastBladderEntry) lag NUR dort. Alle anderen 2.4-Aenderungen
+stecken kumulativ schon in den 2.5-Dateien; nur diese eine fehlte.
+Ergebnis nach diesem Fix: dein Stand = 2.4 + 2.5 in einem
+(Wecker-Modus + Schnellerfassung + Gelb + Medikamente), Version 2.5.
+Einspielen (vom android-Ordner):
+  unzip -o ~/Downloads/BDM-Android-25-Fix3.zip
+  ./gradlew assembleRelease

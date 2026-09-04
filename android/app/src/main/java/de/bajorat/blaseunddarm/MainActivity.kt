@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import de.bajorat.blaseunddarm.data.BDMDataStore
+import de.bajorat.blaseunddarm.data.MedicationSettings
 import de.bajorat.blaseunddarm.data.tr
 import de.bajorat.blaseunddarm.notification.ReminderManager
 import de.bajorat.blaseunddarm.ui.*
@@ -45,12 +46,40 @@ fun MainScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
 
     val scheduleReminder: () -> Unit = {
         if (settings.reminderEnabled) {
-            reminderManager.scheduleReminder(
-                afterMinutes = settings.intervalMinutes,
-                quietFrom = settings.quietFrom,
-                quietTo = settings.quietTo,
-                quietEnabled = settings.quietHoursEnabled
-            )
+            if (settings.useFixedTimes) {
+                // Wecker-Modus: ein Eintrag verschiebt nichts — Kette nur sicherstellen.
+                reminderManager.scheduleFixedTimeReminders(settings.fixedTimes)
+            } else {
+                reminderManager.scheduleReminder(
+                    afterMinutes = settings.intervalMinutes,
+                    quietFrom = settings.quietFrom,
+                    quietTo = settings.quietTo,
+                    quietEnabled = settings.quietHoursEnabled
+                )
+            }
+        }
+    }
+
+    // Selbstheilung (iOS-Fix17-Parität): App-Updates/Reinstalls können den
+    // anstehenden Alarm verlieren — beim Start aus letztem Blaseneintrag +
+    // Intervall neu planen (idempotent, überfällig bleibt still).
+    val appCtx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        // Einnahme-Erinnerungen mit-heilen (Update/Reinstall verliert Alarme).
+        reminderManager.scheduleMedicationReminders(MedicationSettings.load(appCtx))
+        val s = dataStore.settings.value
+        if (s.reminderEnabled) {
+            if (s.useFixedTimes) {
+                reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
+            } else {
+                dataStore.lastBladderEntry?.let { last ->
+                    val elapsed = java.time.Duration.between(last.dateTime, java.time.LocalDateTime.now()).toMinutes().toInt()
+                    val remaining = s.intervalMinutes - elapsed
+                    if (remaining > 0) {
+                        reminderManager.scheduleReminder(remaining, s.quietFrom, s.quietTo, s.quietHoursEnabled)
+                    }
+                }
+            }
         }
     }
 

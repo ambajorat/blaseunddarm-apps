@@ -15,6 +15,8 @@ struct LogView: View {
     @State private var drinkText = ""
     @State private var drinkSettings = DrinkSettings.load()
     @State private var utiSettings = UtiSettings.load()
+    @State private var medSettings = MedicationSettings.load()
+    @State private var selectedMeds: Set<String> = []
     @State private var symptoms: Set<UtiSymptom> = []
     @State private var palpSettings = PalpationSettings.load()
     @State private var palpation: PalpationFinding? = nil
@@ -83,6 +85,12 @@ struct LogView: View {
             }
             .onAppear {
                 refreshCatheterSorts()
+                // Modul-Settings nachladen — sonst kennt der Tab in den
+                // Einstellungen neu angelegte Medikamente (oder umgeschaltete
+                // Module) erst nach App-Neustart (4.10-Fix-5-Lehre).
+                medSettings = MedicationSettings.load()
+                drinkSettings = DrinkSettings.load()
+                utiSettings = UtiSettings.load()
                 if !firstRunDone {
                     if store.entries.isEmpty {
                         showFirstRun = true
@@ -384,6 +392,36 @@ struct LogView: View {
             }
 
             // Auffälligkeiten (HWI-Frühwarnung, optional)
+                if medSettings.enabled && !medSettings.medications.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Medikamente")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.subtleText)
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                            ForEach(medSettings.medications) { med in
+                                Button {
+                                    if selectedMeds.contains(med.name) { selectedMeds.remove(med.name) } else { selectedMeds.insert(med.name) }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: selectedMeds.contains(med.name) ? "checkmark.circle.fill" : "circle")
+                                            .font(.caption)
+                                        Text(med.name)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.8)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.vertical, 8).padding(.horizontal, 10)
+                                    .background(selectedMeds.contains(med.name) ? Color.pillActiveBg : Color.pageBg, in: .rect(cornerRadius: 8))
+                                    .foregroundStyle(selectedMeds.contains(med.name) ? Color.pillActiveText : .primary)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityAddTraits(selectedMeds.contains(med.name) ? .isSelected : [])
+                            }
+                        }
+                    }
+                }
             if utiSettings.enabled {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Auffälligkeiten")
@@ -603,7 +641,9 @@ struct LogView: View {
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
     }
 
-    private var canSave: Bool { (Int(urineMl) ?? 0) > 0 || bowel || (Int(drinkText) ?? 0) > 0 }
+    // Medikamente allein rechtfertigen einen Eintrag (Einnahme ohne Toilettengang) —
+    // taktet den Timer nicht und zählt nicht als Gang (Gates in saveEntry/Statistik).
+    private var canSave: Bool { (Int(urineMl) ?? 0) > 0 || bowel || (Int(drinkText) ?? 0) > 0 || !selectedMeds.isEmpty }
 
     private func saveEntry() {
         guard canSave else { return }
@@ -624,7 +664,8 @@ struct LogView: View {
                 return v
             }(),
             stoolAmount: bowel ? stoolAmount : nil,
-            catheterSort: (Int(urineMl) ?? 0) > 0 ? activeCatheterSort : nil
+            catheterSort: (Int(urineMl) ?? 0) > 0 ? activeCatheterSort : nil,
+            medications: selectedMeds.isEmpty ? nil : Array(selectedMeds).sorted()
         ))
         // store.add(...) startet die Live Activity bereits selbst.
         // Erinnerung nur neu takten, wenn wirklich die Blase entleert wurde —
@@ -632,7 +673,7 @@ struct LogView: View {
         if store.settings.reminderEnabled, (Int(urineMl) ?? 0) > 0 {
             notifications.scheduleReminder(afterMinutes: store.settings.intervalMinutes, settings: store.settings)
         }
-        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; palpation = nil; adSigns = []; bpText = ""; stoolAmount = nil; entryTime = .now; showSaved = true
+        urineMl = ""; urineColor = .none; bowel = false; bristolType = .none; note = ""; drinkText = ""; symptoms = []; selectedMeds = []; palpation = nil; adSigns = []; bpText = ""; stoolAmount = nil; entryTime = .now; showSaved = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { showSaved = false }
     }
 

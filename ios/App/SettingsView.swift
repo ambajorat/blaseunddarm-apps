@@ -60,6 +60,7 @@ struct SettingsView: View {
             drinkSection
             catheterSection
             utiSection
+            medicationSection
             iskExtrasSection
             cloudSection
             dataSection
@@ -707,6 +708,109 @@ struct SettingsView: View {
     }
 
     // MARK: - ISK-Erweiterungen (Tastbefund, vegetative Zeichen)
+
+    @State private var meds = MedicationSettings.load()
+
+    private var medicationSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { meds.enabled },
+                set: { on in
+                    meds.enabled = on
+                    meds.save()
+                    NotificationManager.rescheduleMedicationReminders(settings: meds)
+                }
+            )) {
+                Label("Medikamente", systemImage: "pills.fill")
+            }
+            if meds.enabled {
+                ForEach($meds.medications) { $med in
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            TextField(String(localized: "Name des Medikaments"), text: Binding(
+                                get: { med.name },
+                                set: { med.name = $0; meds.save(); NotificationManager.rescheduleMedicationReminders(settings: meds) }
+                            ))
+                            .font(.subheadline.weight(.semibold))
+                            Button {
+                                meds.medications.removeAll { $0.id == med.id }
+                                meds.save()
+                                NotificationManager.rescheduleMedicationReminders(settings: meds)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "Medikament löschen"))
+                        }
+                        Toggle(isOn: Binding(
+                            get: { med.remindersEnabled },
+                            set: { med.remindersEnabled = $0; meds.save(); NotificationManager.rescheduleMedicationReminders(settings: meds) }
+                        )) {
+                            Text("Einnahme-Erinnerungen")
+                                .font(.caption)
+                        }
+                        ForEach(med.times.sorted(), id: \.self) { minutes in
+                            HStack {
+                                Image(systemName: "pills")
+                                    .foregroundStyle(Color.accentBlue)
+                                DatePicker("", selection: Binding(
+                                    get: { Self.medDate(minutes: minutes) },
+                                    set: { newDate in
+                                        var ts = med.times.filter { $0 != minutes }
+                                        ts.append(Self.medMinutes(of: newDate))
+                                        med.times = Array(Set(ts)).sorted()
+                                        meds.save(); NotificationManager.rescheduleMedicationReminders(settings: meds)
+                                    }
+                                ), displayedComponents: .hourAndMinute)
+                                    .labelsHidden()
+                                Spacer()
+                                Button {
+                                    med.times.removeAll { $0 == minutes }
+                                    meds.save(); NotificationManager.rescheduleMedicationReminders(settings: meds)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(String(localized: "Zeit löschen"))
+                            }
+                        }
+                        Button {
+                            let next = med.times.isEmpty ? 480 : min((med.times.max() ?? 480) + 720, 1425)
+                            if !med.times.contains(next) { med.times.append(next); med.times.sort() }
+                            meds.save(); NotificationManager.rescheduleMedicationReminders(settings: meds)
+                        } label: {
+                            Label(String(localized: "Zeit hinzufügen"), systemImage: "plus.circle.fill")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(.vertical, 2)
+                }
+                Button {
+                    meds.medications.append(Medication(name: "", times: [480]))
+                    meds.save()
+                } label: {
+                    Label(String(localized: "Medikament hinzufügen"), systemImage: "plus.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+            }
+        } footer: {
+            if meds.enabled {
+                Text("Beim Erfassen antippen, was genommen wurde — es landet im Verlauf und im CSV-Export. Einnahme-Erinnerungen kommen täglich zu den festen Zeiten, auch in der Ruhezeit. Ohne Zeiten: reines Bedarfsmedikament.")
+            }
+        }
+    }
+
+    private static func medDate(minutes: Int) -> Date {
+        Calendar.current.startOfDay(for: .now).addingTimeInterval(TimeInterval(minutes * 60))
+    }
+    private static func medMinutes(of date: Date) -> Int {
+        let c = Calendar.current
+        return c.component(.hour, from: date) * 60 + c.component(.minute, from: date)
+    }
 
     private var iskExtrasSection: some View {
         Section {

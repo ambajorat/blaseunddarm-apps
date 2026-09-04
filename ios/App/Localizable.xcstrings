@@ -942,6 +942,16 @@
         }
       }
     },
+    "Beim Erfassen antippen, was genommen wurde — es landet im Verlauf und im CSV-Export. Einnahme-Erinnerungen kommen täglich zu den festen Zeiten, auch in der Ruhezeit. Ohne Zeiten: reines Bedarfsmedikament." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap what you took while logging — it appears in history and the CSV export. Intake reminders fire daily at the fixed times, even during quiet hours. Without times: as-needed medication only."
+          }
+        }
+      }
+    },
     "Beim Erfassen erscheint der Abschnitt „Auffälligkeiten“. Bei Blut oder Fieber meldet sich die App sofort, bei Mustern über mehrere Tage mit einem Hinweis. Ersetzt keine ärztliche Diagnose." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1736,6 +1746,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Intake and output"
+          }
+        }
+      }
+    },
+    "Einnahme-Erinnerungen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intake reminders"
           }
         }
       }
@@ -2965,6 +2985,49 @@
         }
       }
     },
+    "Medikament hinzufügen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add medication"
+          }
+        }
+      }
+    },
+    "Medikament löschen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete medication"
+          }
+        }
+      }
+    },
+    "Medikamente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medications"
+          }
+        }
+      }
+    },
+    "Medikamente erfassen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Track medications"
+          }
+        }
+      }
+    },
     "Mehr Gänge als Grenze" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3079,6 +3142,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name"
+          }
+        }
+      }
+    },
+    "Name des Medikaments" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medication name"
           }
         }
       }
@@ -6008,6 +6082,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time for your next toilet visit!"
+          }
+        }
+      }
+    },
+    "Zeit für die Einnahme." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time to take it."
           }
         }
       }

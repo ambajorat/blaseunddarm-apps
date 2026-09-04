@@ -1,18 +1,42 @@
-BDM-411-Fix17-ErinnerungHeilen — nur App/BladderBowelManagerApp.swift
-(kumulativ NACH Fix13/Fix16; kompletter 4.11-Stand der Datei)
+BDM-412-Medikamente — das Medikamenten-Modul (iOS 4.12, Build 1)
+(auf dem 4.11-Livestand a7fc69c; 11 Dateien, davon NEU: App/MedicationSettings.swift)
 
-Andrés Fund 24.08. früh: Die 07:00-Erinnerung kam nicht. Ursache: geplant
-wird nur beim Eintrag — und der Xcode-Build am Morgen ist eine
-NEUINSTALLATION, die alle anstehenden Mitteilungen entfernt (im
-Store-Alltag passiert das bei Updates nicht, wohl aber z. B. nach
-Backup-Restore). Fix: Beim Aktivwerden der App wird die Erinnerung aus
-letztem Blaseneintrag + Intervall neu geplant — idempotent (fester
-Identifier ersetzt die bestehende Planung), überfällig bleibt still,
-Wecker-Modus plant seine festen Zeiten über die vorhandene Weiche.
+WICHTIG: Nach dem Entpacken zwingend
+  xcodegen generate        (neue Datei im App-Target!)
+dann Cmd+U im Simulator: 14 Tests gruen.
+
+Was drin ist:
+- Einstellungen -> neue Sektion "Medikamente" (viertes Zusatzmodul, per
+  Toggle): Medikamente mit Name anlegen, je Medikament feste Einnahme-
+  zeiten (System-Zeitrad) und ein Erinnerungs-Toggle. Ohne Zeiten =
+  Bedarfsmedikament (nur Doku).
+- Einnahme-Erinnerungen: taeglich wiederholende Mitteilungen "💊 <Name> /
+  Zeit fuer die Einnahme." — BEWUSST ohne Ruhezeit-Verschiebung
+  (Medikamente haben Vorrang); zeit-sensitiv, mit Ton.
+- Erfassen: Chips "Medikamente" im Formular (Mehrfachauswahl, gleicher
+  Stil wie Auffaelligkeiten), landet im Eintrag; Schnellerfassung bleibt
+  bewusst schlank.
+- Verlauf: 💊-Zeile in der Detailansicht, Chips im Editor (auch fuer
+  Eintraege mit inzwischen geloeschten Medikamenten).
+- CSV-Export: neue Spalte "Medikamente".
+- PDF-Bericht: neuer Kopf-Absatz "Medikation" — jedes Medikament mit
+  seinen Einnahmezeiten ("08:00, 20:00 Uhr") bzw. "bei Bedarf"; steht
+  vor den Auffaelligkeiten. PDF bleibt bewusst deutsch.
+- Selbstheilung: Einnahme-Erinnerungen werden beim App-Start neu geplant
+  (gleiches Reinstall-Muster wie Fix17).
+- 14. Regressionstest: Settings-Roundtrip + Eintrag mit Medikamenten;
+  Alt-Eintrags-Test kennt das neue Feld.
+
+Bewusst NICHT drin (Folgekandidaten): Medikamente auf der Watch, Bestand/Reichweite je Medikament, Android.
 
 Einspielen (vom ios-Ordner):
-  unzip -o ~/Downloads/BDM-411-Fix17-ErinnerungHeilen.zip
-Preflight-grep:
-  grep -c "rescheduleReminder" App/BladderBowelManagerApp.swift  -> 1
-Test: bauen, App öffnen, sofort schließen — die nächste Erinnerung muss
-trotz des frischen Builds pünktlich kommen.
+  unzip -o ~/Downloads/BDM-412-Medikamente.zip
+  xcodegen generate
+Preflight-greps:
+  ls App/MedicationSettings.swift                          -> existiert
+  grep -c "rescheduleMedicationReminders" App/SettingsView.swift -> 7
+  grep -c "medications" Shared/Models.swift                -> 3
+Test: Einstellungen -> Medikamente an -> "Medikament hinzufuegen" ->
+Name + Zeit in 2 Minuten -> App schliessen -> Mitteilung kommt (auch
+wenn gerade Ruhezeit waere). Dann Eintrag mit Chip speichern -> Verlauf
+zeigt 💊, CSV hat die Spalte.

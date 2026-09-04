@@ -165,6 +165,7 @@ struct EntryRow: View {
         var parts: [String] = []
         if let palp = entry.palpation { parts.append(String(localized: "Tastbefund: \(palp.label)")) }
         if let syms = entry.symptoms, !syms.isEmpty { parts.append(String(localized: "Auffällig: \(syms.map(\.label).joined(separator: ", "))")) }
+        if let meds = entry.medications, !meds.isEmpty { parts.append("\u{1F48A} " + meds.joined(separator: ", ")) }
         if let ad = entry.adSigns, !ad.isEmpty { parts.append(String(localized: "Vegetativ: \(ad.map(\.label).joined(separator: ", "))")) }
         if let bp = entry.systolicBp { parts.append(String(localized: "RR \(bp)")) }
         if entry.bowel, let amount = entry.stoolAmount { parts.append("\(amount.emoji) \(amount.label)") }
@@ -221,6 +222,8 @@ struct EditEntryView: View {
     }
     private let drinkSettings = DrinkSettings.load()
     private let utiSettings = UtiSettings.load()
+    private let medSettings = MedicationSettings.load()
+    @State private var selectedMeds: Set<String>
     private let palpSettings = PalpationSettings.load()
     private let adSettings = AdSettings.load()
     @State private var showDeleteConfirm = false
@@ -236,6 +239,7 @@ struct EditEntryView: View {
         _note = State(initialValue: entry.note)
         _drinkText = State(initialValue: (entry.drinkMl ?? 0) > 0 ? String(entry.drinkMl ?? 0) : "")
         _symptoms = State(initialValue: Set(entry.symptoms ?? []))
+        _selectedMeds = State(initialValue: Set(entry.medications ?? []))
         _palpation = State(initialValue: entry.palpation)
         _adSigns = State(initialValue: Set(entry.adSigns ?? []))
         _bpText = State(initialValue: entry.systolicBp.map(String.init) ?? "")
@@ -349,6 +353,35 @@ struct EditEntryView: View {
                     }
                 }
 
+                if medSettings.enabled && !medSettings.medications.isEmpty || !selectedMeds.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Medikamente")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.subtleText)
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                            ForEach(Array(Set(medSettings.medications.map(\.name)).union(selectedMeds)).sorted(), id: \.self) { name in
+                                Button {
+                                    if selectedMeds.contains(name) { selectedMeds.remove(name) } else { selectedMeds.insert(name) }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: selectedMeds.contains(name) ? "checkmark.circle.fill" : "circle")
+                                            .font(.caption)
+                                        Text(name)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.8)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.vertical, 8).padding(.horizontal, 10)
+                                    .background(selectedMeds.contains(name) ? Color.pillActiveBg : Color.pageBg, in: .rect(cornerRadius: 8))
+                                    .foregroundStyle(selectedMeds.contains(name) ? Color.pillActiveText : .primary)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.pillBorder, lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
                 if utiSettings.enabled || !symptoms.isEmpty {
                     Section("Auffälligkeiten") {
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
@@ -563,6 +596,7 @@ struct EditEntryView: View {
         let drinkVal = Int(drinkText) ?? 0
         updated.drinkMl = drinkVal > 0 ? drinkVal : nil
         updated.symptoms = symptoms.isEmpty ? nil : Array(symptoms)
+        updated.medications = selectedMeds.isEmpty ? nil : Array(selectedMeds).sorted()
         updated.palpation = palpation
         updated.adSigns = adSigns.isEmpty ? nil : Array(adSigns)
         updated.stoolAmount = bowel ? stoolAmount : nil

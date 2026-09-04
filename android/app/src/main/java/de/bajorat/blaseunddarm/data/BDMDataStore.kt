@@ -70,6 +70,8 @@ class BDMDataStore(private val context: Context) {
     val todayBowel: Int get() = todayEntries.count { it.bowel }
     val todayCount: Int get() = todayEntries.size
     val lastEntry: ToiletEntry? get() = _entries.value.firstOrNull()
+    /// Letzter BLASENEINTRAG — nur der taktet den Timer (Trink-/Stuhl-Einträge nie).
+    val lastBladderEntry: ToiletEntry? get() = _entries.value.firstOrNull { it.urineMl > 0 }
 
     private fun saveEntries() {
         val data = json.encodeToString(_entries.value)

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.focus.onFocusChanged
 import de.bajorat.blaseunddarm.data.*
+import de.bajorat.blaseunddarm.notification.FixedTimeMath
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.LocalDateTime
@@ -49,6 +50,8 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
     val utiSettings = UtiSettings.load(alarmContext)
     var symptoms by remember { mutableStateOf(setOf<UtiSymptom>()) }
     val palpSettings = PalpationSettings.load(alarmContext)
+    val medSettings = MedicationSettings.load(alarmContext)
+    var selectedMeds by remember { mutableStateOf(setOf<String>()) }
     var palpation by remember { mutableStateOf<PalpationFinding?>(null) }
     val adSettings = AdSettings.load(alarmContext)
     var adSigns by remember { mutableStateOf(setOf<AdSign>()) }
@@ -64,13 +67,16 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
 
     LaunchedEffect(entries, settings) {
         while (true) {
-            val last = dataStore.lastEntry
-            if (last != null && settings.reminderEnabled) {
+            val last = dataStore.lastBladderEntry
+            if (settings.reminderEnabled && settings.useFixedTimes) {
+                // Wecker-Modus: Countdown zur nächsten festen Zeit
+                timeRemaining = (FixedTimeMath.nextFixedTriggerMillis(settings.fixedTimes) - System.currentTimeMillis()) / 1000
+            } else if (last != null && settings.reminderEnabled) {
                 val elapsed = Duration.between(last.dateTime, LocalDateTime.now()).seconds
                 timeRemaining = (settings.intervalMinutes * 60L) - elapsed
             }
             // Trigger alarm when timer hits zero
-            if (timeRemaining <= 0 && !alarmTriggered && dataStore.lastEntry != null) {
+            if (timeRemaining <= 0 && !alarmTriggered && dataStore.lastBladderEntry != null) {
                 alarmTriggered = true
                 showAlarm = true
                 // Vibrate
@@ -139,7 +145,7 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
         Spacer(Modifier.height(14.dp))
 
         // Overdue alert
-        if (settings.reminderEnabled && timeRemaining <= 0 && dataStore.lastEntry != null) {
+        if (settings.reminderEnabled && timeRemaining <= 0 && dataStore.lastBladderEntry != null) {
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Orange.copy(alpha = 0.12f)), border = BorderStroke(1.dp, Orange.copy(alpha = 0.3f))) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(tr("⚠️"), fontSize = 16.sp)
@@ -148,6 +154,52 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
             }
             Spacer(Modifier.height(14.dp))
         }
+
+        // Schnellerfassung (iOS-4.9-Parität): ein Tipp sichert einen Eintrag
+        var lastQuickEntry by remember { mutableStateOf<ToiletEntry?>(null) }
+        fun quickSave(urine: Int = 0, bowelQuick: Boolean = false, drink: Int = 0) {
+            val e = ToiletEntry(urineMl = urine, bowel = bowelQuick, drinkMl = drink,
+                bristolType = BristolType.NONE.name, urineColor = UrineColor.NONE.name)
+            dataStore.addEntry(e)
+            lastQuickEntry = e
+            if (urine > 0) onScheduleReminder()
+        }
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Schnellerfassung"), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text(tr("Ein Tipp sichert"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(10.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    settings.quickValues.take(4).forEach { v ->
+                        OutlinedButton(onClick = { quickSave(urine = v) }) {
+                            Text("$v ml", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    OutlinedButton(onClick = { quickSave(bowelQuick = true) }) {
+                        Text(trf("{0} {1}", "💩", tr("Stuhlgang")))
+                    }
+                    if (drinkSettings.enabled) {
+                        OutlinedButton(onClick = { quickSave(drink = drinkSettings.presets.first()) }) {
+                            Text("🥤 +${drinkSettings.presets.first()} ml")
+                        }
+                    }
+                }
+                if (lastQuickEntry != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(trf("{0} {1}", "✓", tr("Gespeichert")), fontSize = 12.sp, color = Orange, fontWeight = FontWeight.SemiBold)
+                        TextButton(onClick = {
+                            lastQuickEntry?.let { dataStore.deleteEntry(it) }
+                            lastQuickEntry = null
+                        }) { Text(tr("Rückgängig"), fontSize = 12.sp) }
+                    }
+                    LaunchedEffect(lastQuickEntry) { delay(5000); lastQuickEntry = null }
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
 
         // Trial banner
         if (!isPremium) {
@@ -252,6 +304,20 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                                 onClick = { palpation = if (palpation == f) null else f },
                                 label = { Text(tr(f.label), fontSize = 12.sp) }
                             )
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
+                // Medikamente (2.5, optional)
+                if (medSettings.enabled && medSettings.medications.isNotEmpty()) {
+                    Text(tr("Medikamente"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        medSettings.medications.filter { it.name.isNotBlank() }.forEach { med ->
+                            FilterChip(selected = selectedMeds.contains(med.name), onClick = {
+                                selectedMeds = if (selectedMeds.contains(med.name)) selectedMeds - med.name else selectedMeds + med.name
+                            }, label = { Text(med.name, fontSize = 10.sp) })
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -378,15 +444,16 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                 Spacer(Modifier.height(14.dp))
 
                 // Save
-                val canSave = (urineMl.toIntOrNull() ?: 0) > 0 || bowel || (drinkText.toIntOrNull() ?: 0) > 0
+                val canSave = (urineMl.toIntOrNull() ?: 0) > 0 || bowel || (drinkText.toIntOrNull() ?: 0) > 0 || selectedMeds.isNotEmpty()
                 Button(onClick = {
                     dataStore.addEntry(ToiletEntry(urineMl = urineMl.toIntOrNull() ?: 0, bowel = bowel, bristolType = bristolType.name, urineColor = urineColor.name, note = note, drinkMl = drinkText.toIntOrNull() ?: 0, symptoms = symptoms.map { it.name },
                         palpation = palpation?.name ?: "",
                         adSigns = adSigns.map { it.name },
                         systolicBp = bpText.toIntOrNull()?.takeIf { adSettings.enabled && adSettings.bpEnabled && it in 60..300 } ?: 0,
-                        stoolAmount = if (bowel) stoolAmount?.name ?: "" else ""))
-                    onScheduleReminder()
-                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; symptoms = setOf(); palpation = null; adSigns = setOf(); bpText = ""; stoolAmount = null; drinkText = ""; showSaved = true
+                        stoolAmount = if (bowel) stoolAmount?.name ?: "" else "",
+                        medications = selectedMeds.toList().sorted()))
+                    if ((urineMl.toIntOrNull() ?: 0) > 0) onScheduleReminder()
+                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; symptoms = setOf(); palpation = null; adSigns = setOf(); bpText = ""; stoolAmount = null; drinkText = ""; selectedMeds = setOf(); showSaved = true
                 }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = canSave, colors = ButtonDefaults.buttonColors(containerColor = Orange)) {
                     Text(if (showSaved) tr("✓ Gespeichert") else tr("Speichern"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
