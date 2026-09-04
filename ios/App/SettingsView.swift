@@ -64,6 +64,7 @@ struct SettingsView: View {
             iskExtrasSection
             cloudSection
             dataSection
+            catalogSection
             aboutSection
         }
         .onChange(of: drink) { _, new in new.save() }
@@ -496,6 +497,11 @@ struct SettingsView: View {
             Text("Name")
             TextField("z. B. Hersteller", text: sort.name)
                 .multilineTextAlignment(.trailing)
+                    ScanButton(category: .catheter) { result in
+                        sort.wrappedValue.name = result.name
+                        if let ch = result.charriere { sort.wrappedValue.sizeCharriere = ch }
+                        if let mat = result.material { sort.wrappedValue.material = mat }
+                    }
         }
 
         HStack {
@@ -796,6 +802,10 @@ struct SettingsView: View {
                         .font(.subheadline.weight(.semibold))
                 }
                 .buttonStyle(.bordered)
+                ScanButton(category: .medication) { result in
+                    meds.medications.append(Medication(name: result.name, times: [480]))
+                    meds.save()
+                }
             }
         } footer: {
             if meds.enabled {
@@ -948,6 +958,17 @@ struct SettingsView: View {
     }
 
     // MARK: - About Section
+
+
+    @ViewBuilder private var catalogSection: some View {
+        Section {
+            NavigationLink {
+                ProductCatalogView()
+            } label: {
+                Label(String(localized: "catalog_title"), systemImage: "barcode.viewfinder")
+            }
+        }
+    }
 
     private var aboutSection: some View {
         Section {

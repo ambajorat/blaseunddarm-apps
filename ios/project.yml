@@ -12,7 +12,7 @@ options:
   xcodeVersion: "16.0"
 
 settings:
-  MARKETING_VERSION: "4.12"
+  MARKETING_VERSION: "4.13"
   CURRENT_PROJECT_VERSION: "1"
   SWIFT_VERSION: "5.9"
   DEVELOPMENT_TEAM: GDYQYL67XG
@@ -56,6 +56,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSSupportsLiveActivities: true
+        NSCameraUsageDescription: "Zum Scannen von Katheter- und Medikamentenpackungen per Kamera."
 
   # ---------------------------------------------------------------
   # Widget + Live Activity (Extension)
