@@ -575,10 +575,28 @@ struct SettingsView: View {
             get: { sort.wrappedValue.material ?? "" },
             set: { sort.wrappedValue.material = $0.isEmpty ? nil : $0 }))
 
+        Button {
+            catheter.defaultSortId = catheter.defaultSortId == id ? nil : id
+        } label: {
+            HStack {
+                Label("Standardsorte", systemImage: catheter.defaultSortId == id ? "star.fill" : "star")
+                    .foregroundStyle(catheter.defaultSortId == id ? Color.orange : .primary)
+                Spacer()
+                if catheter.defaultSortId == id {
+                    Text("Aktiv")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(catheter.defaultSortId == id ? .isSelected : [])
+
         if (catheter.sorts?.count ?? 0) > 1 {
             Button(role: .destructive) {
                 catheter.sorts?.removeAll { $0.id == id }
                 if catheter.lastUsedSortId == id { catheter.lastUsedSortId = nil }
+                if catheter.defaultSortId == id { catheter.defaultSortId = nil }
                 stockInputs[id] = nil
                 deliveryInputs[id] = nil
             } label: {
@@ -590,7 +608,9 @@ struct SettingsView: View {
 
     private func sortTitle(_ id: UUID) -> String {
         let idx = (catheter.sorts?.firstIndex(where: { $0.id == id }) ?? 0) + 1
-        return String(format: String(localized: "Sorte %lld"), idx)
+        let base = String(format: String(localized: "Sorte %lld"), idx)
+        if catheter.defaultSortId == id { return "\(base) ★" }
+        return base
     }
 
     private func inputBinding(_ dict: Binding<[UUID: String]>, _ id: UUID) -> Binding<String> {

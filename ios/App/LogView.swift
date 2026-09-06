@@ -679,9 +679,15 @@ struct LogView: View {
 
     // MARK: - Schnellerfassung (Scheibe 1)
 
-    /// Nur bei >1 Sorte relevant: Name für neue Blaseneinträge, sonst nil.
+    /// Name der Kathetersorte für neue Blaseneinträge.
+    /// Bei Standardsorte: immer der Standardname (auch bei nur einer Sorte).
+    /// Bei >1 Sorte ohne Standard: die aktuell gewählte Sorte.
     private var activeCatheterSort: String? {
-        catheterSortNames.count > 1 ? selectedCatheterSort : nil
+        if catheterSortNames.count > 1 {
+            return selectedCatheterSort
+        }
+        // Auch bei einer Sorte: Standard hinterlegen, damit der Bestand stimmt.
+        return CatheterStock.load().defaultSortName
     }
 
     /// Chips zur Sortenwahl — erscheinen erst ab zwei angelegten Sorten.
@@ -723,9 +729,11 @@ struct LogView: View {
         let sorts = cs.effectiveSorts
         catheterSortNames = sorts.count > 1 ? sorts.map(\.name) : []
         if catheterSortNames.count > 1 {
+            // Standardsorte hat Vorrang, dann lastUsed, dann erste.
+            let defaultName = sorts.first(where: { $0.id == cs.defaultSortId })?.name
             let lastName = sorts.first(where: { $0.id == cs.lastUsedSortId })?.name
             if selectedCatheterSort == nil || !catheterSortNames.contains(selectedCatheterSort!) {
-                selectedCatheterSort = lastName ?? catheterSortNames.first
+                selectedCatheterSort = defaultName ?? lastName ?? catheterSortNames.first
             }
         }
     }

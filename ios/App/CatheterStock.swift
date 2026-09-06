@@ -40,6 +40,9 @@ struct CatheterStock: Codable, Equatable {
     var sorts: [CatheterSort]? = nil
     /// Zuletzt beim Erfassen gewählte Sorte (Vorbelegung der Chips).
     var lastUsedSortId: UUID? = nil
+    /// Standardsorte (4.14): wird bei jedem Blaseneintrag automatisch hinterlegt,
+    /// auch bei nur einer Sorte — so bleibt der Bestand immer sauber zugeordnet.
+    var defaultSortId: UUID? = nil
 
     static let storageKey = "bb_catheter_stock"
 
@@ -69,6 +72,19 @@ struct CatheterStock: Codable, Equatable {
                              material: material,
                              stockAtAdjustment: stockAtAdjustment,
                              adjustmentDate: adjustmentDate)]
+    }
+
+    /// Name der Standardsorte. Fallback: erste Sorte der Liste.
+    var defaultSortName: String? {
+        guard enabled else { return nil }
+        let list = effectiveSorts
+        if let id = defaultSortId, let s = list.first(where: { $0.id == id }) { return s.name }
+        return list.first?.name
+    }
+
+    /// Standardsorte setzen (genau eine; nil = Automatik = erste Sorte).
+    mutating func setDefault(_ id: UUID?) {
+        defaultSortId = id
     }
 
     /// Migration festschreiben (vor UI-Bearbeitung der Liste aufrufen).
