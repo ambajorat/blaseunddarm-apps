@@ -37,16 +37,23 @@ final class DataStore {
     // MARK: - Entries
 
     func add(_ entry: ToiletEntry) {
+        var e = entry
+        // Standardsorte automatisch hinterlegen, wenn Blaseneintrag ohne Sorte ankommt
+        // (Watch, Siri, Schnellerfassung bei nur einer Sorte).
+        if e.urineMl > 0, e.catheterSort == nil,
+           let name = CatheterStock.load().defaultSortName {
+            e.catheterSort = name
+        }
         // Doppelte Zustellung (z. B. Watch: sendMessage + transferUserInfo-Fallback)
         // darf nie zu Duplikaten führen: gleiche ID = Update statt zweiter Zeile.
-        if let idx = entries.firstIndex(where: { $0.id == entry.id }) {
-            entries[idx] = entry
+        if let idx = entries.firstIndex(where: { $0.id == e.id }) {
+            entries[idx] = e
         } else {
-            entries.insert(entry, at: 0)
+            entries.insert(e, at: 0)
         }
         saveEntries()
         // Hinweise: Sofort-Check des Eintrags + Tages-Checks
-        AlertEngine.checkEntry(entry)
+        AlertEngine.checkEntry(e)
         AlertEngine.checkDay(entries: entries)
     }
 
