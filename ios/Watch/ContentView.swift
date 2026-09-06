@@ -215,7 +215,8 @@ struct BladderEntryView: View {
     }
 
     private func save() {
-        let entry = ToiletEntry(urineMl: Int(ml), urineColor: color)
+        let sortName = Int(ml) > 0 ? CatheterStock.load().defaultSortName : nil
+        let entry = ToiletEntry(urineMl: Int(ml), urineColor: color, catheterSort: sortName)
         session.applyLocally(entry)
         session.send(entry, label: "Blase")
         WKInterfaceDevice.current().play(.success)

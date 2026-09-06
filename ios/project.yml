@@ -100,6 +100,7 @@ targets:
       - path: App/Localizable.xcstrings
       - path: Shared/Models.swift
       - path: Shared/WidgetData.swift
+      - path: App/CatheterStock.swift
     dependencies:
       - target: BDMWatchWidgetExtension
     settings:

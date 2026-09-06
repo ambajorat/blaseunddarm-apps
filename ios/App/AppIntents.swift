@@ -52,9 +52,11 @@ struct LogEntryIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = SharedDataStore.shared
+        let sortName = (urineMl ?? 0) > 0 ? CatheterStock.load().defaultSortName : nil
         let entry = ToiletEntry(
             urineMl: urineMl ?? 0,
-            bowel: bowel
+            bowel: bowel,
+            catheterSort: sortName
         )
         store.addEntry(entry)
         AlertEngine.checkEntry(entry)
@@ -103,7 +105,8 @@ struct QuickUrineIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = SharedDataStore.shared
-        let entry = ToiletEntry(urineMl: amount, urineColor: color.toUrineColor)
+        let sortName = amount > 0 ? CatheterStock.load().defaultSortName : nil
+        let entry = ToiletEntry(urineMl: amount, urineColor: color.toUrineColor, catheterSort: sortName)
         store.addEntry(entry)
         AlertEngine.checkEntry(entry)
         AlertEngine.checkDay(entries: store.entries)
