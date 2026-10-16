@@ -252,4 +252,53 @@ final class BDMLogicTests: XCTestCase {
         let few = planDays().filter { cal.dateComponents([.day], from: $0.timestamp, to: .now).day! < 5 }
         XCTAssertNil(SuggestionEngine.intervalPlan(entries: few, targetMl: 400))
     }
+
+    // MARK: - Feste Zeiten an erster Morgen-Entleerung ausrichten
+
+    func testShiftedTimesVerschiebtGanzenPlan() {
+        let plan = [495, 720, 840, 960]          // 08:15, 12:00, 14:00, 16:00
+        XCTAssertEqual(AppSettings.shiftedTimes(plan, firstVoidMinute: 450),
+                       [450, 675, 795, 915])     // 07:30 → alles 45 min früher
+        XCTAssertEqual(AppSettings.shiftedTimes([480, 1380], firstVoidMinute: 600),
+                       [600], "Zeiten nach Mitternacht entfallen")
+    }
+
+    /// Eintrag heute um hh:mm (absolut, nicht relativ zu 08:00).
+    private func today(_ h: Int, _ m: Int, urine: Int) -> ToiletEntry {
+        let ts = cal.date(bySettingHour: h, minute: m, second: 0, of: .now)!
+        return ToiletEntry(timestamp: ts, urineMl: urine)
+    }
+
+    func testFirstMorningVoidNachNachtpause() throws {
+        let now = cal.date(bySettingHour: 10, minute: 0, second: 0, of: .now)!
+        let entries = [today(0, 30, urine: 300),   // letzte vor der Nacht (nach Mitternacht)
+                       today(7, 40, urine: 400),
+                       today(9, 50, urine: 200)]
+        let first = try XCTUnwrap(AppSettings.firstMorningVoid(entries: entries, now: now))
+        XCTAssertEqual(cal.component(.hour, from: first), 7)
+        XCTAssertEqual(cal.component(.minute, from: first), 40)
+    }
+
+    func testAlignFixedTimesEinmalProTag() {
+        let now = cal.date(bySettingHour: 10, minute: 0, second: 0, of: .now)!
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.anchorToFirstVoid = true
+        s.fixedTimesTemplate = [480, 720, 960]   // 08:00, 12:00, 16:00
+        s.fixedTimes = [480, 720, 960]
+        let entries = [today(7, 0, urine: 400)]
+        XCTAssertTrue(s.alignFixedTimes(entries: entries, now: now))
+        XCTAssertEqual(s.fixedTimes, [420, 660, 900])
+        XCTAssertEqual(s.fixedTemplate, [480, 720, 960], "Grundplan bleibt unverändert")
+        XCTAssertFalse(s.alignFixedTimes(entries: entries + [today(9, 0, urine: 100)], now: now),
+                       "Pro Tag nur einmal ausrichten")
+    }
+
+    func testAlignFixedTimesOhneSchalterNichts() {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.fixedTimes = [480, 720]
+        XCTAssertFalse(s.alignFixedTimes(entries: [today(7, 0, urine: 400)]))
+        XCTAssertEqual(s.fixedTimes, [480, 720])
+    }
 }

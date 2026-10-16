@@ -6874,6 +6874,46 @@
           }
         }
       }
+    },
+    "An erste Entleerung am Morgen ausrichten" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Align to first voiding in the morning"
+          }
+        }
+      }
+    },
+    "Die erste Zeit gilt als Aufwachzeit. Sobald du morgens die erste Entleerung einträgst, verschieben sich alle Zeiten des Tages entsprechend." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The first time counts as your wake-up time. As soon as you log your first voiding in the morning, all of the day's times shift accordingly."
+          }
+        }
+      }
+    },
+    "Heute ausgerichtet: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aligned today: %@"
+          }
+        }
+      }
+    },
+    "Mit Ausrichtung verschiebt sich der ganze Plan jeden Tag auf deine tatsächliche erste Entleerung am Morgen." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With alignment, the whole plan shifts each day to your actual first voiding in the morning."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

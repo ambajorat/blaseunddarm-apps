@@ -231,9 +231,61 @@ struct AppSettings: Codable, Equatable {
     var fixedTimes: [Int]? = nil  // Minuten seit Mitternacht, z.B. 420 = 07:00
     // Zielmenge je Entleerung für den Vorschlag „Abstände nach Tageszeit“ (nil = 400 ml)
     var targetVolumeMl: Int? = nil
+    // Feste Zeiten an der ersten Entleerung am Morgen ausrichten:
+    // fixedTimesTemplate = Grundplan (erste Zeit = Aufwachzeit), fixedTimes = heute
+    // verschobene Fassung, anchorDayKey = Tag der letzten Ausrichtung.
+    var anchorToFirstVoid: Bool? = nil
+    var fixedTimesTemplate: [Int]? = nil
+    var anchorDayKey: String? = nil
 
     var fixedTimesEnabled: Bool { (useFixedTimes ?? false) && !(fixedTimes ?? []).isEmpty }
     var sortedFixedTimes: [Int] { (fixedTimes ?? []).sorted() }
+    var anchorsToFirstVoid: Bool { anchorToFirstVoid ?? false }
+    /// Grundplan der festen Zeiten — bei Ausrichtung die Vorlage, sonst die Zeiten selbst.
+    var fixedTemplate: [Int] {
+        anchorsToFirstVoid ? (fixedTimesTemplate ?? sortedFixedTimes).sorted() : sortedFixedTimes
+    }
+
+    /// Grundplan so verschieben, dass seine erste Zeit auf `firstVoidMinute` fällt.
+    /// Zeiten jenseits von Mitternacht entfallen.
+    static func shiftedTimes(_ template: [Int], firstVoidMinute: Int) -> [Int] {
+        guard let base = template.min() else { return [] }
+        let delta = firstVoidMinute - base
+        return Array(Set(template.map { $0 + delta }.filter { (0..<1440).contains($0) })).sorted()
+    }
+
+    /// Erste Entleerung des heutigen Morgens: erster Urin-Eintrag heute zwischen
+    /// 04 und 12 Uhr nach mindestens 5 Stunden Pause (= nach der Nacht).
+    static func firstMorningVoid(entries: [ToiletEntry], now: Date = .now) -> Date? {
+        let cal = Calendar.current
+        let urine = entries.filter { $0.urineMl > 0 && $0.timestamp <= now }
+            .map(\.timestamp).sorted()
+        let today = cal.startOfDay(for: now)
+        for (i, t) in urine.enumerated() where t >= today {
+            let h = cal.component(.hour, from: t)
+            guard (4..<12).contains(h) else { continue }
+            if i == 0 || t.timeIntervalSince(urine[i - 1]) >= 5 * 3600 { return t }
+        }
+        return nil
+    }
+
+    /// Richtet fixedTimes einmal pro Tag an der ersten Morgen-Entleerung aus.
+    /// true = Zeiten wurden geändert (Erinnerungen neu planen).
+    mutating func alignFixedTimes(entries: [ToiletEntry], now: Date = .now) -> Bool {
+        guard anchorsToFirstVoid, useFixedTimes ?? false else { return false }
+        let template = fixedTemplate
+        guard !template.isEmpty else { return false }
+        let key = now.formatted(.iso8601.year().month().day())
+        guard anchorDayKey != key,
+              let first = Self.firstMorningVoid(entries: entries, now: now) else { return false }
+        let cal = Calendar.current
+        let minute = cal.component(.hour, from: first) * 60 + cal.component(.minute, from: first)
+        let shifted = Self.shiftedTimes(template, firstVoidMinute: minute)
+        guard !shifted.isEmpty else { return false }
+        fixedTimes = shifted
+        anchorDayKey = key
+        return true
+    }
 
     /// Nächste feste Erinnerungszeit nach `date` (heute oder morgen früh).
     static func nextFixedDue(after date: Date, times: [Int]) -> Date? {

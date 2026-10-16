@@ -17,6 +17,8 @@ struct BladderBowelManagerApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.reload()
                     store.syncToWatch()
+                    // Siri-/Fremd-Einträge: feste Zeiten ggf. noch ausrichten
+                    store.alignFixedTimesIfNeeded()
                     AlertEngine.checkDay(entries: store.entries)
                     // Kein Timer-NEUSTART beim Öffnen — nur Wiederaufnahme,
                     // falls gar keine Activity läuft (z. B. von iOS beendet).

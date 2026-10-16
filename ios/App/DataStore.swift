@@ -55,6 +55,52 @@ final class DataStore {
         // Hinweise: Sofort-Check des Eintrags + Tages-Checks
         AlertEngine.checkEntry(e)
         AlertEngine.checkDay(entries: entries)
+        // Feste Zeiten ggf. an der ersten Morgen-Entleerung ausrichten
+        if e.urineMl > 0 { alignFixedTimesIfNeeded() }
+    }
+
+    // MARK: - Feste Zeiten an der ersten Entleerung ausrichten
+
+    /// Einmal pro Tag: verschiebt die festen Zeiten auf die heutige erste
+    /// Morgen-Entleerung und plant die Erinnerungen neu. Idempotent.
+    func alignFixedTimesIfNeeded() {
+        var s = settings
+        guard s.alignFixedTimes(entries: entries) else { return }
+        settings = s
+        NotificationManager.scheduleFixedTimeReminders(settings: s)
+    }
+
+    /// Grundplan setzen (Einstellungen, Vorschlag). Bei Ausrichtung wird die
+    /// Vorlage gespeichert und — falls heute schon eine Morgen-Entleerung da
+    /// ist — sofort verschoben.
+    func setFixedTemplate(_ times: [Int]) {
+        let sorted = Array(Set(times)).sorted()
+        var s = settings
+        if s.anchorsToFirstVoid { s.fixedTimesTemplate = sorted; s.anchorDayKey = nil }
+        s.fixedTimes = sorted
+        _ = s.alignFixedTimes(entries: entries)
+        settings = s
+        if s.reminderEnabled && s.fixedTimesEnabled {
+            NotificationManager.scheduleFixedTimeReminders(settings: s)
+        }
+    }
+
+    func setAnchorToFirstVoid(_ on: Bool) {
+        var s = settings
+        if on {
+            s.fixedTimesTemplate = s.sortedFixedTimes
+            s.anchorToFirstVoid = true
+            s.anchorDayKey = nil
+            _ = s.alignFixedTimes(entries: entries)
+        } else {
+            s.fixedTimes = s.fixedTemplate
+            s.anchorToFirstVoid = false
+            s.anchorDayKey = nil
+        }
+        settings = s
+        if s.reminderEnabled && s.fixedTimesEnabled {
+            NotificationManager.scheduleFixedTimeReminders(settings: s)
+        }
     }
 
     func delete(_ entry: ToiletEntry) {

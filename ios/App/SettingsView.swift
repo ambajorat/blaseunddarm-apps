@@ -279,7 +279,7 @@ struct SettingsView: View {
 
     private var fixedTimesEditor: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(store.settings.sortedFixedTimes, id: \.self) { minutes in
+            ForEach(store.settings.fixedTemplate, id: \.self) { minutes in
                 HStack {
                     Image(systemName: "alarm")
                         .foregroundStyle(Color.accentBlue)
@@ -306,6 +306,24 @@ struct SettingsView: View {
                     .font(.subheadline.weight(.semibold))
             }
             .buttonStyle(.bordered)
+            Toggle(isOn: Binding(
+                get: { store.settings.anchorsToFirstVoid },
+                set: { store.setAnchorToFirstVoid($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("An erste Entleerung am Morgen ausrichten")
+                        .font(.subheadline)
+                    Text("Die erste Zeit gilt als Aufwachzeit. Sobald du morgens die erste Entleerung einträgst, verschieben sich alle Zeiten des Tages entsprechend.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if store.settings.anchorsToFirstVoid,
+               store.settings.sortedFixedTimes != store.settings.fixedTemplate {
+                Text(String(localized: "Heute ausgerichtet: \(store.settings.sortedFixedTimes.map(Self.clockString).joined(separator: " · "))"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.accentBlue)
+            }
             Text("Erinnerungen kommen täglich zu diesen Uhrzeiten — unabhängig vom letzten Eintrag. Die Ruhezeit wird dabei nicht angewendet.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -322,21 +340,26 @@ struct SettingsView: View {
         return c.component(.hour, from: date) * 60 + c.component(.minute, from: date)
     }
 
+    private static func clockString(_ minutes: Int) -> String {
+        String(format: "%02d:%02d", minutes / 60, minutes % 60)
+    }
+
+    // Bearbeitet immer den Grundplan; bei Ausrichtung verschiebt der Store neu.
     private func replaceFixedTime(_ old: Int, with newMinutes: Int) {
-        var t = store.settings.fixedTimes ?? []
+        var t = store.settings.fixedTemplate
         if let i = t.firstIndex(of: old) { t[i] = newMinutes }
-        store.settings.fixedTimes = Array(Set(t)).sorted()
+        store.setFixedTemplate(t)
     }
 
     private func removeFixedTime(_ minutes: Int) {
-        store.settings.fixedTimes = (store.settings.fixedTimes ?? []).filter { $0 != minutes }
+        store.setFixedTemplate(store.settings.fixedTemplate.filter { $0 != minutes })
     }
 
     private func addFixedTime() {
-        var t = store.settings.fixedTimes ?? []
+        var t = store.settings.fixedTemplate
         let next = t.isEmpty ? 480 : min((t.max() ?? 480) + 180, 1425)
         if !t.contains(next) { t.append(next) }
-        store.settings.fixedTimes = t.sorted()
+        store.setFixedTemplate(t)
     }
 
     private func formatInterval(_ minutes: Int) -> String {

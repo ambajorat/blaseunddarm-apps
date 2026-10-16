@@ -99,7 +99,15 @@ struct IntervalPlanView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(plan.times.map(Self.clock).joined(separator: ", "))
 
-                    if store.settings.fixedTimesEnabled && store.settings.sortedFixedTimes == plan.times {
+                    Toggle(isOn: Binding(
+                        get: { store.settings.anchorsToFirstVoid },
+                        set: { store.setAnchorToFirstVoid($0) }
+                    )) {
+                        Text("An erste Entleerung am Morgen ausrichten")
+                            .font(.subheadline)
+                    }
+
+                    if store.settings.fixedTimesEnabled && store.settings.fixedTemplate == plan.times {
                         Label(String(localized: "Als feste Zeiten aktiv"), systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                             .font(.subheadline.weight(.semibold))
@@ -114,7 +122,7 @@ struct IntervalPlanView: View {
                 } header: {
                     Text("Vorgeschlagene feste Zeiten")
                 } footer: {
-                    Text(String(localized: "Von \(Self.clock(plan.wakeMinutes)) (deine übliche erste Entleerung) bis \(Self.clock(plan.bedMinutes)) (deine übliche letzte vor der Nacht). Übernehmen ersetzt deine bisherigen festen Zeiten — jede Zeit lässt sich danach in den Einstellungen anpassen."))
+                    Text(String(localized: "Von \(Self.clock(plan.wakeMinutes)) (deine übliche erste Entleerung) bis \(Self.clock(plan.bedMinutes)) (deine übliche letzte vor der Nacht). Übernehmen ersetzt deine bisherigen festen Zeiten — jede Zeit lässt sich danach in den Einstellungen anpassen.") + (store.settings.anchorsToFirstVoid ? " " + String(localized: "Mit Ausrichtung verschiebt sich der ganze Plan jeden Tag auf deine tatsächliche erste Entleerung am Morgen.") : ""))
                 }
                 .confirmationDialog(
                     String(localized: "Feste Zeiten ersetzen?"),
@@ -144,10 +152,11 @@ struct IntervalPlanView: View {
     }
 
     private func apply(_ times: [Int]) {
-        store.settings.fixedTimes = times
         store.settings.useFixedTimes = true
         store.settings.reminderEnabled = true
-        // Wecker-Modus plant über die eingebaute Weiche sofort neu
+        // Grundplan setzen; bei Ausrichtung sofort auf heute verschieben.
+        store.setFixedTemplate(times)
+        // Wecker-Modus plant über die eingebaute Weiche neu (räumt Intervall-Erinnerung ab)
         NotificationManager.rescheduleReminder(
             afterMinutes: store.settings.intervalMinutes,
             settings: store.settings
