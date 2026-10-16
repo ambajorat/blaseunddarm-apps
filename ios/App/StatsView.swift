@@ -66,6 +66,7 @@ struct StatsView: View {
                             symptomsCard
                             bowelCard
                             balanceCard
+                            FillRateCard()
                             urineChart
                             toiletCountChart
                             dailyTable

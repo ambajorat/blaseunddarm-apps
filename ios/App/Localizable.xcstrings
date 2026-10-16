@@ -6564,6 +6564,296 @@
           }
         }
       }
+    },
+    "%@: Füllrate bis %lld ml pro Stunde, Abstand %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: fill rate up to %lld ml per hour, interval %@"
+          }
+        }
+      }
+    },
+    "%lld von %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld"
+          }
+        }
+      }
+    },
+    "Abends": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evening"
+          }
+        }
+      }
+    },
+    "Abstände nach Tageszeit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervals by time of day"
+          }
+        }
+      }
+    },
+    "Alle Werte beschreiben nur deine eigenen Einträge der letzten 30 Tage. Sie sind keine medizinische Empfehlung und ersetzen keine ärztliche Beratung.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All values only describe your own entries from the last 30 days. They are not medical advice and do not replace consulting a doctor."
+          }
+        }
+      }
+    },
+    "Als feste Zeiten aktiv": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active as fixed times"
+          }
+        }
+      }
+    },
+    "Als feste Zeiten übernehmen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use as fixed times"
+          }
+        }
+      }
+    },
+    "Bisher %lld× über %lld ml": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "So far %lld× above %lld ml"
+          }
+        }
+      }
+    },
+    "Die Erinnerungsart wird auf „Feste Zeiten“ gestellt.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reminder type will be set to “Fixed times”."
+          }
+        }
+      }
+    },
+    "Die Menge, die pro Entleerung möglichst nicht überschritten werden soll. Für die Katheterisierung werden häufig 400–500 ml als Obergrenze genannt — stimme den Wert mit deiner urologischen Praxis ab.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The volume you'd rather not exceed per voiding. For catheterisation, 400–500 ml is often cited as the upper limit — agree on the value with your urology practice."
+          }
+        }
+      }
+    },
+    "Erste Menge am Morgen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First volume in the morning"
+          }
+        }
+      }
+    },
+    "Feste Zeiten ersetzen?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace fixed times?"
+          }
+        }
+      }
+    },
+    "Füllrate = Menge geteilt durch die Zeit seit der letzten Entleerung. Gerechnet wird mit einem eher hohen Wert (drei von vier Abständen lagen darunter), damit die Zielmenge meistens nicht erreicht wird.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill rate = volume divided by the time since the previous voiding. The calculation uses a rather high value (three out of four intervals were below it) so the target volume is usually not reached."
+          }
+        }
+      }
+    },
+    "Füllrate bis %lld ml/Std (Tageswert)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill rate up to %lld ml/h (daily value)"
+          }
+        }
+      }
+    },
+    "Füllrate bis %lld ml/Std · %lld Abstände": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill rate up to %lld ml/h · %lld intervals"
+          }
+        }
+      }
+    },
+    "Füllrate nach Tageszeit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill rate by time of day"
+          }
+        }
+      }
+    },
+    "Für einen Vorschlag braucht es Urin-Einträge an mindestens 7 Tagen in den letzten 30 Tagen.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A suggestion needs urine entries on at least 7 days within the last 30 days."
+          }
+        }
+      }
+    },
+    "Letzte 30 Tage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last 30 days"
+          }
+        }
+      }
+    },
+    "Median %lld ml": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Median %lld ml"
+          }
+        }
+      }
+    },
+    "Mittags": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Midday"
+          }
+        }
+      }
+    },
+    "Morgens": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning"
+          }
+        }
+      }
+    },
+    "Nach der Nacht lag die erste Menge %lld von %lld Mal über %lld ml. Die Nacht deckt der Vorschlag nicht ab — sprich das bei Bedarf in deiner Praxis an.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After the night, %lld of %lld first volumes were above %lld ml. The suggestion doesn't cover the night — raise this with your practice if needed."
+          }
+        }
+      }
+    },
+    "Nachmittags": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afternoon"
+          }
+        }
+      }
+    },
+    "Von %@ (deine übliche erste Entleerung) bis %@ (deine übliche letzte vor der Nacht). Übernehmen ersetzt deine bisherigen festen Zeiten — jede Zeit lässt sich danach in den Einstellungen anpassen.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From %@ (your usual first voiding) to %@ (your usual last one before the night). Applying replaces your current fixed times — you can adjust each time afterwards in Settings."
+          }
+        }
+      }
+    },
+    "Vorgeschlagene Abstände für höchstens %lld ml — aus deinen letzten 30 Tagen.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested intervals for at most %lld ml — from your last 30 days."
+          }
+        }
+      }
+    },
+    "Vorgeschlagene feste Zeiten": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested fixed times"
+          }
+        }
+      }
+    },
+    "Vorgeschlagener Abstand je Tageszeit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested interval by time of day"
+          }
+        }
+      }
+    },
+    "Zielmenge": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target volume"
+          }
+        }
+      }
+    },
+    "Über der Zielmenge": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Above target volume"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

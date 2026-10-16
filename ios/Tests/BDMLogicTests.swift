@@ -205,4 +205,51 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertNil(old.drinkMl)
         XCTAssertNil(old.catheterSort)
     }
+
+    // MARK: - Abstände nach Tageszeit
+
+    /// 10 gleichförmige Tage: 08, 11, 14, 17, 21, 23 Uhr.
+    private func planDays(extraDuplicate: Bool = false) -> [ToiletEntry] {
+        var e: [ToiletEntry] = []
+        for d in 1...10 {
+            e += [entry(daysAgo: d, minute: 0, urine: 300),     // 08:00
+                  entry(daysAgo: d, minute: 180, urine: 300),   // 11:00  100 ml/h
+                  entry(daysAgo: d, minute: 360, urine: 400),   // 14:00  133 ml/h
+                  entry(daysAgo: d, minute: 540, urine: 300),   // 17:00  100 ml/h
+                  entry(daysAgo: d, minute: 780, urine: 400),   // 21:00  100 ml/h
+                  entry(daysAgo: d, minute: 900, urine: 200)]   // 23:00  100 ml/h
+        }
+        if extraDuplicate { e.append(entry(daysAgo: 3, minute: 184, urine: 50)) }
+        return e
+    }
+
+    func testIntervalPlanFesteZeitenAusFuellrate() throws {
+        let plan = try XCTUnwrap(SuggestionEngine.intervalPlan(entries: planDays(), targetMl: 400))
+        XCTAssertEqual(plan.slots.map(\.suggestedMinutes), [240, 180, 240, 240])
+        XCTAssertEqual(plan.wakeMinutes, 480)
+        XCTAssertEqual(plan.bedMinutes, 1380)
+        XCTAssertEqual(plan.times, [480, 720, 900, 1140, 1380])
+        XCTAssertEqual(plan.overTarget, 0)
+    }
+
+    func testIntervalPlanKleinereZielmengeKuerzereAbstaende() throws {
+        let p400 = try XCTUnwrap(SuggestionEngine.intervalPlan(entries: planDays(), targetMl: 400))
+        let p250 = try XCTUnwrap(SuggestionEngine.intervalPlan(entries: planDays(), targetMl: 250))
+        for (a, b) in zip(p250.slots, p400.slots) {
+            XCTAssertLessThanOrEqual(a.suggestedMinutes, b.suggestedMinutes)
+        }
+        XCTAssertGreaterThan(p250.times.count, p400.times.count)
+        XCTAssertTrue(p250.times.allSatisfy { $0 < 1440 })
+        XCTAssertEqual(p250.times, p250.times.sorted())
+    }
+
+    func testIntervalPlanDoppelteEintraegeZaehlenEinmal() throws {
+        let plan = try XCTUnwrap(SuggestionEngine.intervalPlan(entries: planDays(extraDuplicate: true), targetMl: 400))
+        XCTAssertEqual(plan.volumes, 60, "Eintrag 4 Minuten nach dem vorigen = dieselbe Entleerung")
+    }
+
+    func testIntervalPlanBrauchtSiebenTage() {
+        let few = planDays().filter { cal.dateComponents([.day], from: $0.timestamp, to: .now).day! < 5 }
+        XCTAssertNil(SuggestionEngine.intervalPlan(entries: few, targetMl: 400))
+    }
 }

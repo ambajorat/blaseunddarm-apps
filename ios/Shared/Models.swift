@@ -229,6 +229,8 @@ struct AppSettings: Codable, Equatable {
     // (Optionals: Bestandsdaten ohne diese Felder decodieren sauber zu nil)
     var useFixedTimes: Bool? = nil
     var fixedTimes: [Int]? = nil  // Minuten seit Mitternacht, z.B. 420 = 07:00
+    // Zielmenge je Entleerung für den Vorschlag „Abstände nach Tageszeit“ (nil = 400 ml)
+    var targetVolumeMl: Int? = nil
 
     var fixedTimesEnabled: Bool { (useFixedTimes ?? false) && !(fixedTimes ?? []).isEmpty }
     var sortedFixedTimes: [Int] { (fixedTimes ?? []).sorted() }

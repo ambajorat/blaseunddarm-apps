@@ -213,6 +213,12 @@ struct SettingsView: View {
                     }
                 }
 
+                NavigationLink {
+                    IntervalPlanView()
+                } label: {
+                    Label(String(localized: "Abstände nach Tageszeit"), systemImage: "clock.badge.checkmark")
+                }
+
                 Toggle(isOn: Binding(
                     get: { store.settings.quietHoursEnabled },
                     set: { store.settings.quietHoursEnabled = $0 }
