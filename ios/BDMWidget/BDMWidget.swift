@@ -44,6 +44,8 @@ struct BDMEntry: TimelineEntry {
 
     var isInQuietHours: Bool {
         guard let data, data.quietHoursEnabled else { return false }
+        // Wecker-Modus kennt keine Ruhezeit — die festen Zeiten gelten rund um die Uhr
+        if data.useFixedTimes == true, !(data.fixedTimes ?? []).isEmpty { return false }
         let hour = Calendar.current.component(.hour, from: date)
         if data.quietFrom < data.quietTo {
             return hour >= data.quietFrom && hour < data.quietTo

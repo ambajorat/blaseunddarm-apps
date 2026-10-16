@@ -41,6 +41,17 @@ final class LiveActivityManager {
     }
 
 
+    /// Rohe Fälligkeit, angezeigte Fälligkeit und Ruhezeit-Ende.
+    /// Wecker-Modus: keine Ruhezeit — die nächste feste Zeit IST die Fälligkeit.
+    /// (Vorher galt start+Intervall als „rohe“ Fälligkeit; lag die nächste feste
+    /// Zeit dahinter, zeigte die Live Activity fälschlich „Ruhezeit“ mit Mond.)
+    static func dueState(start: Date, intervalMinutes: Int, settings: AppSettings?) -> (physDue: Date, shifted: Date, quietEnd: Date?) {
+        let shifted = quietAdjustedDueDate(start: start, intervalMinutes: intervalMinutes, settings: settings)
+        if settings?.fixedTimesEnabled == true { return (shifted, shifted, nil) }
+        let physDue = start.addingTimeInterval(TimeInterval(intervalMinutes * 60))
+        return (physDue, shifted, shifted > physDue ? shifted : nil)
+    }
+
     /// Übernimmt nur eine wirklich AKTIVE Activity; verwirft beendete/weggewischte.
     private func adoptActiveActivity() {
         if let current = currentActivity, current.activityState == .active || current.activityState == .stale {
@@ -85,15 +96,14 @@ final class LiveActivityManager {
 
         await endInactiveRemnants()
 
-        let physDue = startTime.addingTimeInterval(TimeInterval(intervalMinutes * 60))
-        let shifted = Self.quietAdjustedDueDate(start: startTime, intervalMinutes: intervalMinutes, settings: settings)
+        let (physDue, shifted, quietEnd) = Self.dueState(start: startTime, intervalMinutes: intervalMinutes, settings: settings)
         let state = ToiletTimerAttributes.ContentState(
             startTime: startTime,
             intervalMinutes: intervalMinutes,
             todayMl: todayMl,
             todayCount: todayCount,
             dueDate: shifted,   // Fix15: die EINE ruhezeitbewusste Fälligkeit (wie App)
-            quietEnd: shifted > physDue ? shifted : nil
+            quietEnd: quietEnd
         )
 
         // Nur eine AKTIVE Activity übernehmen. Beendete/weggewischte bleiben
@@ -121,15 +131,14 @@ final class LiveActivityManager {
         await endInactiveRemnants()
         adoptActiveActivity()
         guard let activity = currentActivity else { return }
-        let physDue = startTime.addingTimeInterval(TimeInterval(intervalMinutes * 60))
-        let shifted = Self.quietAdjustedDueDate(start: startTime, intervalMinutes: intervalMinutes, settings: settings)
+        let (physDue, shifted, quietEnd) = Self.dueState(start: startTime, intervalMinutes: intervalMinutes, settings: settings)
         let state = ToiletTimerAttributes.ContentState(
             startTime: startTime,
             intervalMinutes: intervalMinutes,
             todayMl: todayMl,
             todayCount: todayCount,
             dueDate: shifted,   // Fix15: die EINE ruhezeitbewusste Fälligkeit (wie App)
-            quietEnd: shifted > physDue ? shifted : nil
+            quietEnd: quietEnd
         )
         await activity.update(.init(state: state, staleDate: Self.nextStateChange(physDue: physDue, quietEnd: state.quietEnd)))
     }

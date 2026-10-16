@@ -301,4 +301,19 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertFalse(s.alignFixedTimes(entries: [today(7, 0, urine: 400)]))
         XCTAssertEqual(s.fixedTimes, [480, 720])
     }
+
+    // MARK: - Wecker-Modus: keine Ruhezeit-Anzeige in der Live Activity
+
+    func testDueStateWeckerModusOhneRuhezeit() {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.quietHoursEnabled = true
+        let start = Date.now.addingTimeInterval(-4 * 3600)   // rohe Fälligkeit längst vorbei
+        let nowMin = cal.component(.hour, from: .now) * 60 + cal.component(.minute, from: .now)
+        s.fixedTimes = [(nowMin + 40) % 1440]                 // nächste feste Zeit in 40 min
+        let st = LiveActivityManager.dueState(start: start, intervalMinutes: 60, settings: s)
+        XCTAssertNil(st.quietEnd, "Wecker-Modus darf nie Ruhezeit/Mond zeigen")
+        XCTAssertEqual(st.physDue, st.shifted)
+        XCTAssertGreaterThan(st.shifted, .now)
+    }
 }
