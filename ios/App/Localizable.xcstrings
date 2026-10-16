@@ -852,6 +852,16 @@
         }
       }
     },
+    "An erste Entleerung am Morgen ausrichten" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Align to first voiding in the morning"
+          }
+        }
+      }
+    },
     "An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1835,6 +1845,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The reminder type will be set to “Fixed times”."
+          }
+        }
+      }
+    },
+    "Die erste Zeit gilt als Aufwachzeit. Sobald du morgens die erste Entleerung einträgst, verschieben sich alle Zeiten des Tages entsprechend." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The first time counts as your wake-up time. As soon as you log your first voiding in the morning, all of the day's times shift accordingly."
           }
         }
       }
@@ -2836,6 +2856,17 @@
         }
       }
     },
+    "Heute ausgerichtet: %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aligned today: %@"
+          }
+        }
+      }
+    },
     "Heute schon %lld Gänge — über deiner Grenze von %lld." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3353,6 +3384,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Several signs on two consecutive days — with ISC this can point to a urinary tract infection. Consider seeing a doctor."
+          }
+        }
+      }
+    },
+    "Mit Ausrichtung verschiebt sich der ganze Plan jeden Tag auf deine tatsächliche erste Entleerung am Morgen." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With alignment, the whole plan shifts each day to your actual first voiding in the morning."
           }
         }
       }
@@ -6874,6 +6916,7 @@
           }
         }
       }
+<<<<<<< Updated upstream
     },
     "Heute ausgerichtet: %@" : {
       "localizations" : {
@@ -6914,6 +6957,8 @@
           }
         }
       }
+=======
+>>>>>>> Stashed changes
     }
   },
   "version" : "1.1"
