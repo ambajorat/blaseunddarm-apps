@@ -311,9 +311,9 @@ struct SettingsView: View {
                 set: { store.setAnchorToFirstVoid($0) }
             )) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("An erste Entleerung am Morgen ausrichten")
+                    Text("An Entleerungen ausrichten")
                         .font(.subheadline)
-                    Text("Die erste Zeit gilt als Aufwachzeit. Sobald du morgens die erste Entleerung einträgst, verschieben sich alle Zeiten des Tages entsprechend.")
+                    Text("Die erste Zeit gilt als Aufwachzeit: Die erste Entleerung am Morgen verschiebt den ganzen Tag. Danach startet jede Entleerung den Abstand neu — gehst du früher, kommt auch die nächste Erinnerung früher.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

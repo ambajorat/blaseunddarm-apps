@@ -269,22 +269,58 @@ struct AppSettings: Codable, Equatable {
         return nil
     }
 
-    /// Richtet fixedTimes einmal pro Tag an der ersten Morgen-Entleerung aus.
+    /// Restplan des Tages ab einer Entleerung um `e` (Minuten) neu takten:
+    /// Die Entleerung ersetzt die NÄCHSTGELEGENE geplante Zeit (früher dran →
+    /// die kommende, später dran → die vergangene). Alle Zeiten danach rücken
+    /// um dieselbe Differenz mit, die Abstände bleiben. Die Entleerung wird
+    /// selbst zur Zeit im Plan — ein zweiter Aufruf verschiebt nichts mehr.
+    static func rechainedTimes(_ times: [Int], afterVoidMinute e: Int) -> [Int] {
+        let s = Array(Set(times)).sorted()
+        guard let j = s.firstIndex(where: { $0 > e }) else { return s }
+        let k = (j > 0 && e - s[j - 1] <= s[j] - e) ? j - 1 : j
+        let delta = e - s[k]
+        guard delta != 0 else { return s }
+        var out = Array(s[..<k])
+        out.append(e)
+        out += s[(k + 1)...].map { $0 + delta }.filter { $0 < 1440 }
+        return Array(Set(out)).sorted()
+    }
+
+    /// Richtet fixedTimes an den Entleerungen des Tages aus:
+    /// 1. einmal pro Tag den ganzen Grundplan auf die erste Morgen-Entleerung,
+    /// 2. danach den Restplan ab der jeweils letzten Entleerung (rechainedTimes).
     /// true = Zeiten wurden geändert (Erinnerungen neu planen).
     mutating func alignFixedTimes(entries: [ToiletEntry], now: Date = .now) -> Bool {
         guard anchorsToFirstVoid, useFixedTimes ?? false else { return false }
         let template = fixedTemplate
         guard !template.isEmpty else { return false }
-        let key = now.formatted(.iso8601.year().month().day())
-        guard anchorDayKey != key,
-              let first = Self.firstMorningVoid(entries: entries, now: now) else { return false }
         let cal = Calendar.current
-        let minute = cal.component(.hour, from: first) * 60 + cal.component(.minute, from: first)
-        let shifted = Self.shiftedTimes(template, firstVoidMinute: minute)
-        guard !shifted.isEmpty else { return false }
-        fixedTimes = shifted
-        anchorDayKey = key
-        return true
+        func minuteOf(_ d: Date) -> Int { cal.component(.hour, from: d) * 60 + cal.component(.minute, from: d) }
+        let key = now.formatted(.iso8601.year().month().day())
+
+        var base = sortedFixedTimes
+        var changed = false
+        if anchorDayKey != key {
+            guard let first = Self.firstMorningVoid(entries: entries, now: now) else { return false }
+            let shifted = Self.shiftedTimes(template, firstVoidMinute: minuteOf(first))
+            guard !shifted.isEmpty else { return false }
+            base = shifted
+            anchorDayKey = key
+            changed = true
+        }
+
+        // Letzte Urin-Entleerung heute → Restplan neu takten
+        let today = cal.startOfDay(for: now)
+        if let last = entries.filter({ $0.urineMl > 0 && $0.timestamp >= today && $0.timestamp <= now })
+            .map(\.timestamp).max(), let firstTime = base.first, minuteOf(last) >= firstTime {
+            base = Self.rechainedTimes(base, afterVoidMinute: minuteOf(last))
+        }
+
+        if base != sortedFixedTimes {
+            fixedTimes = base
+            changed = true
+        }
+        return changed
     }
 
     /// Nächste feste Erinnerungszeit nach `date` (heute oder morgen früh).

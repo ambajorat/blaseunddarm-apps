@@ -6875,26 +6875,6 @@
         }
       }
     },
-    "An erste Entleerung am Morgen ausrichten" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Align to first voiding in the morning"
-          }
-        }
-      }
-    },
-    "Die erste Zeit gilt als Aufwachzeit. Sobald du morgens die erste Entleerung einträgst, verschieben sich alle Zeiten des Tages entsprechend." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The first time counts as your wake-up time. As soon as you log your first voiding in the morning, all of the day's times shift accordingly."
-          }
-        }
-      }
-    },
     "Heute ausgerichtet: %@" : {
       "localizations" : {
         "en" : {
@@ -6905,12 +6885,32 @@
         }
       }
     },
-    "Mit Ausrichtung verschiebt sich der ganze Plan jeden Tag auf deine tatsächliche erste Entleerung am Morgen." : {
+    "An Entleerungen ausrichten" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "With alignment, the whole plan shifts each day to your actual first voiding in the morning."
+            "value" : "Align to your voidings"
+          }
+        }
+      }
+    },
+    "Die erste Zeit gilt als Aufwachzeit: Die erste Entleerung am Morgen verschiebt den ganzen Tag. Danach startet jede Entleerung den Abstand neu — gehst du früher, kommt auch die nächste Erinnerung früher." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The first time counts as your wake-up time: your first voiding in the morning shifts the whole day. After that, every voiding restarts the interval — if you go earlier, the next reminder comes earlier too."
+          }
+        }
+      }
+    },
+    "Mit Ausrichtung richtet sich der Plan nach deinen tatsächlichen Entleerungen: Der Tag beginnt mit der ersten am Morgen, und nach jeder Entleerung startet der Abstand neu." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With alignment, the plan follows your actual voidings: the day starts with the first one in the morning, and every voiding restarts the interval."
           }
         }
       }

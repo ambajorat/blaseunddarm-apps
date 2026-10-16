@@ -290,16 +290,33 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertTrue(s.alignFixedTimes(entries: entries, now: now))
         XCTAssertEqual(s.fixedTimes, [420, 660, 900])
         XCTAssertEqual(s.fixedTemplate, [480, 720, 960], "Grundplan bleibt unverändert")
-        XCTAssertFalse(s.alignFixedTimes(entries: entries + [today(9, 0, urine: 100)], now: now),
-                       "Pro Tag nur einmal ausrichten")
+        XCTAssertFalse(s.alignFixedTimes(entries: entries, now: now),
+                       "Gleiche Entleerung zweimal → nichts mehr verschieben")
+        // Früher dran: 10:00 statt 11:00 → nächste 14:00 statt 15:00
+        let more = entries + [today(10, 0, urine: 300)]
+        XCTAssertTrue(s.alignFixedTimes(entries: more, now: now))
+        XCTAssertEqual(s.fixedTimes, [420, 600, 840])
+        XCTAssertFalse(s.alignFixedTimes(entries: more, now: now), "idempotent")
     }
 
-    func testAlignFixedTimesOhneSchalterNichts() {
-        var s = AppSettings()
-        s.useFixedTimes = true
-        s.fixedTimes = [480, 720]
-        XCTAssertFalse(s.alignFixedTimes(entries: [today(7, 0, urine: 400)]))
-        XCTAssertEqual(s.fixedTimes, [480, 720])
+    func testRechainedTimesFrueherUndSpaeter() {
+        let plan = [480, 720, 840, 960]                 // 08:00, 12:00, 14:00, 16:00
+        // 11:50 statt 12:00 → ersetzt 12:00, nächste 13:50, dann 15:50
+        XCTAssertEqual(AppSettings.rechainedTimes(plan, afterVoidMinute: 710),
+                       [480, 710, 830, 950])
+        // 13:15 statt 14:00 → ersetzt 14:00, nächste 15:15
+        XCTAssertEqual(AppSettings.rechainedTimes(plan, afterVoidMinute: 795),
+                       [480, 720, 795, 915])
+        // 12:20 statt 12:00 (später) → ersetzt 12:00, alles danach +20 min
+        XCTAssertEqual(AppSettings.rechainedTimes(plan, afterVoidMinute: 740),
+                       [480, 740, 860, 980])
+        // genau zur geplanten Zeit → unverändert
+        XCTAssertEqual(AppSettings.rechainedTimes(plan, afterVoidMinute: 720), plan)
+        // nach der letzten Zeit → unverändert
+        XCTAssertEqual(AppSettings.rechainedTimes(plan, afterVoidMinute: 1000), plan)
+        // Zeiten über Mitternacht entfallen
+        XCTAssertEqual(AppSettings.rechainedTimes([480, 1200, 1400], afterVoidMinute: 1300),
+                       [480, 1300])
     }
 
     // MARK: - Wecker-Modus: keine Ruhezeit-Anzeige in der Live Activity

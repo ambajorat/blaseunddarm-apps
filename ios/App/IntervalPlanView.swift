@@ -103,7 +103,7 @@ struct IntervalPlanView: View {
                         get: { store.settings.anchorsToFirstVoid },
                         set: { store.setAnchorToFirstVoid($0) }
                     )) {
-                        Text("An erste Entleerung am Morgen ausrichten")
+                        Text("An Entleerungen ausrichten")
                             .font(.subheadline)
                     }
 
@@ -122,7 +122,7 @@ struct IntervalPlanView: View {
                 } header: {
                     Text("Vorgeschlagene feste Zeiten")
                 } footer: {
-                    Text(String(localized: "Von \(Self.clock(plan.wakeMinutes)) (deine übliche erste Entleerung) bis \(Self.clock(plan.bedMinutes)) (deine übliche letzte vor der Nacht). Übernehmen ersetzt deine bisherigen festen Zeiten — jede Zeit lässt sich danach in den Einstellungen anpassen.") + (store.settings.anchorsToFirstVoid ? " " + String(localized: "Mit Ausrichtung verschiebt sich der ganze Plan jeden Tag auf deine tatsächliche erste Entleerung am Morgen.") : ""))
+                    Text(String(localized: "Von \(Self.clock(plan.wakeMinutes)) (deine übliche erste Entleerung) bis \(Self.clock(plan.bedMinutes)) (deine übliche letzte vor der Nacht). Übernehmen ersetzt deine bisherigen festen Zeiten — jede Zeit lässt sich danach in den Einstellungen anpassen.") + (store.settings.anchorsToFirstVoid ? " " + String(localized: "Mit Ausrichtung richtet sich der Plan nach deinen tatsächlichen Entleerungen: Der Tag beginnt mit der ersten am Morgen, und nach jeder Entleerung startet der Abstand neu.") : ""))
                 }
                 .confirmationDialog(
                     String(localized: "Feste Zeiten ersetzen?"),
