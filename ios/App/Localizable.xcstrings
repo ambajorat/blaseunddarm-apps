@@ -852,6 +852,16 @@
         }
       }
     },
+    "An Entleerungen ausrichten" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Align to your voidings"
+          }
+        }
+      }
+    },
     "An mehreren Tagen überwiegend dunkler oder trüber Urin — mehr trinken und beobachten; hält es an, ärztlich abklären." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1835,6 +1845,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The reminder type will be set to “Fixed times”."
+          }
+        }
+      }
+    },
+    "Die erste Zeit gilt als Aufwachzeit: Die erste Entleerung am Morgen verschiebt den ganzen Tag. Danach startet jede Entleerung den Abstand neu — gehst du früher, kommt auch die nächste Erinnerung früher." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The first time counts as your wake-up time: your first voiding in the morning shifts the whole day. After that, every voiding restarts the interval — if you go earlier, the next reminder comes earlier too."
           }
         }
       }
@@ -2836,6 +2856,17 @@
         }
       }
     },
+    "Heute ausgerichtet: %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aligned today: %@"
+          }
+        }
+      }
+    },
     "Heute schon %lld Gänge — über deiner Grenze von %lld." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3353,6 +3384,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Several signs on two consecutive days — with ISC this can point to a urinary tract infection. Consider seeing a doctor."
+          }
+        }
+      }
+    },
+    "Mit Ausrichtung richtet sich der Plan nach deinen tatsächlichen Entleerungen: Der Tag beginnt mit der ersten am Morgen, und nach jeder Entleerung startet der Abstand neu." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With alignment, the plan follows your actual voidings: the day starts with the first one in the morning, and every voiding restarts the interval."
           }
         }
       }
@@ -6871,46 +6913,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "Heute ausgerichtet: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aligned today: %@"
-          }
-        }
-      }
-    },
-    "An Entleerungen ausrichten" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Align to your voidings"
-          }
-        }
-      }
-    },
-    "Die erste Zeit gilt als Aufwachzeit: Die erste Entleerung am Morgen verschiebt den ganzen Tag. Danach startet jede Entleerung den Abstand neu — gehst du früher, kommt auch die nächste Erinnerung früher." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The first time counts as your wake-up time: your first voiding in the morning shifts the whole day. After that, every voiding restarts the interval — if you go earlier, the next reminder comes earlier too."
-          }
-        }
-      }
-    },
-    "Mit Ausrichtung richtet sich der Plan nach deinen tatsächlichen Entleerungen: Der Tag beginnt mit der ersten am Morgen, und nach jeder Entleerung startet der Abstand neu." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "With alignment, the plan follows your actual voidings: the day starts with the first one in the morning, and every voiding restarts the interval."
           }
         }
       }
