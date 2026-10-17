@@ -25,7 +25,16 @@ final class DataStore {
     private func setupWatchSync() {
         let connectivity = ConnectivityManager.shared
         connectivity.onNewEntry = { [weak self] entry in
-            self?.add(entry)
+            guard let self else { return }
+            self.add(entry)
+            // Uhr-Eintrag taktet auch die iPhone-Erinnerung neu (wie Formular/Siri);
+            // im Wecker-Modus plant rescheduleReminder die festen Zeiten.
+            if entry.urineMl > 0, self.settings.reminderEnabled {
+                NotificationManager.rescheduleReminder(
+                    afterMinutes: self.settings.intervalMinutes,
+                    settings: self.settings
+                )
+            }
         }
         syncToWatch()
     }

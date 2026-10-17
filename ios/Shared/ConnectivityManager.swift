@@ -86,6 +86,15 @@ final class ConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    /// Die Uhr schickt Einträge mit replyHandler. Ohne diese Variante
+    /// schlägt die Zustellung fehl, die Uhr fällt auf transferUserInfo
+    /// zurück — und der Eintrag kommt erst an, wenn die iPhone-App läuft.
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any],
+                 replyHandler: @escaping ([String: Any]) -> Void) {
+        replyHandler(["ok": true])
+        self.session(session, didReceiveMessage: message)
+    }
+
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         DispatchQueue.main.async { [self] in
             if let entriesData = applicationContext["entries"] as? Data,

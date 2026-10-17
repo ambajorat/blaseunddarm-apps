@@ -41,6 +41,11 @@ final class WatchSessionManager: NSObject, ObservableObject {
     @Published var quietFrom: Int = 22
     @Published var quietTo: Int = 6
     @Published var lastEntryDate: Date? = nil
+    // Wecker-Modus (feste Zeiten) — vom iPhone gespiegelt, lokal nachgetaktet
+    @Published var settings: AppSettings = AppSettings()
+    private var recentEntries: [ToiletEntry] = []
+
+    private var fixedMode: Bool { settings.reminderEnabled && settings.fixedTimesEnabled }
 
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -83,7 +88,14 @@ final class WatchSessionManager: NSObject, ObservableObject {
         todayCount += 1
         if entry.bowel { todayBowel += 1 }
         // Nur Blasen-Einträge takten Timer/Erinnerung neu
-        if entry.urineMl > 0 { lastEntryDate = entry.timestamp }
+        if entry.urineMl > 0 {
+            lastEntryDate = entry.timestamp
+            // Feste Zeiten sofort auf der Uhr nachtakten (gleiche Regel wie iPhone);
+            // das iPhone schickt danach seinen Stand und überschreibt ihn.
+            recentEntries.insert(entry, at: 0)
+            var s = settings
+            if s.alignFixedTimes(entries: recentEntries) { settings = s }
+        }
         writeWidgetData()
     }
 
@@ -97,7 +109,11 @@ final class WatchSessionManager: NSObject, ObservableObject {
 
         var fireDate = start.addingTimeInterval(TimeInterval(intervalMinutes * 60))
 
-        if quietHoursEnabled {
+        // Wecker-Modus: nächste feste Zeit, ohne Ruhezeit (wie iPhone)
+        if fixedMode {
+            guard let next = AppSettings.nextFixedDue(after: .now, times: settings.sortedFixedTimes) else { return }
+            fireDate = next
+        } else if quietHoursEnabled {
             let cal = Calendar.current
             let fireHour = cal.component(.hour, from: fireDate)
 
@@ -138,6 +154,11 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Körperliche Fälligkeit + optionales Ruhezeitende (wenn die Fälligkeit
     /// in die Ruhezeit fällt). nil, solange kein Eintrag bekannt ist.
     func currentDue() -> (due: Date, quietEnd: Date?)? {
+        // Wecker-Modus: nächste feste Zeit, keine Ruhezeit-Anzeige (wie iPhone)
+        if fixedMode {
+            guard let next = AppSettings.nextFixedDue(after: .now, times: settings.sortedFixedTimes) else { return nil }
+            return (next, nil)
+        }
         guard let last = lastEntryDate else { return nil }
         let due = last.addingTimeInterval(TimeInterval(intervalMinutes * 60))
         guard quietHoursEnabled else { return (due, nil) }
@@ -173,6 +194,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         todayMl = today.reduce(0) { $0 + $1.urineMl }
         todayCount = today.count
         todayBowel = today.filter(\.bowel).count
+        recentEntries = entries
         writeWidgetData()
 
         // iPhone-Eintrag verschiebt auch die Watch-Erinnerung nach hinten
@@ -183,6 +205,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
     }
 
     private func apply(settings: AppSettings) {
+        self.settings = settings
         quickValues = settings.quickValues
         intervalMinutes = settings.intervalMinutes
         quietHoursEnabled = settings.quietHoursEnabled
@@ -202,7 +225,9 @@ final class WatchSessionManager: NSObject, ObservableObject {
             quietHoursEnabled: quietHoursEnabled,
             quietFrom: quietFrom,
             quietTo: quietTo,
-            updatedAt: .now
+            updatedAt: .now,
+            useFixedTimes: settings.useFixedTimes,
+            fixedTimes: settings.fixedTimes
         )
         data.save()
         WidgetCenter.shared.reloadAllTimelines()
@@ -238,7 +263,17 @@ extension WatchSessionManager: WCSessionDelegate {
             if let d = dict["entries"] as? Data,
                let entries = try? self.decoder.decode([ToiletEntry].self, from: d) {
                 self.apply(entries: entries)
+            } else if dict["settings"] != nil, let last = self.lastEntryDate {
+                // Nur Einstellungen (z. B. neu getaktete feste Zeiten) → Erinnerung neu
+                self.scheduleWatchReminder(from: last)
             }
         }
+    }
+
+    /// Antwort auf Nachrichten mit replyHandler (Symmetrie zum iPhone).
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any],
+                 replyHandler: @escaping ([String: Any]) -> Void) {
+        replyHandler(["ok": true])
+        handle(message)
     }
 }
