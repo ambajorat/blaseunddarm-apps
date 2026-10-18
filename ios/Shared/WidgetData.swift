@@ -18,17 +18,6 @@ struct WidgetData: Codable {
     var anchorToFirstVoid: Bool? = nil
     var anchorDayKey: String? = nil
 
-    /// AppSettings-Ausschnitt für die gemeinsame Fälligkeitslogik.
-    var fixedSettings: AppSettings {
-        var s = AppSettings()
-        s.useFixedTimes = useFixedTimes
-        s.fixedTimes = fixedTimes
-        s.fixedTimesTemplate = fixedTimesTemplate
-        s.anchorToFirstVoid = anchorToFirstVoid
-        s.anchorDayKey = anchorDayKey
-        return s
-    }
-
     static let groupID = "group.blase-und-darm.Blase-und-Darm"
     static let key = "widget_data"
 

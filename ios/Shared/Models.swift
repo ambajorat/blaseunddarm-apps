@@ -440,3 +440,19 @@ extension Array where Element == ToiletEntry {
         return result
     }
 }
+
+// MARK: - Widget-Brücke
+// Bewusst hier und nicht in WidgetData.swift: das Watch-Widget-Target
+// kompiliert WidgetData.swift OHNE Models.swift und kennt AppSettings nicht.
+extension WidgetData {
+    /// AppSettings-Ausschnitt für die gemeinsame Fälligkeitslogik.
+    var fixedSettings: AppSettings {
+        var s = AppSettings()
+        s.useFixedTimes = useFixedTimes
+        s.fixedTimes = fixedTimes
+        s.fixedTimesTemplate = fixedTimesTemplate
+        s.anchorToFirstVoid = anchorToFirstVoid
+        s.anchorDayKey = anchorDayKey
+        return s
+    }
+}
