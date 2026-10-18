@@ -194,6 +194,32 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             let old = requests.map(\.identifier).filter { $0.hasPrefix(fixedIDPrefix) }
             if !old.isEmpty { center.removePendingNotificationRequests(withIdentifiers: old) }
             guard settings.reminderEnabled, settings.fixedTimesEnabled else { return }
+
+            // Mit Ausrichtung: datierte Einzel-Erinnerungen statt täglich
+            // wiederkehrender — heute der heute gültige (ggf. neu getaktete)
+            // Plan, die nächsten zwei Tage der Grundplan. Sonst würde der gestern
+            // verschobene Plan unverändert in den neuen Morgen weiterlaufen.
+            if settings.anchorsToFirstVoid {
+                let cal = Calendar.current
+                let today = cal.startOfDay(for: .now)
+                for offset in 0...2 {
+                    guard let day = cal.date(byAdding: .day, value: offset, to: today) else { continue }
+                    let times = offset == 0 ? settings.effectiveFixedTimes() : settings.fixedTemplate
+                    for minutes in times {
+                        let fire = day.addingTimeInterval(TimeInterval(minutes * 60))
+                        guard fire > .now else { continue }
+                        let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+                        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+                        center.add(UNNotificationRequest(
+                            identifier: "\(fixedIDPrefix)d\(offset)_\(minutes)",
+                            content: fixedReminderContent(),
+                            trigger: trigger
+                        ))
+                    }
+                }
+                return
+            }
+
             for minutes in settings.sortedFixedTimes {
                 let content = UNMutableNotificationContent()
                 content.title = String(localized: "⚠️ Toiletten-Erinnerung")
@@ -216,6 +242,19 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 center.add(request)
             }
         }
+    }
+
+    private static func fixedReminderContent() -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "⚠️ Toiletten-Erinnerung")
+        content.body = String(localized: "Zeit für den nächsten Toilettengang!")
+        content.categoryIdentifier = "TOILET_REMINDER"
+        content.interruptionLevel = .timeSensitive
+        content.sound = UNNotificationSound.criticalSoundNamed(
+            UNNotificationSoundName("toilet_alert.wav"),
+            withAudioVolume: 1.0
+        )
+        return content
     }
 
     func scheduleQuietHoursNotifications(settings: AppSettings) {

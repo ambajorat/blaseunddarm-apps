@@ -188,7 +188,7 @@ struct TimerStatusIntent: AppIntent {
         }
         let remaining: Int
         if store.settings.fixedTimesEnabled,
-           let due = AppSettings.nextFixedDue(after: .now, times: store.settings.sortedFixedTimes) {
+           let due = store.settings.fixedDue(lastVoid: last.timestamp) {
             remaining = Int(due.timeIntervalSinceNow)
         } else {
             let elapsed = Int(Date.now.timeIntervalSince(last.timestamp))

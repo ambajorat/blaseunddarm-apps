@@ -323,6 +323,36 @@ struct AppSettings: Codable, Equatable {
         return changed
     }
 
+    /// Die HEUTE gültigen festen Zeiten. Bei Ausrichtung gilt bis zur ersten
+    /// Morgen-Entleerung der Grundplan — nicht der gestern neu getaktete Plan.
+    func effectiveFixedTimes(now: Date = .now) -> [Int] {
+        guard anchorsToFirstVoid else { return sortedFixedTimes }
+        let key = now.formatted(.iso8601.year().month().day())
+        return anchorDayKey == key ? sortedFixedTimes : fixedTemplate
+    }
+
+    /// Fälligkeit im Wecker-Modus: die erste geplante Zeit NACH der letzten
+    /// Entleerung (heute). Liegt sie vor `now`, ist die Erinnerung überfällig —
+    /// eine verpasste Zeit wird nicht still übersprungen. Letzte Entleerung vor
+    /// heute → erste Zeit des heutigen Plans. Nach der letzten Zeit des Tages →
+    /// erste Zeit des Grundplans morgen.
+    func fixedDue(lastVoid: Date?, now: Date = .now) -> Date? {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: now)
+        let times = effectiveFixedTimes(now: now)
+        guard !times.isEmpty else { return nil }
+        if let last = lastVoid, last >= today {
+            let m = cal.component(.hour, from: last) * 60 + cal.component(.minute, from: last)
+            if let next = times.first(where: { $0 > m }) {
+                return today.addingTimeInterval(TimeInterval(next * 60))
+            }
+            guard let tomorrow = cal.date(byAdding: .day, value: 1, to: today),
+                  let first = fixedTemplate.first ?? times.first else { return nil }
+            return tomorrow.addingTimeInterval(TimeInterval(first * 60))
+        }
+        return today.addingTimeInterval(TimeInterval(times[0] * 60))
+    }
+
     /// Nächste feste Erinnerungszeit nach `date` (heute oder morgen früh).
     static func nextFixedDue(after date: Date, times: [Int]) -> Date? {
         guard !times.isEmpty else { return nil }

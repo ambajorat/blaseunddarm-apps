@@ -21,7 +21,7 @@ struct TimerCard: View {
                     .foregroundStyle(Color.subtleText)
             } else if s.fixedTimesEnabled {
                 // Wecker-Modus: feste Uhrzeiten
-                if let next = AppSettings.nextFixedDue(after: now, times: s.sortedFixedTimes) {
+                if let next = s.fixedDue(lastVoid: store.lastBladderEntry?.timestamp, now: now) {
                     countdown(to: next, now: now)
                 }
             } else if let last = store.lastBladderEntry {

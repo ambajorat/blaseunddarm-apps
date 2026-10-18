@@ -111,7 +111,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
 
         // Wecker-Modus: nächste feste Zeit, ohne Ruhezeit (wie iPhone)
         if fixedMode {
-            guard let next = AppSettings.nextFixedDue(after: .now, times: settings.sortedFixedTimes) else { return }
+            guard let next = settings.fixedDue(lastVoid: lastEntryDate) else { return }
             fireDate = next
         } else if quietHoursEnabled {
             let cal = Calendar.current
@@ -156,7 +156,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
     func currentDue() -> (due: Date, quietEnd: Date?)? {
         // Wecker-Modus: nächste feste Zeit, keine Ruhezeit-Anzeige (wie iPhone)
         if fixedMode {
-            guard let next = AppSettings.nextFixedDue(after: .now, times: settings.sortedFixedTimes) else { return nil }
+            guard let next = settings.fixedDue(lastVoid: lastEntryDate) else { return nil }
             return (next, nil)
         }
         guard let last = lastEntryDate else { return nil }
@@ -227,7 +227,10 @@ final class WatchSessionManager: NSObject, ObservableObject {
             quietTo: quietTo,
             updatedAt: .now,
             useFixedTimes: settings.useFixedTimes,
-            fixedTimes: settings.fixedTimes
+            fixedTimes: settings.fixedTimes,
+            fixedTimesTemplate: settings.fixedTimesTemplate,
+            anchorToFirstVoid: settings.anchorToFirstVoid,
+            anchorDayKey: settings.anchorDayKey
         )
         data.save()
         WidgetCenter.shared.reloadAllTimelines()

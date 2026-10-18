@@ -57,7 +57,10 @@ final class SharedDataStore {
             quietTo: s.quietTo,
             updatedAt: .now,
             useFixedTimes: s.useFixedTimes,
-            fixedTimes: s.fixedTimes
+            fixedTimes: s.fixedTimes,
+            fixedTimesTemplate: s.fixedTimesTemplate,
+            anchorToFirstVoid: s.anchorToFirstVoid,
+            anchorDayKey: s.anchorDayKey
         )
         widgetData.save()
 

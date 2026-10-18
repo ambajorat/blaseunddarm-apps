@@ -838,39 +838,12 @@ struct LogView: View {
     }
 
     private func overdueMinutes(since lastEntry: Date) -> Int {
-        let intervalSeconds = store.settings.intervalMinutes * 60
-        var dueDate = lastEntry.addingTimeInterval(TimeInterval(intervalSeconds))
-
-        // If due during quiet hours, push to end of quiet hours
-        if store.settings.quietHoursEnabled {
-            let cal = Calendar.current
-            let quietFrom = store.settings.quietFrom
-            let quietTo = store.settings.quietTo
-            let dueHour = cal.component(.hour, from: dueDate)
-
-            let inQuiet: Bool
-            if quietFrom < quietTo {
-                inQuiet = dueHour >= quietFrom && dueHour < quietTo
-            } else {
-                inQuiet = dueHour >= quietFrom || dueHour < quietTo
-            }
-
-            if inQuiet {
-                // Push due date to quietTo
-                var components = cal.dateComponents([.year, .month, .day], from: dueDate)
-                components.hour = quietTo
-                components.minute = 0
-                components.second = 0
-                if let quietEnd = cal.date(from: components) {
-                    dueDate = quietEnd <= dueDate
-                        ? cal.date(byAdding: .day, value: 1, to: quietEnd)!
-                        : quietEnd
-                }
-            }
-        }
-
-        let overdue = Int(Date.now.timeIntervalSince(dueDate)) / 60
-        return Swift.max(0, overdue)
+        // Dieselbe Fälligkeit wie Timer, Live Activity und Widget —
+        // Intervall mit Ruhezeit ODER feste Zeit nach der letzten Entleerung.
+        let due = LiveActivityManager.quietAdjustedDueDate(start: lastEntry,
+                                                           intervalMinutes: store.settings.intervalMinutes,
+                                                           settings: store.settings)
+        return Swift.max(0, Int(Date.now.timeIntervalSince(due)) / 60)
     }
 }
 

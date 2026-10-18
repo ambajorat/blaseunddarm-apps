@@ -10,7 +10,7 @@ final class LiveActivityManager {
     static func quietAdjustedDueDate(start: Date, intervalMinutes: Int, settings: AppSettings?) -> Date {
         // Wecker-Modus: nächste feste Uhrzeit statt Intervallrechnung
         if let settings, settings.fixedTimesEnabled,
-           let due = AppSettings.nextFixedDue(after: max(start, .now), times: settings.sortedFixedTimes) {
+           let due = settings.fixedDue(lastVoid: start) {
             return due
         }
         var dueDate = start.addingTimeInterval(TimeInterval(intervalMinutes * 60))

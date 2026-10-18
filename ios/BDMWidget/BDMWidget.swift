@@ -36,7 +36,7 @@ struct BDMEntry: TimelineEntry {
         guard let data, data.reminderEnabled else { return nil }
         // Wecker-Modus: nächste feste Uhrzeit
         if data.useFixedTimes == true, let times = data.fixedTimes, !times.isEmpty {
-            return AppSettings.nextFixedDue(after: date, times: times)
+            return data.fixedSettings.fixedDue(lastVoid: data.lastEntryDate, now: date)
         }
         guard let last = data.lastEntryDate else { return nil }
         return last.addingTimeInterval(TimeInterval(data.intervalMinutes * 60))

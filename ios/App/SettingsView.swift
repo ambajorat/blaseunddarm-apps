@@ -319,8 +319,8 @@ struct SettingsView: View {
                 }
             }
             if store.settings.anchorsToFirstVoid,
-               store.settings.sortedFixedTimes != store.settings.fixedTemplate {
-                Text(String(localized: "Heute ausgerichtet: \(store.settings.sortedFixedTimes.map(Self.clockString).joined(separator: " · "))"))
+               store.settings.effectiveFixedTimes() != store.settings.fixedTemplate {
+                Text(String(localized: "Heute ausgerichtet: \(store.settings.effectiveFixedTimes().map(Self.clockString).joined(separator: " · "))"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.accentBlue)
             }

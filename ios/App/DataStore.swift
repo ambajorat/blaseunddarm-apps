@@ -219,7 +219,10 @@ final class DataStore {
             quietTo: settings.quietTo,
             updatedAt: .now,
             useFixedTimes: settings.useFixedTimes,
-            fixedTimes: settings.fixedTimes
+            fixedTimes: settings.fixedTimes,
+            fixedTimesTemplate: settings.fixedTimesTemplate,
+            anchorToFirstVoid: settings.anchorToFirstVoid,
+            anchorDayKey: settings.anchorDayKey
         )
         data.save()
         WidgetCenter.shared.reloadAllTimelines()

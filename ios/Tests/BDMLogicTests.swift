@@ -333,4 +333,46 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertEqual(st.physDue, st.shifted)
         XCTAssertGreaterThan(st.shifted, .now)
     }
+
+    // MARK: - Morgen: Plan von gestern gilt nicht, verpasste Zeit ist überfällig
+
+    func testEffectiveFixedTimesNeuerTagGrundplan() {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.anchorToFirstVoid = true
+        s.fixedTimesTemplate = [495, 720, 840]          // Grundplan 08:15, 12:00, 14:00
+        s.fixedTimes = [458, 698, 818]                  // gestern neu getaktet
+        s.anchorDayKey = "2000-01-01"                   // nicht heute
+        XCTAssertEqual(s.effectiveFixedTimes(), [495, 720, 840])
+        s.anchorDayKey = Date.now.formatted(.iso8601.year().month().day())
+        XCTAssertEqual(s.effectiveFixedTimes(), [458, 698, 818])
+    }
+
+    func testFixedDueMorgensUeberfaellig() throws {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.anchorToFirstVoid = true
+        s.fixedTimesTemplate = [495, 720, 840]
+        s.fixedTimes = [458, 698, 818]
+        s.anchorDayKey = "2000-01-01"
+        let now = cal.date(bySettingHour: 8, minute: 58, second: 0, of: .now)!
+        let yesterdayLate = cal.date(byAdding: .hour, value: -10, to: now)!   // 22:58 gestern
+        let due = try XCTUnwrap(s.fixedDue(lastVoid: yesterdayLate, now: now))
+        XCTAssertEqual(cal.component(.hour, from: due), 8)
+        XCTAssertEqual(cal.component(.minute, from: due), 15)
+        XCTAssertLessThan(due, now, "08:15 verpasst → überfällig, nicht still auf 12:00 springen")
+    }
+
+    func testFixedDueNachEntleerungNaechsteZeit() throws {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.fixedTimes = [495, 720, 840]
+        let now = cal.date(bySettingHour: 9, minute: 30, second: 0, of: .now)!
+        let void = cal.date(bySettingHour: 8, minute: 20, second: 0, of: .now)!
+        let due = try XCTUnwrap(s.fixedDue(lastVoid: void, now: now))
+        XCTAssertEqual(cal.component(.hour, from: due), 12)
+        let late = cal.date(bySettingHour: 14, minute: 30, second: 0, of: .now)!
+        let tomorrow = try XCTUnwrap(s.fixedDue(lastVoid: late, now: late))
+        XCTAssertFalse(cal.isDate(tomorrow, inSameDayAs: late), "nach der letzten Zeit → morgen")
+    }
 }
