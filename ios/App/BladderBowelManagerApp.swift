@@ -14,6 +14,9 @@ struct BladderBowelManagerApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // Kaltstart (z. B. nach Update): willEnterForeground feuert hier
+                // nicht — feste Zeiten trotzdem sofort aus allen Einträgen ausrichten.
+                .onAppear { store.alignFixedTimesIfNeeded() }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.reload()
                     store.syncToWatch()

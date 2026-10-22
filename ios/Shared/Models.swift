@@ -247,11 +247,13 @@ struct AppSettings: Codable, Equatable {
     }
 
     /// Grundplan so verschieben, dass seine erste Zeit auf `firstVoidMinute` fällt.
-    /// Zeiten jenseits von Mitternacht entfallen.
-    static func shiftedTimes(_ template: [Int], firstVoidMinute: Int) -> [Int] {
+    /// Zeiten jenseits von Mitternacht entfallen (außer `keepPastMidnight`).
+    static func shiftedTimes(_ template: [Int], firstVoidMinute: Int,
+                             keepPastMidnight: Bool = false) -> [Int] {
         guard let base = template.min() else { return [] }
         let delta = firstVoidMinute - base
-        return Array(Set(template.map { $0 + delta }.filter { (0..<1440).contains($0) })).sorted()
+        return Array(Set(template.map { $0 + delta }
+            .filter { $0 >= 0 && (keepPastMidnight || $0 < 1440) })).sorted()
     }
 
     /// Erste Entleerung des heutigen Morgens: erster Urin-Eintrag heute zwischen
@@ -274,7 +276,8 @@ struct AppSettings: Codable, Equatable {
     /// die kommende, später dran → die vergangene). Alle Zeiten danach rücken
     /// um dieselbe Differenz mit, die Abstände bleiben. Die Entleerung wird
     /// selbst zur Zeit im Plan — ein zweiter Aufruf verschiebt nichts mehr.
-    static func rechainedTimes(_ times: [Int], afterVoidMinute e: Int) -> [Int] {
+    static func rechainedTimes(_ times: [Int], afterVoidMinute e: Int,
+                               keepPastMidnight: Bool = false) -> [Int] {
         let s = Array(Set(times)).sorted()
         guard let j = s.firstIndex(where: { $0 > e }) else { return s }
         let k = (j > 0 && e - s[j - 1] <= s[j] - e) ? j - 1 : j
@@ -282,13 +285,18 @@ struct AppSettings: Codable, Equatable {
         guard delta != 0 else { return s }
         var out = Array(s[..<k])
         out.append(e)
-        out += s[(k + 1)...].map { $0 + delta }.filter { $0 < 1440 }
+        out += s[(k + 1)...].map { $0 + delta }.filter { keepPastMidnight || $0 < 1440 }
         return Array(Set(out)).sorted()
     }
 
     /// Richtet fixedTimes an den Entleerungen des Tages aus:
-    /// 1. einmal pro Tag den ganzen Grundplan auf die erste Morgen-Entleerung,
-    /// 2. danach den Restplan ab der jeweils letzten Entleerung (rechainedTimes).
+    /// 1. den ganzen Grundplan auf die erste Morgen-Entleerung,
+    /// 2. danach jede weitere Urin-Entleerung des Tages der Reihe nach (rechainedTimes).
+    /// Der Tagesplan wird bei jedem Aufruf komplett aus dem Grundplan neu
+    /// berechnet. Zeiten nach Mitternacht bleiben dabei ZWISCHENZEITLICH erhalten
+    /// und fallen erst am Ende weg — sonst geht eine Zeit, die durch spätes
+    /// Aufstehen kurz über Mitternacht rutscht, endgültig verloren, obwohl
+    /// spätere frühere Entleerungen sie wieder vor Mitternacht ziehen würden.
     /// true = Zeiten wurden geändert (Erinnerungen neu planen).
     mutating func alignFixedTimes(entries: [ToiletEntry], now: Date = .now) -> Bool {
         guard anchorsToFirstVoid, useFixedTimes ?? false else { return false }
@@ -298,24 +306,22 @@ struct AppSettings: Codable, Equatable {
         func minuteOf(_ d: Date) -> Int { cal.component(.hour, from: d) * 60 + cal.component(.minute, from: d) }
         let key = now.formatted(.iso8601.year().month().day())
 
-        var base = sortedFixedTimes
+        guard let first = Self.firstMorningVoid(entries: entries, now: now) else { return false }
+        var plan = Self.shiftedTimes(template, firstVoidMinute: minuteOf(first), keepPastMidnight: true)
+        guard !plan.isEmpty else { return false }
+
+        // Alle weiteren Urin-Entleerungen heute nach der ersten, in Reihenfolge
+        let voids = entries.filter { $0.urineMl > 0 && $0.timestamp > first && $0.timestamp <= now }
+            .map(\.timestamp).sorted()
+        for v in voids {
+            guard let firstTime = plan.first, minuteOf(v) >= firstTime else { continue }
+            plan = Self.rechainedTimes(plan, afterVoidMinute: minuteOf(v), keepPastMidnight: true)
+        }
+        let base = plan.filter { $0 < 1440 }
+        guard !base.isEmpty else { return false }
+
         var changed = false
-        if anchorDayKey != key {
-            guard let first = Self.firstMorningVoid(entries: entries, now: now) else { return false }
-            let shifted = Self.shiftedTimes(template, firstVoidMinute: minuteOf(first))
-            guard !shifted.isEmpty else { return false }
-            base = shifted
-            anchorDayKey = key
-            changed = true
-        }
-
-        // Letzte Urin-Entleerung heute → Restplan neu takten
-        let today = cal.startOfDay(for: now)
-        if let last = entries.filter({ $0.urineMl > 0 && $0.timestamp >= today && $0.timestamp <= now })
-            .map(\.timestamp).max(), let firstTime = base.first, minuteOf(last) >= firstTime {
-            base = Self.rechainedTimes(base, afterVoidMinute: minuteOf(last))
-        }
-
+        if anchorDayKey != key { anchorDayKey = key; changed = true }
         if base != sortedFixedTimes {
             fixedTimes = base
             changed = true

@@ -319,6 +319,29 @@ final class BDMLogicTests: XCTestCase {
                        [480, 1300])
     }
 
+    /// Regression 22.10.: Aufstehen 40 min später schob 23:45 auf 00:25 → Zeit
+    /// fiel weg, obwohl spätere frühere Entleerungen sie auf 22:17 zurückzogen.
+    func testAlignBehaeltZeitDieNurZwischenzeitlichNachMitternachtLag() {
+        let now = cal.date(bySettingHour: 20, minute: 30, second: 0, of: .now)!
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.anchorToFirstVoid = true
+        let plan = [495, 720, 840, 960, 1125, 1290, 1425]   // 08:15 … 21:30, 23:45
+        s.fixedTimesTemplate = plan
+        s.fixedTimes = plan
+        let voids = [(8, 55), (12, 23), (14, 19), (15, 25), (17, 56), (20, 2)]
+        var entries: [ToiletEntry] = []
+        for (h, m) in voids {                              // wie im Alltag: nach jedem Eintrag
+            entries.append(today(h, m, urine: 300))
+            let t = cal.date(bySettingHour: h, minute: m, second: 30, of: .now)!
+            _ = s.alignFixedTimes(entries: entries, now: t)
+        }
+        _ = s.alignFixedTimes(entries: entries, now: now)
+        XCTAssertEqual(s.fixedTimes, [535, 743, 859, 925, 1076, 1202, 1337],
+                       "22:17 bleibt als letzte Erinnerung erhalten")
+        XCTAssertFalse(s.alignFixedTimes(entries: entries, now: now), "idempotent")
+    }
+
     // MARK: - Wecker-Modus: keine Ruhezeit-Anzeige in der Live Activity
 
     func testDueStateWeckerModusOhneRuhezeit() {
