@@ -246,6 +246,40 @@ struct AppSettings: Codable, Equatable {
         anchorsToFirstVoid ? (fixedTimesTemplate ?? sortedFixedTimes).sorted() : sortedFixedTimes
     }
 
+    /// Größter Abstand, der im Grundplan noch ohne Hinweis bleibt (4 Stunden —
+    /// derselbe Deckel wie beim Vorschlag „Abstände nach Tageszeit").
+    static let maxFixedGap = 240
+
+    /// Größte Lücke im Grundplan über `maxGap` Minuten samt Vorschlag für die
+    /// fehlende Zeit (Mitte, auf 15 Minuten gerundet). nil = kein Handlungsbedarf.
+    static func fixedTemplateGap(in times: [Int], maxGap: Int = maxFixedGap)
+        -> (from: Int, to: Int, suggestion: Int)? {
+        let s = Array(Set(times)).sorted()
+        var best: (from: Int, to: Int)? = nil
+        for (a, b) in zip(s, s.dropFirst())
+            where b - a > maxGap && b - a > ((best?.to ?? 0) - (best?.from ?? 0)) {
+            best = (a, b)
+        }
+        guard let g = best else { return nil }
+        var m = Int((Double(g.from + (g.to - g.from) / 2) / 15).rounded()) * 15
+        if s.contains(m) { m += 15 }
+        return (g.from, g.to, m)
+    }
+
+    /// Grundplan ohne Lücken über `maxGap`: zu große Abstände werden durch
+    /// Zwischenzeiten (Mitte, auf 15 Minuten) geteilt, bis alle Abstände passen.
+    /// Idempotent — ein Plan ohne Lücken kommt unverändert zurück.
+    static func filledFixedTimes(_ times: [Int], maxGap: Int = maxFixedGap) -> [Int] {
+        var s = Array(Set(times)).sorted()
+        var rounds = 0
+        while let g = fixedTemplateGap(in: s, maxGap: maxGap), rounds < 32 {
+            s.append(g.suggestion)
+            s = Array(Set(s)).sorted()
+            rounds += 1
+        }
+        return s
+    }
+
     /// Grundplan so verschieben, dass seine erste Zeit auf `firstVoidMinute` fällt.
     /// Zeiten jenseits von Mitternacht entfallen (außer `keepPastMidnight`).
     static func shiftedTimes(_ template: [Int], firstVoidMinute: Int,

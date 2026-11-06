@@ -398,4 +398,33 @@ final class BDMLogicTests: XCTestCase {
         let tomorrow = try XCTUnwrap(s.fixedDue(lastVoid: late, now: late))
         XCTAssertFalse(cal.isDate(tomorrow, inSameDayAs: late), "nach der letzten Zeit → morgen")
     }
+
+    func testFixedTemplateGapFindetVormittagsluecke() throws {
+        // 08:15 14:00 16:00 18:45 21:30 23:45 → Lücke 08:15–14:00, Vorschlag 11:00
+        let gap = try XCTUnwrap(AppSettings.fixedTemplateGap(in: [495, 840, 960, 1125, 1290, 1425]))
+        XCTAssertEqual(gap.from, 495)
+        XCTAssertEqual(gap.to, 840)
+        XCTAssertEqual(gap.suggestion, 660)
+    }
+
+    func testFixedTemplateGapKeineBeiVierStunden() {
+        XCTAssertNil(AppSettings.fixedTemplateGap(in: [480, 720, 960, 1200]), "genau 4 h ist noch ok")
+        XCTAssertNil(AppSettings.fixedTemplateGap(in: []))
+    }
+
+    func testFilledFixedTimesSchliesstVormittagsluecke() {
+        // Andrés Plan 06.11.: 08:15 14:00 16:00 18:45 21:30 23:45 → 11:00 kommt dazu, sonst nichts
+        let filled = AppSettings.filledFixedTimes([495, 840, 960, 1125, 1290, 1425])
+        XCTAssertEqual(filled, [495, 660, 840, 960, 1125, 1290, 1425])
+        XCTAssertEqual(AppSettings.filledFixedTimes(filled), filled, "idempotent")
+    }
+
+    func testFilledFixedTimesTeiltGrosseLueckenMehrfach() {
+        let filled = AppSettings.filledFixedTimes([480, 1425])
+        for (a, b) in zip(filled, filled.dropFirst()) {
+            XCTAssertLessThanOrEqual(b - a, AppSettings.maxFixedGap)
+        }
+        XCTAssertEqual(filled.first, 480)
+        XCTAssertEqual(filled.last, 1425)
+    }
 }

@@ -6736,6 +6736,16 @@
         }
       }
     },
+    "Abstände über 4 Stunden füllt die App automatisch mit einer Zwischenzeit auf." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaps longer than 4 hours are filled in automatically with an extra time."
+          }
+        }
+      }
+    },
     "Zeit hinzufügen" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6913,6 +6923,17 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Zwischen %@ und %@ fehlt eine Zeit (%@ Abstand)." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No time between %1$@ and %2$@ (%3$@ gap)."
           }
         }
       }

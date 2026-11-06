@@ -306,6 +306,9 @@ struct SettingsView: View {
                     .font(.subheadline.weight(.semibold))
             }
             .buttonStyle(.bordered)
+            Text("Abstände über 4 Stunden füllt die App automatisch mit einer Zwischenzeit auf.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Toggle(isOn: Binding(
                 get: { store.settings.anchorsToFirstVoid },
                 set: { store.setAnchorToFirstVoid($0) }

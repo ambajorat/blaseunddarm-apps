@@ -73,6 +73,14 @@ final class DataStore {
     /// Einmal pro Tag: verschiebt die festen Zeiten auf die heutige erste
     /// Morgen-Entleerung und plant die Erinnerungen neu. Idempotent.
     func alignFixedTimesIfNeeded() {
+        // Bestehenden Grundplan einmalig heilen (Lücken > 4 h), danach idempotent.
+        if settings.useFixedTimes ?? false {
+            let healed = AppSettings.filledFixedTimes(settings.fixedTemplate)
+            if healed != settings.fixedTemplate {
+                setFixedTemplate(healed)
+                return
+            }
+        }
         var s = settings
         guard s.alignFixedTimes(entries: entries) else { return }
         settings = s
@@ -83,7 +91,8 @@ final class DataStore {
     /// Vorlage gespeichert und — falls heute schon eine Morgen-Entleerung da
     /// ist — sofort verschoben.
     func setFixedTemplate(_ times: [Int]) {
-        let sorted = Array(Set(times)).sorted()
+        // Lücken über 4 h schließt die App selbst — niemand soll Zeiten tippen müssen.
+        let sorted = AppSettings.filledFixedTimes(times)
         var s = settings
         if s.anchorsToFirstVoid { s.fixedTimesTemplate = sorted; s.anchorDayKey = nil }
         s.fixedTimes = sorted
@@ -97,7 +106,8 @@ final class DataStore {
     func setAnchorToFirstVoid(_ on: Bool) {
         var s = settings
         if on {
-            s.fixedTimesTemplate = s.sortedFixedTimes
+            s.fixedTimesTemplate = AppSettings.filledFixedTimes(s.sortedFixedTimes)
+            s.fixedTimes = s.fixedTimesTemplate
             s.anchorToFirstVoid = true
             s.anchorDayKey = nil
             _ = s.alignFixedTimes(entries: entries)
