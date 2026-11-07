@@ -68,6 +68,37 @@ final class CloudBackupManager {
         }
     }
 
+    // MARK: - Automatisches Wochen-Backup
+
+    /// Schalter „Wöchentlich automatisch sichern“ (gerätelokal, nicht Teil des Backups).
+    var autoWeekly: Bool = UserDefaults.standard.bool(forKey: "autoCloudBackupWeekly") {
+        didSet { UserDefaults.standard.set(autoWeekly, forKey: "autoCloudBackupWeekly") }
+    }
+
+    static let autoInterval: TimeInterval = 7 * 24 * 3600
+
+    /// Fällig, wenn eingeschaltet und das letzte Backup (manuell oder automatisch)
+    /// mindestens 7 Tage alt ist — oder es noch keins gibt.
+    static func isAutoBackupDue(enabled: Bool, last: Date?, now: Date = .now) -> Bool {
+        guard enabled else { return false }
+        guard let last else { return true }
+        return now.timeIntervalSince(last) >= autoInterval
+    }
+
+    /// Zeitpunkt, ab dem das nächste automatische Backup fällig ist.
+    var nextAutoBackupDate: Date? {
+        guard autoWeekly else { return nil }
+        return lastBackupDate.map { $0.addingTimeInterval(Self.autoInterval) } ?? .now
+    }
+
+    /// Beim App-Start/Vordergrund aufrufen: sichert, wenn fällig. Still, wenn
+    /// iCloud fehlt oder es (noch) keine Einträge gibt.
+    func backupIfDue(entries: [ToiletEntry], settings: AppSettings) {
+        guard Self.isAutoBackupDue(enabled: autoWeekly, last: lastBackupDate),
+              isAvailable, !entries.isEmpty, status != .syncing else { return }
+        backup(entries: entries, settings: settings)
+    }
+
     // MARK: - Restore
 
     func restore(completion: @escaping ([ToiletEntry], AppSettings?) -> Void) {

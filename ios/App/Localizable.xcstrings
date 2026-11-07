@@ -701,6 +701,16 @@
         }
       }
     },
+    "Abstände über 4 Stunden füllt die App automatisch mit einer Zwischenzeit auf." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gaps longer than 4 hours are filled in automatically with an extra time."
+          }
+        }
+      }
+    },
     "Abweichung vom eigenen Schnitt" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -978,6 +988,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Signs for two days"
+          }
+        }
+      }
+    },
+    "Automatisch beim Öffnen der App, sobald das letzte Backup sieben Tage alt ist. Es wird immer das bisherige Backup ersetzt." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Runs automatically when you open the app once the last backup is seven days old. It always replaces the previous backup."
           }
         }
       }
@@ -3525,6 +3545,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Next reminder in %lld minutes"
+          }
+        }
+      }
+    },
+    "Nächstes automatisches Backup" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next automatic backup"
           }
         }
       }
@@ -6653,6 +6683,17 @@
         }
       }
     },
+    "Wöchentlich automatisch sichern" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back up automatically every week"
+          }
+        }
+      }
+    },
     "Wurstartig, aber klumpig. Zeichen für leichte Verstopfung." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6732,16 +6773,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time to take it."
-          }
-        }
-      }
-    },
-    "Abstände über 4 Stunden füllt die App automatisch mit einer Zwischenzeit auf." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gaps longer than 4 hours are filled in automatically with an extra time."
           }
         }
       }

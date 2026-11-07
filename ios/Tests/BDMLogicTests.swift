@@ -295,7 +295,8 @@ final class BDMLogicTests: XCTestCase {
         // Früher dran: 10:00 statt 11:00 → nächste 14:00 statt 15:00
         let more = entries + [today(10, 0, urine: 300)]
         XCTAssertTrue(s.alignFixedTimes(entries: more, now: now))
-        XCTAssertEqual(s.fixedTimes, [420, 600, 840])
+        XCTAssertEqual(s.fixedTimes, [420, 600, 840, 960],
+                       "Plan endet 2 Std vor der letzten Grundplanzeit → 16:00 kommt als Tagesende dazu")
         XCTAssertFalse(s.alignFixedTimes(entries: more, now: now), "idempotent")
     }
 
@@ -338,8 +339,94 @@ final class BDMLogicTests: XCTestCase {
         }
         _ = s.alignFixedTimes(entries: entries, now: now)
         XCTAssertEqual(s.fixedTimes, [535, 743, 859, 925, 1076, 1202, 1337],
-                       "22:17 bleibt als letzte Erinnerung erhalten")
+                       "22:17 bleibt als letzte Erinnerung erhalten (23:45 nur 88 Min danach → kein Extra)")
         XCTAssertFalse(s.alignFixedTimes(entries: entries, now: now), "idempotent")
+    }
+
+    /// Regression 07.11.26: Nacht-Entleerung 04:31 galt als Aufwachen → ganzer Tag
+    /// 3:44 Std vorgezogen, letzte Erinnerung 20:56, danach nichts mehr.
+    func testNachtEntleerungIstKeinAufwachen() {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.anchorToFirstVoid = true
+        let plan = [495, 720, 840, 960, 1125, 1290, 1425]   // 08:15 … 23:45
+        s.fixedTimesTemplate = plan
+        s.fixedTimes = plan
+        let times = [(4, 31), (8, 46), (11, 47), (14, 24), (16, 21), (19, 35), (20, 56)]
+        let entries = times.map { today($0.0, $0.1, urine: 250) }
+        let now = cal.date(bySettingHour: 21, minute: 0, second: 0, of: .now)!
+        let first = AppSettings.firstMorningVoid(entries: entries, now: now, wakeMinute: 495)
+        XCTAssertEqual(first.map { cal.component(.hour, from: $0) }, 8, "Aufwachen = 08:46, nicht 04:31")
+        _ = s.alignFixedTimes(entries: entries, now: now)
+        XCTAssertEqual(s.fixedTimes, [526, 707, 864, 981, 1175, 1256, 1391],
+                       "08:46 … 20:56, nächste Erinnerung 23:11")
+        XCTAssertTrue(s.alignFixedTimes(entries: entries, now: now) == false, "idempotent")
+    }
+
+    /// Ohne Aufwachzeit bleibt das alte Fenster ab 04 Uhr (Abwärtskompatibilität).
+    func testFirstMorningVoidOhneAufwachzeit() throws {
+        let now = cal.date(bySettingHour: 10, minute: 0, second: 0, of: .now)!
+        let entries = [today(4, 31, urine: 300), today(8, 46, urine: 300)]
+        let first = try XCTUnwrap(AppSettings.firstMorningVoid(entries: entries, now: now))
+        XCTAssertEqual(cal.component(.hour, from: first), 4)
+    }
+
+    /// Echte Entleerungen werden beim Neutakten nie ersetzt.
+    func testRechainedTimesErsetztKeineEchteEntleerung() {
+        // 19:35 war eine Entleerung; 20:56 liegt 81 Min danach und 84 Min vor 22:20
+        XCTAssertEqual(AppSettings.rechainedTimes([1175, 1340, 1475], afterVoidMinute: 1256,
+                                                  keepPastMidnight: true, protected: [1175]),
+                       [1175, 1256, 1391], "20:56 ersetzt 22:20 → nächste 23:11")
+    }
+
+    /// Frühe Entleerungen lassen den Plan früh enden → letzte Grundplanzeit kommt dazu.
+    func testTagesendeAnkerKommtZurueck() {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.anchorToFirstVoid = true
+        let plan = [495, 720, 840, 960, 1125, 1290, 1425]
+        s.fixedTimesTemplate = plan
+        s.fixedTimes = plan
+        let times = [(8, 15), (10, 0), (11, 30), (13, 0), (14, 30)]  // immer deutlich früher
+        let entries = times.map { today($0.0, $0.1, urine: 250) }
+        let now = cal.date(bySettingHour: 15, minute: 0, second: 0, of: .now)!
+        _ = s.alignFixedTimes(entries: entries, now: now)
+        XCTAssertEqual(s.sortedFixedTimes.last, 1425, "23:45 (vor dem Schlafen) bleibt")
+        let fixed = s.sortedFixedTimes
+        XCTAssertTrue(zip(fixed, fixed.dropFirst()).allSatisfy { $1 - $0 <= 240 },
+                      "keine Lücke über 4 Std bis zum Abend")
+    }
+
+    /// Regression 25.10.2026 (Winterzeit, Tag mit 25 h): „Tagesbeginn + Minuten × 60 s“
+    /// lag eine Stunde zu früh (12:43 statt 13:43).
+    func testFixedDueAmTagDerZeitumstellung() throws {
+        let oldTZ = NSTimeZone.default
+        NSTimeZone.default = TimeZone(identifier: "Europe/Berlin")!
+        defer { NSTimeZone.default = oldTZ }
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Europe/Berlin")!
+        func at(_ h: Int, _ m: Int, day: Int = 25, month: Int = 10) -> Date {
+            c.date(from: DateComponents(year: 2026, month: month, day: day, hour: h, minute: m))!
+        }
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.fixedTimes = [541, 703, 823]
+        let due = try XCTUnwrap(s.fixedDue(lastVoid: at(11, 43), now: at(11, 46)))
+        XCTAssertEqual(due, at(13, 43))
+        let dueM = try XCTUnwrap(s.fixedDue(lastVoid: at(11, 43, day: 29, month: 3),
+                                            now: at(11, 46, day: 29, month: 3)))
+        XCTAssertEqual(dueM, at(13, 43, day: 29, month: 3))
+    }
+
+    // MARK: - Wöchentliches iCloud-Backup
+
+    func testAutoBackupFaelligkeit() {
+        let now = Date.now
+        let day: TimeInterval = 24 * 3600
+        XCTAssertFalse(CloudBackupManager.isAutoBackupDue(enabled: false, last: nil, now: now))
+        XCTAssertTrue(CloudBackupManager.isAutoBackupDue(enabled: true, last: nil, now: now))
+        XCTAssertFalse(CloudBackupManager.isAutoBackupDue(enabled: true, last: now.addingTimeInterval(-6 * day), now: now))
+        XCTAssertTrue(CloudBackupManager.isAutoBackupDue(enabled: true, last: now.addingTimeInterval(-7 * day), now: now))
     }
 
     // MARK: - Wecker-Modus: keine Ruhezeit-Anzeige in der Live Activity

@@ -206,7 +206,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                     guard let day = cal.date(byAdding: .day, value: offset, to: today) else { continue }
                     let times = offset == 0 ? settings.effectiveFixedTimes() : settings.fixedTemplate
                     for minutes in times {
-                        let fire = day.addingTimeInterval(TimeInterval(minutes * 60))
+                        let fire = (Calendar.current.date(bySettingHour: (minutes) / 60, minute: (minutes) % 60, second: 0, of: day) ?? day.addingTimeInterval(TimeInterval((minutes) * 60)))
                         guard fire > .now else { continue }
                         let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
                         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)

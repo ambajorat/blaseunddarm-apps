@@ -16,12 +16,16 @@ struct BladderBowelManagerApp: App {
             ContentView()
                 // Kaltstart (z. B. nach Update): willEnterForeground feuert hier
                 // nicht — feste Zeiten trotzdem sofort aus allen Einträgen ausrichten.
-                .onAppear { store.alignFixedTimesIfNeeded() }
+                .onAppear {
+                    store.alignFixedTimesIfNeeded()
+                    cloudBackup.backupIfDue(entries: store.entries, settings: store.settings)
+                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.reload()
                     store.syncToWatch()
                     // Siri-/Fremd-Einträge: feste Zeiten ggf. noch ausrichten
                     store.alignFixedTimesIfNeeded()
+                    cloudBackup.backupIfDue(entries: store.entries, settings: store.settings)
                     AlertEngine.checkDay(entries: store.entries)
                     // Kein Timer-NEUSTART beim Öffnen — nur Wiederaufnahme,
                     // falls gar keine Activity läuft (z. B. von iOS beendet).

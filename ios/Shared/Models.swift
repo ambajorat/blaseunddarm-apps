@@ -290,17 +290,26 @@ struct AppSettings: Codable, Equatable {
             .filter { $0 >= 0 && (keepPastMidnight || $0 < 1440) })).sorted()
     }
 
-    /// Erste Entleerung des heutigen Morgens: erster Urin-Eintrag heute zwischen
-    /// 04 und 12 Uhr nach mindestens 5 Stunden Pause (= nach der Nacht).
-    static func firstMorningVoid(entries: [ToiletEntry], now: Date = .now) -> Date? {
+    /// Erste Entleerung des heutigen Morgens (= Aufwachen): erster Urin-Eintrag
+    /// heute im Morgenfenster bis 12 Uhr nach der Nacht.
+    /// Morgenfenster: ab 04 Uhr, mit Aufwachzeit `wakeMinute` (erste Grundplanzeit)
+    /// erst ab 2,5 Std davor — eine Nacht-Entleerung um 04:31 bei Aufwachzeit 08:15
+    /// ist KEIN Aufwachen und darf den Tag nicht um fast 4 Std vorziehen.
+    /// Nach der Nacht = ≥ 5 Std Pause ODER die Entleerung davor lag vor dem
+    /// Fenster (Nacht-Entleerung).
+    static func firstMorningVoid(entries: [ToiletEntry], now: Date = .now,
+                                 wakeMinute: Int? = nil) -> Date? {
         let cal = Calendar.current
         let urine = entries.filter { $0.urineMl > 0 && $0.timestamp <= now }
             .map(\.timestamp).sorted()
         let today = cal.startOfDay(for: now)
-        for (i, t) in urine.enumerated() where t >= today {
-            let h = cal.component(.hour, from: t)
-            guard (4..<12).contains(h) else { continue }
-            if i == 0 || t.timeIntervalSince(urine[i - 1]) >= 5 * 3600 { return t }
+        let windowStart = max(240, (wakeMinute ?? 240) - 150)
+        let windowStartDate = cal.date(bySettingHour: windowStart / 60, minute: windowStart % 60,
+                                       second: 0, of: today) ?? today
+        for (i, t) in urine.enumerated() where t >= windowStartDate {
+            guard cal.component(.hour, from: t) < 12 else { break }
+            if i == 0 || t.timeIntervalSince(urine[i - 1]) >= 5 * 3600
+                || urine[i - 1] < windowStartDate { return t }
         }
         return nil
     }
@@ -310,11 +319,15 @@ struct AppSettings: Codable, Equatable {
     /// die kommende, später dran → die vergangene). Alle Zeiten danach rücken
     /// um dieselbe Differenz mit, die Abstände bleiben. Die Entleerung wird
     /// selbst zur Zeit im Plan — ein zweiter Aufruf verschiebt nichts mehr.
+    /// `protected` = Minuten echter Entleerungen von heute: die werden nie
+    /// ersetzt (sonst „verschwindet“ z. B. 19:35, und 20:56 schiebt den Rest
+    /// später statt früher).
     static func rechainedTimes(_ times: [Int], afterVoidMinute e: Int,
-                               keepPastMidnight: Bool = false) -> [Int] {
+                               keepPastMidnight: Bool = false,
+                               protected: Set<Int> = []) -> [Int] {
         let s = Array(Set(times)).sorted()
         guard let j = s.firstIndex(where: { $0 > e }) else { return s }
-        let k = (j > 0 && e - s[j - 1] <= s[j] - e) ? j - 1 : j
+        let k = (j > 0 && !protected.contains(s[j - 1]) && e - s[j - 1] <= s[j] - e) ? j - 1 : j
         let delta = e - s[k]
         guard delta != 0 else { return s }
         var out = Array(s[..<k])
@@ -340,18 +353,33 @@ struct AppSettings: Codable, Equatable {
         func minuteOf(_ d: Date) -> Int { cal.component(.hour, from: d) * 60 + cal.component(.minute, from: d) }
         let key = now.formatted(.iso8601.year().month().day())
 
-        guard let first = Self.firstMorningVoid(entries: entries, now: now) else { return false }
+        guard let first = Self.firstMorningVoid(entries: entries, now: now,
+                                                wakeMinute: template.first) else { return false }
         var plan = Self.shiftedTimes(template, firstVoidMinute: minuteOf(first), keepPastMidnight: true)
         guard !plan.isEmpty else { return false }
 
         // Alle weiteren Urin-Entleerungen heute nach der ersten, in Reihenfolge
         let voids = entries.filter { $0.urineMl > 0 && $0.timestamp > first && $0.timestamp <= now }
             .map(\.timestamp).sorted()
+        var done: Set<Int> = [minuteOf(first)]
         for v in voids {
             guard let firstTime = plan.first, minuteOf(v) >= firstTime else { continue }
-            plan = Self.rechainedTimes(plan, afterVoidMinute: minuteOf(v), keepPastMidnight: true)
+            plan = Self.rechainedTimes(plan, afterVoidMinute: minuteOf(v), keepPastMidnight: true,
+                                       protected: done)
+            done.insert(minuteOf(v))
         }
-        let base = plan.filter { $0 < 1440 }
+        // Tagesende-Anker = letzte Grundplanzeit (Erinnerung vor dem Schlafen):
+        // 1. nichts wandert darüber hinaus — Überhang kollabiert in sie, statt
+        //    über Mitternacht zu rutschen und gelöscht zu werden;
+        // 2. endet der Plan durch frühe Entleerungen mehr als 90 Min davor, kommt
+        //    sie wieder dazu (Lücken > 4 h bis dahin werden aufgefüllt).
+        let lastTemplate = template.max() ?? 1439
+        var base = Array(Set(plan.map { min($0, lastTemplate) })).sorted()
+        if let last = base.last, last < lastTemplate - 90 {
+            let lastVoid = done.max() ?? 0
+            let tail = Self.filledFixedTimes(base.filter { $0 >= lastVoid } + [lastTemplate])
+            base = Array(Set(base.filter { $0 < lastVoid } + tail)).sorted()
+        }
         guard !base.isEmpty else { return false }
 
         var changed = false
@@ -384,13 +412,13 @@ struct AppSettings: Codable, Equatable {
         if let last = lastVoid, last >= today {
             let m = cal.component(.hour, from: last) * 60 + cal.component(.minute, from: last)
             if let next = times.first(where: { $0 > m }) {
-                return today.addingTimeInterval(TimeInterval(next * 60))
+                return (Calendar.current.date(bySettingHour: (next) / 60, minute: (next) % 60, second: 0, of: today) ?? today.addingTimeInterval(TimeInterval((next) * 60)))
             }
             guard let tomorrow = cal.date(byAdding: .day, value: 1, to: today),
                   let first = fixedTemplate.first ?? times.first else { return nil }
-            return tomorrow.addingTimeInterval(TimeInterval(first * 60))
+            return (Calendar.current.date(bySettingHour: (first) / 60, minute: (first) % 60, second: 0, of: tomorrow) ?? tomorrow.addingTimeInterval(TimeInterval((first) * 60)))
         }
-        return today.addingTimeInterval(TimeInterval(times[0] * 60))
+        return (Calendar.current.date(bySettingHour: (times[0]) / 60, minute: (times[0]) % 60, second: 0, of: today) ?? today.addingTimeInterval(TimeInterval((times[0]) * 60)))
     }
 
     /// Nächste feste Erinnerungszeit nach `date` (heute oder morgen früh).
@@ -401,10 +429,10 @@ struct AppSettings: Codable, Equatable {
         let startOfDay = cal.startOfDay(for: date)
         let nowMin = cal.component(.hour, from: date) * 60 + cal.component(.minute, from: date)
         if let next = sorted.first(where: { $0 > nowMin }) {
-            return startOfDay.addingTimeInterval(TimeInterval(next * 60))
+            return (Calendar.current.date(bySettingHour: (next) / 60, minute: (next) % 60, second: 0, of: startOfDay) ?? startOfDay.addingTimeInterval(TimeInterval((next) * 60)))
         }
         guard let tomorrow = cal.date(byAdding: .day, value: 1, to: startOfDay) else { return nil }
-        return tomorrow.addingTimeInterval(TimeInterval(sorted[0] * 60))
+        return (Calendar.current.date(bySettingHour: (sorted[0]) / 60, minute: (sorted[0]) % 60, second: 0, of: tomorrow) ?? tomorrow.addingTimeInterval(TimeInterval((sorted[0]) * 60)))
     }
 
     var isInQuietHours: Bool {

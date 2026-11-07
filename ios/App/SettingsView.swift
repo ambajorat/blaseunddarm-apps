@@ -335,7 +335,7 @@ struct SettingsView: View {
     }
 
     private static func dateFor(minutes: Int) -> Date {
-        Calendar.current.startOfDay(for: .now).addingTimeInterval(TimeInterval(minutes * 60))
+        (Calendar.current.date(bySettingHour: (minutes) / 60, minute: (minutes) % 60, second: 0, of: Calendar.current.startOfDay(for: .now)) ?? Calendar.current.startOfDay(for: .now).addingTimeInterval(TimeInterval((minutes) * 60)))
     }
 
     private static func minutesOf(_ date: Date) -> Int {
@@ -867,7 +867,7 @@ struct SettingsView: View {
     }
 
     private static func medDate(minutes: Int) -> Date {
-        Calendar.current.startOfDay(for: .now).addingTimeInterval(TimeInterval(minutes * 60))
+        (Calendar.current.date(bySettingHour: (minutes) / 60, minute: (minutes) % 60, second: 0, of: Calendar.current.startOfDay(for: .now)) ?? Calendar.current.startOfDay(for: .now).addingTimeInterval(TimeInterval((minutes) * 60)))
     }
     private static func medMinutes(of date: Date) -> Int {
         let c = Calendar.current
@@ -920,6 +920,25 @@ struct SettingsView: View {
                 }
                 .disabled(cloudBackup.status == .syncing)
 
+                Toggle(isOn: Binding(
+                    get: { cloudBackup.autoWeekly },
+                    set: { on in
+                        cloudBackup.autoWeekly = on
+                        if on { cloudBackup.backupIfDue(entries: store.entries, settings: store.settings) }
+                    }
+                )) {
+                    Label("Wöchentlich automatisch sichern", systemImage: "clock.arrow.circlepath")
+                }
+
+                if let next = cloudBackup.nextAutoBackupDate, next > .now {
+                    HStack {
+                        Text("Nächstes automatisches Backup")
+                        Spacer()
+                        Text(next.formatted(.dateTime.day().month().year()))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 if let lastDate = cloudBackup.lastBackupDate {
                     HStack {
                         Text("Letztes Backup")
@@ -961,8 +980,13 @@ struct SettingsView: View {
         } header: {
             Text("iCloud Backup")
         } footer: {
-            Text("Sichert alle Einträge und Einstellungen in deinem iCloud Drive.")
-                .font(.caption)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Sichert alle Einträge und Einstellungen in deinem iCloud Drive.")
+                if cloudBackup.autoWeekly {
+                    Text("Automatisch beim Öffnen der App, sobald das letzte Backup sieben Tage alt ist. Es wird immer das bisherige Backup ersetzt.")
+                }
+            }
+            .font(.caption)
         }
     }
 
