@@ -418,6 +418,56 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertEqual(dueM, at(13, 43, day: 29, month: 3))
     }
 
+    // MARK: - Lernender Grundplan (Leitplanken)
+
+    /// Kleine Verschiebungen unter 15 Min werden ignoriert — kein tägliches Zittern.
+    func testLearnedTemplateIgnoriertKleineVerschiebungen() {
+        let cur = [495, 720, 840, 960, 1125, 1290, 1425]
+        let prop = [500, 725, 850, 955, 1130, 1285, 1420]
+        XCTAssertNil(AppSettings.learnedTemplate(current: cur, proposed: prop))
+    }
+
+    /// Nur Zeiten mit ≥ 15 Min Unterschied wandern; der Rest bleibt stehen.
+    func testLearnedTemplateUebernimmtNurDeutlicheAenderungen() {
+        let cur = [495, 720, 840, 960, 1125, 1290, 1425]
+        let prop = [495, 690, 845, 930, 1125, 1290, 1425]   // Mittag −30, Nachmittag −30
+        XCTAssertEqual(AppSettings.learnedTemplate(current: cur, proposed: prop),
+                       [495, 690, 840, 930, 1125, 1290, 1425])
+    }
+
+    /// Andere Anzahl Erinnerungen (kürzere Abstände nötig) → Vorschlag gilt ganz.
+    func testLearnedTemplateAndereAnzahlGiltGanz() {
+        let cur = [495, 720, 960, 1200, 1425]
+        let prop = [495, 660, 825, 990, 1155, 1320, 1425]
+        XCTAssertEqual(AppSettings.learnedTemplate(current: cur, proposed: prop), prop)
+        XCTAssertNil(AppSettings.learnedTemplate(current: prop, proposed: prop), "identisch → nil")
+    }
+
+    /// Lücken über 4 h im Vorschlag werden geschlossen (Lückenfüllung bleibt Pflicht).
+    func testLearnedTemplateSchliesstLuecken() throws {
+        let out = try XCTUnwrap(AppSettings.learnedTemplate(current: [480, 720, 960, 1200],
+                                                            proposed: [480, 780, 1080, 1380]))
+        XCTAssertTrue(zip(out, out.dropFirst()).allSatisfy { $1 - $0 <= 240 })
+        XCTAssertEqual(out.first, 480); XCTAssertEqual(out.last, 1380)
+    }
+
+    /// Lern-Engine mit Zielmenge: hohe Füllrate (Nachmittag) → kürzerer Abstand dort.
+    func testIntervalPlan14TageReagiertAufZielmenge() throws {
+        var entries: [ToiletEntry] = []
+        for d in 1...12 {
+            // Tagesmuster: 08:00 300 ml, dann alle 3 h — nachmittags 480 ml (zu viel), sonst 300
+            for (h, ml) in [(8, 300), (11, 300), (14, 300), (17, 480), (20, 300), (23, 300)] {
+                let t = cal.date(byAdding: .day, value: -d, to: cal.date(bySettingHour: h, minute: 0, second: 0, of: .now)!)!
+                entries.append(ToiletEntry(timestamp: t, urineMl: ml))
+            }
+        }
+        let plan = try XCTUnwrap(SuggestionEngine.intervalPlan(entries: entries, targetMl: 400, days: 14))
+        XCTAssertLessThan(plan.slots[2].suggestedMinutes, plan.slots[1].suggestedMinutes,
+                          "Nachmittag (480 ml je 3 h) braucht kürzeren Abstand als Mittag")
+        XCTAssertLessThanOrEqual(plan.slots[2].suggestedMinutes, 150)
+        XCTAssertNil(SuggestionEngine.intervalPlan(entries: entries, targetMl: 400, days: 5), "zu wenig Tage → nil")
+    }
+
     // MARK: - Wöchentliches iCloud-Backup
 
     func testAutoBackupFaelligkeit() {

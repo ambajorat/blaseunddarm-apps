@@ -66,6 +66,7 @@ struct StatsView: View {
                             symptomsCard
                             bowelCard
                             balanceCard
+                            targetCard
                             FillRateCard()
                             urineChart
                             toiletCountChart
@@ -381,6 +382,57 @@ struct StatsView: View {
     }
 
     @ViewBuilder
+    /// „Zielmenge eingehalten“ — Anteil der Entleerungen bis zur Zielmenge im
+    /// gewählten Zeitraum und das Tagesfenster, in dem es am häufigsten reißt.
+    private struct TargetData { let target: Int; let total: Int; let over: Int; let pct: Int; let worstSlot: Int?; let worstCount: Int }
+
+    private func targetData() -> TargetData? {
+        let target = store.settings.targetVolumeMl ?? SuggestionEngine.defaultTargetMl
+        let voids = summaries.flatMap(\.entries).filter { $0.urineMl > 0 }
+        guard voids.count >= 5 else { return nil }
+        let over = voids.filter { $0.urineMl > target }
+        let cal = Calendar.current
+        var perSlot = Array(repeating: 0, count: SuggestionEngine.slotBounds.count)
+        for e in over {
+            let m = cal.component(.hour, from: e.timestamp) * 60 + cal.component(.minute, from: e.timestamp)
+            perSlot[SuggestionEngine.slotIndex(forMinute: m)] += 1
+        }
+        let worst = perSlot.indices.max { perSlot[$0] < perSlot[$1] }
+        return TargetData(target: target, total: voids.count, over: over.count,
+                          pct: Int((Double(voids.count - over.count) / Double(voids.count) * 100).rounded()),
+                          worstSlot: worst, worstCount: worst.map { perSlot[$0] } ?? 0)
+    }
+
+    @ViewBuilder
+    private var targetCard: some View {
+        if let d = targetData() {
+            let target = d.target, pct = d.pct
+            HStack(spacing: 12) {
+                Image(systemName: pct >= 90 ? "checkmark.seal.fill" : "gauge.with.needle.fill")
+                    .font(.title3)
+                    .foregroundStyle(pct >= 90 ? Color.green : Color.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Zielmenge \(target) ml eingehalten"))
+                        .font(.subheadline.weight(.semibold))
+                    Text(String(localized: "\(pct) % der Entleerungen · \(d.over) von \(d.total) darüber"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    if let w = d.worstSlot, d.worstCount > 0 {
+                        Text(String(localized: "Am häufigsten \(DaytimeSlot.name(for: w)) (\(d.worstCount)×)"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .padding(16)
+            .background(Color.cardBg, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+            .accessibilityElement(children: .combine)
+        }
+    }
+
     private var balanceCard: some View {
         if let bal = balanceData() {
             let avgDrink = bal.avgDrink

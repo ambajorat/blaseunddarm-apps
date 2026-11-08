@@ -321,6 +321,26 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            if store.settings.anchorsToFirstVoid {
+                Toggle(isOn: Binding(
+                    get: { store.settings.learnsTemplate },
+                    set: { store.settings.autoLearnTemplate = $0 }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Grundplan automatisch anpassen")
+                            .font(.subheadline)
+                        Text(String(localized: "Die App leitet den Grundplan täglich aus deiner Füllrate der letzten 14 Tage ab, damit du möglichst nie über \(store.settings.targetVolumeMl ?? SuggestionEngine.defaultTargetMl) ml kommst. Zeiten ändern sich erst ab 15 Minuten Unterschied und nie mitten am Tag. Die Zielmenge stellst du unter „Abstände nach Tageszeit“ ein."))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if store.settings.learnsTemplate, let at = store.settings.templateLearnedAt,
+                   let from = store.settings.templateLearnedFrom {
+                    Text(String(localized: "Zuletzt angepasst am \(at.formatted(.dateTime.day().month())): \(from.map(Self.clockString).joined(separator: " · ")) → \(store.settings.fixedTemplate.map(Self.clockString).joined(separator: " · "))"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
             if store.settings.anchorsToFirstVoid,
                store.settings.effectiveFixedTimes() != store.settings.fixedTemplate {
                 Text(String(localized: "Heute ausgerichtet: \(store.settings.effectiveFixedTimes().map(Self.clockString).joined(separator: " · "))"))

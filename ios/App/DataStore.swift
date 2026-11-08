@@ -87,6 +87,32 @@ final class DataStore {
         NotificationManager.scheduleFixedTimeReminders(settings: s)
     }
 
+    /// Lernender Grundplan: einmal täglich, nur solange heute noch keine
+    /// Entleerung eingetragen ist (der laufende Tag wird nie umgeplant), den
+    /// Grundplan aus der Füllrate der letzten 14 Tage neu ableiten — Ziel ist,
+    /// die Zielmenge je Entleerung (Standard 400 ml) nicht zu überschreiten.
+    /// Nur im Wecker-Modus mit Ausrichtung; die Leitplanken stehen in
+    /// AppSettings.learnedTemplate.
+    func learnTemplateIfDue(now: Date = .now) {
+        guard settings.learnsTemplate, settings.anchorsToFirstVoid,
+              settings.useFixedTimes ?? false else { return }
+        let cal = Calendar.current
+        let key = now.formatted(.iso8601.year().month().day())
+        guard settings.templateLearnDayKey != key else { return }
+        guard !entries.contains(where: { $0.urineMl > 0 && cal.isDate($0.timestamp, inSameDayAs: now) })
+        else { return }
+        var s = settings
+        s.templateLearnDayKey = key
+        let target = s.targetVolumeMl ?? SuggestionEngine.defaultTargetMl
+        guard let plan = SuggestionEngine.intervalPlan(entries: entries, targetMl: target, now: now, days: 14),
+              let learned = AppSettings.learnedTemplate(current: s.fixedTemplate, proposed: plan.times)
+        else { settings = s; return }
+        s.templateLearnedFrom = s.fixedTemplate
+        s.templateLearnedAt = now
+        settings = s
+        setFixedTemplate(learned)
+    }
+
     /// Grundplan setzen (Einstellungen, Vorschlag). Bei Ausrichtung wird die
     /// Vorlage gespeichert und — falls heute schon eine Morgen-Entleerung da
     /// ist — sofort verschoben.

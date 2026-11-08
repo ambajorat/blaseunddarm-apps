@@ -12,6 +12,7 @@ struct AlertsView: View {
                 daySection
                 countSection
                 baselineSection
+                learnedTemplateSection
                 suggestionSection
                 footerSection
             }
@@ -204,6 +205,39 @@ struct AlertsView: View {
     }
 
     // MARK: - Footer
+
+    // MARK: - Lernender Grundplan
+
+    /// Zeigt die letzte automatische Anpassung des Grundplans (7 Tage lang).
+    @ViewBuilder
+    private var learnedTemplateSection: some View {
+        if store.settings.learnsTemplate, store.settings.anchorsToFirstVoid,
+           let at = store.settings.templateLearnedAt, let from = store.settings.templateLearnedFrom,
+           Date.now.timeIntervalSince(at) < 7 * 86400 {
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: "Grundplan angepasst am \(at.formatted(.dateTime.day().month()))"))
+                        .font(.subheadline.weight(.semibold))
+                    Text(String(localized: "Vorher: \(from.map(Self.clock).joined(separator: " · "))"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(String(localized: "Jetzt: \(store.settings.fixedTemplate.map(Self.clock).joined(separator: " · "))"))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Color.accentBlue)
+                }
+                .padding(.vertical, 2)
+            } header: {
+                Text("Grundplan")
+            } footer: {
+                Text(String(localized: "Aus deiner Füllrate der letzten 14 Tage, Ziel \(store.settings.targetVolumeMl ?? SuggestionEngine.defaultTargetMl) ml je Entleerung. Abschaltbar in den Einstellungen unter „Feste Zeiten“."))
+                    .font(.caption)
+            }
+        }
+    }
+
+    private static func clock(_ minutes: Int) -> String {
+        String(format: "%02d:%02d", minutes / 60, minutes % 60)
+    }
 
     // MARK: - Vorschläge aus den eigenen Daten
 

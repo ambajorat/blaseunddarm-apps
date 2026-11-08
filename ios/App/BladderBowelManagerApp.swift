@@ -17,6 +17,7 @@ struct BladderBowelManagerApp: App {
                 // Kaltstart (z. B. nach Update): willEnterForeground feuert hier
                 // nicht — feste Zeiten trotzdem sofort aus allen Einträgen ausrichten.
                 .onAppear {
+                    store.learnTemplateIfDue()
                     store.alignFixedTimesIfNeeded()
                     cloudBackup.backupIfDue(entries: store.entries, settings: store.settings)
                 }
@@ -24,6 +25,7 @@ struct BladderBowelManagerApp: App {
                     store.reload()
                     store.syncToWatch()
                     // Siri-/Fremd-Einträge: feste Zeiten ggf. noch ausrichten
+                    store.learnTemplateIfDue()
                     store.alignFixedTimesIfNeeded()
                     cloudBackup.backupIfDue(entries: store.entries, settings: store.settings)
                     AlertEngine.checkDay(entries: store.entries)

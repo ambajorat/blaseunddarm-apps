@@ -135,7 +135,9 @@ struct DaytimeSlot: Identifiable, Equatable {
     /// Tages-Füllrate als Ersatz genommen wurde.
     let usesFallback: Bool
 
-    var label: String {
+    var label: String { Self.name(for: id) }
+
+    static func name(for id: Int) -> String {
         switch id {
         case 0: return String(localized: "Morgens")
         case 1: return String(localized: "Mittags")
@@ -184,9 +186,11 @@ extension SuggestionEngine {
 
     /// nil bei zu wenig Daten (unter 7 Tagen mit Urin-Einträgen in 30 Tagen
     /// oder unter 20 Tagesabständen insgesamt).
-    static func intervalPlan(entries: [ToiletEntry], targetMl: Int, now: Date = .now) -> IntervalPlan? {
+    /// `days` = Betrachtungszeitraum (Vorschlagsseite 30, lernender Grundplan 14).
+    static func intervalPlan(entries: [ToiletEntry], targetMl: Int, now: Date = .now,
+                             days: Int = 30) -> IntervalPlan? {
         let cal = Calendar.current
-        let start = cal.date(byAdding: .day, value: -30, to: cal.startOfDay(for: now)) ?? .distantPast
+        let start = cal.date(byAdding: .day, value: -days, to: cal.startOfDay(for: now)) ?? .distantPast
 
         // Urin-Einträge; Doppel innerhalb von 10 Minuten = eine Entleerung
         var pts: [(t: Date, ml: Int)] = []

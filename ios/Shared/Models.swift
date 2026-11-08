@@ -237,10 +237,18 @@ struct AppSettings: Codable, Equatable {
     var anchorToFirstVoid: Bool? = nil
     var fixedTimesTemplate: [Int]? = nil
     var anchorDayKey: String? = nil
+    // Lernender Grundplan: die App leitet den Grundplan täglich aus der
+    // Füllrate der letzten 14 Tage so ab, dass die Zielmenge je Entleerung
+    // möglichst nicht überschritten wird (nil = an).
+    var autoLearnTemplate: Bool? = nil
+    var templateLearnDayKey: String? = nil      // Tag der letzten Prüfung
+    var templateLearnedAt: Date? = nil          // letzte tatsächliche Anpassung
+    var templateLearnedFrom: [Int]? = nil       // Grundplan davor (für die Anzeige)
 
     var fixedTimesEnabled: Bool { (useFixedTimes ?? false) && !(fixedTimes ?? []).isEmpty }
     var sortedFixedTimes: [Int] { (fixedTimes ?? []).sorted() }
     var anchorsToFirstVoid: Bool { anchorToFirstVoid ?? false }
+    var learnsTemplate: Bool { autoLearnTemplate ?? true }
     /// Grundplan der festen Zeiten — bei Ausrichtung die Vorlage, sonst die Zeiten selbst.
     var fixedTemplate: [Int] {
         anchorsToFirstVoid ? (fixedTimesTemplate ?? sortedFixedTimes).sorted() : sortedFixedTimes
@@ -278,6 +286,24 @@ struct AppSettings: Codable, Equatable {
             rounds += 1
         }
         return s
+    }
+
+    /// Lernender Grundplan — Leitplanken gegen „Zittern“: Bei gleicher Anzahl
+    /// Zeiten wird jede Zeit nur übernommen, wenn sie sich um mindestens
+    /// `minShift` Minuten vom bisherigen Wert unterscheidet; ändert sich die
+    /// Anzahl (mehr/weniger Erinnerungen nötig), gilt der Vorschlag ganz.
+    /// nil = keine lohnende Änderung. Ergebnis ist lückenfrei (filledFixedTimes).
+    static func learnedTemplate(current: [Int], proposed: [Int], minShift: Int = 15) -> [Int]? {
+        let cur = Array(Set(current)).sorted()
+        let prop = filledFixedTimes(proposed)
+        guard !prop.isEmpty else { return nil }
+        guard prop.count == cur.count, !cur.isEmpty else {
+            return prop == cur ? nil : prop
+        }
+        var out = cur
+        for i in cur.indices where abs(prop[i] - cur[i]) >= minShift { out[i] = prop[i] }
+        out = filledFixedTimes(out)
+        return out == cur ? nil : out
     }
 
     /// Grundplan so verschieben, dass seine erste Zeit auf `firstVoidMinute` fällt.
