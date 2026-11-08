@@ -381,7 +381,6 @@ struct StatsView: View {
                 drinkDays.map(\.urine).reduce(0, +) / drinkDays.count)
     }
 
-    @ViewBuilder
     /// „Zielmenge eingehalten“ — Anteil der Entleerungen bis zur Zielmenge im
     /// gewählten Zeitraum und das Tagesfenster, in dem es am häufigsten reißt.
     private struct TargetData { let target: Int; let total: Int; let over: Int; let pct: Int; let worstSlot: Int?; let worstCount: Int }
@@ -433,6 +432,7 @@ struct StatsView: View {
         }
     }
 
+    @ViewBuilder
     private var balanceCard: some View {
         if let bal = balanceData() {
             let avgDrink = bal.avgDrink
