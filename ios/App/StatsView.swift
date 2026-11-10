@@ -62,6 +62,7 @@ struct StatsView: View {
                             rangePicker
                             averageCards
                             catheterCard
+                            SupplyStatusCard(entries: store.entries)
                             palpationCard
                             symptomsCard
                             bowelCard

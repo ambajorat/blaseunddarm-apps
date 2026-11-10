@@ -223,10 +223,31 @@ enum AlertEngine {
     // MARK: Katheterbestand
 
     /// Warnt einmal am Tag, wenn die GESAMT-Reichweite (alle Sorten addiert)
-    /// unter die eingestellte Grenze fällt.
-    static func checkCatheterStock(entries: [ToiletEntry], dateKey: String, stock: CatheterStock = .load()) {
+    /// oder die der Kompressen unter die eingestellte Grenze fällt.
+    /// Läuft eine Bestellung (OrderState), bleibt die Erinnerung still;
+    /// ist wieder genug da, wird der Bestell-Merker gelöscht.
+    static func checkCatheterStock(entries: [ToiletEntry], dateKey: String, stock: CatheterStock = .load(),
+                                   compress: CompressStock = .load()) {
         guard stock.enabled else { return }
-        guard let days = stock.daysRemaining(entries: entries), days <= stock.warnDays else { return }
+        let status = OrderPlan.status(catheter: stock, compress: compress, entries: entries)
+        guard status.isDue else {
+            if OrderState.orderedOn != nil { OrderState.clear() }
+            return
+        }
+        guard !OrderState.isPending() else { return }
+        if status.compressLow, let compDays = status.compressDays {
+            let title: String
+            let text: String
+            if status.catheterLow, let cathDays = status.catheterDays {
+                title = String(localized: "Katheter und Kompressen werden knapp")
+                text = String(format: String(localized: "Katheter reichen noch etwa %lld Tage, Kompressen etwa %lld Tage. Zeit zu bestellen."), cathDays, compDays)
+            } else {
+                title = String(localized: "Kompressen werden knapp")
+                text = String(format: String(localized: "Noch %lld 2er-Packs Kompressen — reicht etwa %lld Tage. Zeit zu bestellen."), compress.currentStock(entries: entries), compDays)
+            }
+            notifyOnce(rule: "cathLow_\(dateKey)", title: title, body: text)
+            return
+        }
         let count = stock.currentStock(entries: entries)
         let body: String
         if let empty = stock.estimatedEmptyDate(entries: entries) {

@@ -8,6 +8,7 @@ struct AlertsView: View {
         NavigationStack {
             List {
                 todaySection
+                SupplyOrderAlertSection(entries: store.entries)
                 singleSection
                 daySection
                 countSection

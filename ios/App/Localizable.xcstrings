@@ -7087,6 +7087,646 @@
           }
         }
       }
+    },
+    "Sterile Kompressen 10 × 10 cm, 2er-Pack" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sterile gauze pads 10 × 10 cm, pack of 2"
+          }
+        }
+      }
+    },
+    "Versorger" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supplier"
+          }
+        }
+      }
+    },
+    "Praxis" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice"
+          }
+        }
+      }
+    },
+    "Beide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Both"
+          }
+        }
+      }
+    },
+    "Nachbestellung Hilfsmittel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reorder of medical supplies"
+          }
+        }
+      }
+    },
+    "– %lld Packung %@ (je %lld Stück, zusammen %lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "– %1$lld box of %2$@ (%3$lld per box, %4$lld in total)"
+          }
+        }
+      }
+    },
+    "– %lld Packungen %@ (je %lld Stück, zusammen %lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "– %1$lld boxes of %2$@ (%3$lld per box, %4$lld in total)"
+          }
+        }
+      }
+    },
+    "ich möchte folgende Hilfsmittel nachbestellen:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I would like to reorder the following supplies:"
+          }
+        }
+      }
+    },
+    "Bitte liefern Sie an die bekannte Adresse." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please deliver to the address you have on file."
+          }
+        }
+      }
+    },
+    "ich bitte um eine Folgeverordnung über folgende Hilfsmittel:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I would like to request a repeat prescription for the following supplies:"
+          }
+        }
+      }
+    },
+    "Bitte geben Sie mir kurz Bescheid, sobald die Verordnung bereitliegt." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please let me know once the prescription is ready."
+          }
+        }
+      }
+    },
+    "ich benötige Nachschub an folgenden Hilfsmitteln:" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I need a new supply of the following items:"
+          }
+        }
+      }
+    },
+    "An die Praxis: Bitte stellen Sie die Folgeverordnung aus. An den Versorger: Bitte liefern Sie an die bekannte Adresse, sobald die Verordnung vorliegt." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To the practice: please issue the repeat prescription. To the supplier: please deliver to the address on file once the prescription has arrived."
+          }
+        }
+      }
+    },
+    "Guten Tag," : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hello,"
+          }
+        }
+      }
+    },
+    "Name: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name: %@"
+          }
+        }
+      }
+    },
+    "Geburtsdatum: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date of birth: %@"
+          }
+        }
+      }
+    },
+    "Kundennummer: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Customer number: %@"
+          }
+        }
+      }
+    },
+    "Vielen Dank und freundliche Grüße" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thank you and kind regards"
+          }
+        }
+      }
+    },
+    "Nachbestellen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reorder"
+          }
+        }
+      }
+    },
+    "Empfänger" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipient"
+          }
+        }
+      }
+    },
+    "Für diese Auswahl fehlt eine E-Mail-Adresse — eintragen unter Einstellungen › Nachbestellung. Du kannst die Adresse auch direkt in der Mail ergänzen." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An email address is missing for this choice — add it under Settings › Reordering. You can also add the address in the email itself."
+          }
+        }
+      }
+    },
+    "Kein Bestand aktiv — schalte den Katheterbestand in den Einstellungen ein." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No stock tracking active — turn on catheter stock in Settings."
+          }
+        }
+      }
+    },
+    "Bestellung" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Order"
+          }
+        }
+      }
+    },
+    "Nachricht" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message"
+          }
+        }
+      }
+    },
+    "Als E-Mail senden" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send as email"
+          }
+        }
+      }
+    },
+    "Senden über …" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send via …"
+          }
+        }
+      }
+    },
+    "Als bestellt markieren" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as ordered"
+          }
+        }
+      }
+    },
+    "Wird die Mail aus der App gesendet, gilt die Bestellung automatisch als bestellt. Bis die Lieferung eingebucht ist, erinnert die App nicht erneut." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If the email is sent from the app, the order is marked as placed automatically. The app won't remind you again until the delivery has been added."
+          }
+        }
+      }
+    },
+    "%lld Packung · %lld Stück" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld box · %2$lld pieces"
+          }
+        }
+      }
+    },
+    "%lld Packungen · %lld Stück" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld boxes · %2$lld pieces"
+          }
+        }
+      }
+    },
+    "Bedarf für %lld Tage bei Ø %.1f Entleerungen pro Tag, auf ganze Packungen aufgerundet. Sortenmix nach deinem Verbrauch der letzten 30 Tage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supply for %1$lld days at an average of %2$.1f voids per day, rounded up to whole boxes. Mix of types based on your use over the last 30 days."
+          }
+        }
+      }
+    },
+    "Noch zu wenige Einträge für eine Bedarfsrechnung — vorgeschlagen ist je eine Packung. Passe die Mengen an." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not enough entries yet to calculate your needs — one box each is suggested. Adjust the quantities."
+          }
+        }
+      }
+    },
+    "Kompressenbestand verfolgen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Track gauze pad stock"
+          }
+        }
+      }
+    },
+    "Bezeichnung" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Description"
+          }
+        }
+      }
+    },
+    "%lld 2er-Packs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld packs of 2"
+          }
+        }
+      }
+    },
+    "Lieferung erfassen (2er-Packs)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add delivery (packs of 2)"
+          }
+        }
+      }
+    },
+    "2er-Packs je Packung" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Packs of 2 per box"
+          }
+        }
+      }
+    },
+    "Kompressen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gauze pads"
+          }
+        }
+      }
+    },
+    "E-Mail" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email"
+          }
+        }
+      }
+    },
+    "Kundennummer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Customer number"
+          }
+        }
+      }
+    },
+    "Dein Name" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your name"
+          }
+        }
+      }
+    },
+    "Geburtsdatum" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date of birth"
+          }
+        }
+      }
+    },
+    "Bestellen für" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Order for"
+          }
+        }
+      }
+    },
+    "%lld Tage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld days"
+          }
+        }
+      }
+    },
+    "Bestellt am %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordered on %@"
+          }
+        }
+      }
+    },
+    "Zurücksetzen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset"
+          }
+        }
+      }
+    },
+    "Jetzt nachbestellen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reorder now"
+          }
+        }
+      }
+    },
+    "Nachbestellung" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reordering"
+          }
+        }
+      }
+    },
+    "Reichen Katheter oder Kompressen für weniger als %lld Tage, erinnert dich die App ans Nachbestellen. Die Mail ist vorbereitet — abschicken tust du sie selbst." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When catheters or gauze pads will last less than %lld days, the app reminds you to reorder. The email is prepared — you send it yourself."
+          }
+        }
+      }
+    },
+    "Optional: Zählt deine sterilen Kompressen mit — jede Blasenentleerung verbraucht ein 2er-Pack." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional: keeps count of your sterile gauze pads — each bladder emptying uses one pack of 2."
+          }
+        }
+      }
+    },
+    "Trage deinen aktuellen Bestand in 2er-Packs ein, um zu starten." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter your current stock in packs of 2 to get started."
+          }
+        }
+      }
+    },
+    "Ein 2er-Pack je Entleerung — reicht noch etwa %lld Tage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One pack of 2 per void — lasts about %lld more days."
+          }
+        }
+      }
+    },
+    "Ein 2er-Pack je Entleerung. Die Reichweite erscheint nach ein paar Tagen mit Einträgen." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One pack of 2 per void. The remaining days appear after a few days of entries."
+          }
+        }
+      }
+    },
+    "%lld 2er-Packs Kompressen im Bestand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld packs of 2 gauze pads in stock"
+          }
+        }
+      }
+    },
+    "Reicht etwa %lld Tage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lasts about %lld days"
+          }
+        }
+      }
+    },
+    "Vorrat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supplies"
+          }
+        }
+      }
+    },
+    "Katheter reichen noch etwa %lld Tage, Kompressen etwa %lld Tage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Catheters will last about %1$lld days, gauze pads about %2$lld days."
+          }
+        }
+      }
+    },
+    "Kompressen reichen noch etwa %lld Tage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gauze pads will last about %lld days."
+          }
+        }
+      }
+    },
+    "Katheter reichen noch etwa %lld Tage." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Catheters will last about %lld days."
+          }
+        }
+      }
+    },
+    "Bestellt am %@ — wartet auf Lieferung" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordered on %@ — awaiting delivery"
+          }
+        }
+      }
+    },
+    "Katheter und Kompressen werden knapp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Catheters and gauze pads running low"
+          }
+        }
+      }
+    },
+    "Katheter reichen noch etwa %lld Tage, Kompressen etwa %lld Tage. Zeit zu bestellen." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Catheters will last about %1$lld days, gauze pads about %2$lld days. Time to reorder."
+          }
+        }
+      }
+    },
+    "Kompressen werden knapp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gauze pads running low"
+          }
+        }
+      }
+    },
+    "Noch %lld 2er-Packs Kompressen — reicht etwa %lld Tage. Zeit zu bestellen." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld packs of 2 gauze pads left — lasts about %2$lld days. Time to reorder."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

@@ -59,6 +59,7 @@ struct SettingsView: View {
             quickValuesSection
             drinkSection
             catheterSection
+            SupplySettingsSections(catheter: catheter, entries: store.entries)
             utiSection
             medicationSection
             iskExtrasSection

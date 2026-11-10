@@ -564,4 +564,98 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertEqual(filled.first, 480)
         XCTAssertEqual(filled.last, 1425)
     }
+
+    // MARK: - 4.21: Kompressen + Nachbestellung
+
+    /// 10 Tage mit je 3× Sorte A und 1× Sorte B.
+    private func mixEntries() -> [ToiletEntry] {
+        var list: [ToiletEntry] = []
+        for d in 1...10 {
+            list.append(entry(daysAgo: d, minute: 0, urine: 300, sort: "A"))
+            list.append(entry(daysAgo: d, minute: 180, urine: 300, sort: "A"))
+            list.append(entry(daysAgo: d, minute: 360, urine: 300, sort: "A"))
+            list.append(entry(daysAgo: d, minute: 540, urine: 300, sort: "B"))
+            list.append(entry(daysAgo: d, minute: 600, drink: 250))          // zählt nie
+        }
+        return list
+    }
+
+    private func mixStock() -> CatheterStock {
+        let past = cal.date(byAdding: .day, value: -40, to: .now)!
+        var stock = CatheterStock()
+        stock.enabled = true
+        stock.packSize = 30
+        stock.sorts = [
+            CatheterSort(name: "A", stockAtAdjustment: 200, adjustmentDate: past),
+            CatheterSort(name: "B", stockAtAdjustment: 100, adjustmentDate: past),
+        ]
+        return stock
+    }
+
+    func testBestellungFolgtSortenmixUndRundetAufPackungen() {
+        var compress = CompressStock()
+        compress.enabled = true
+        compress.packSize = 50
+        let lines = OrderPlan.lines(catheter: mixStock(), compress: compress,
+                                    orderDays: 30, entries: mixEntries())
+        // Ø 4 pro Tag × 30 Tage = 120 Stück, Mix 3:1 → 90 A + 30 B
+        XCTAssertEqual(lines.count, 3)
+        XCTAssertEqual(lines[0].name, "A")
+        XCTAssertEqual(lines[0].packs, 3, "90 Stück = 3 Packungen à 30")
+        XCTAssertEqual(lines[1].name, "B")
+        XCTAssertEqual(lines[1].packs, 1, "30 Stück = 1 Packung")
+        XCTAssertEqual(lines[2].kind, .compress)
+        XCTAssertEqual(lines[2].packs, 3, "120 2er-Packs → 3 Packungen à 50 (aufgerundet)")
+    }
+
+    func testBestellungOhneKompressenWennAus() {
+        let lines = OrderPlan.lines(catheter: mixStock(), compress: CompressStock(),
+                                    orderDays: 30, entries: mixEntries())
+        XCTAssertEqual(lines.map(\.kind), [.catheter, .catheter])
+    }
+
+    func testVerteilungErgibtExaktDieSumme() {
+        XCTAssertEqual(OrderPlan.distribute(100, weights: [1, 1, 1]).reduce(0, +), 100)
+        XCTAssertEqual(OrderPlan.distribute(120, weights: [30, 10]), [90, 30])
+        XCTAssertEqual(OrderPlan.distribute(50, weights: [0, 7]), [0, 50])
+        XCTAssertEqual(OrderPlan.distribute(50, weights: [0, 0]), [0, 0])
+    }
+
+    func testKompressenBestandZaehltJeEntleerungEinPack() {
+        var compress = CompressStock()
+        compress.enabled = true
+        compress.stockAtAdjustment = 60
+        compress.adjustmentDate = cal.date(byAdding: .day, value: -40, to: .now)!
+        let entries = mixEntries()                                 // 40 Entleerungen
+        XCTAssertEqual(compress.currentStock(entries: entries), 20)
+        XCTAssertEqual(compress.daysRemaining(entries: entries), 5, "20 Packs bei Ø 4 pro Tag")
+        let status = OrderPlan.status(catheter: mixStock(), compress: compress, entries: entries)
+        XCTAssertTrue(status.compressLow, "5 Tage liegt unter der 10-Tage-Schwelle")
+        XCTAssertFalse(status.catheterLow, "260 Katheter reichen 65 Tage")
+        XCTAssertTrue(status.isDue)
+    }
+
+    func testBestellMerkerLaeuftNach21TagenAb() {
+        let ordered = cal.date(byAdding: .day, value: -5, to: .now)!
+        XCTAssertTrue(OrderState.isPending(orderedOn: ordered, now: .now))
+        let old = cal.date(byAdding: .day, value: -22, to: .now)!
+        XCTAssertFalse(OrderState.isPending(orderedOn: old, now: .now))
+        XCTAssertFalse(OrderState.isPending(orderedOn: nil, now: .now))
+    }
+
+    func testBestellMailNenntMengenUndKundennummerNurBeimVersorger() {
+        var settings = OrderSettings()
+        settings.patientName = "Max Muster"
+        settings.customerNumber = "4711"
+        settings.supplierEmail = "a@example.org"
+        settings.practiceEmail = "b@example.org"
+        let line = OrderLine(id: "x", kind: .catheter, name: "A, Ch 12", packSize: 30, packs: 3)
+        let supplier = OrderMail.body(lines: [line], recipient: .supplier, settings: settings)
+        XCTAssertTrue(supplier.contains("A, Ch 12"))
+        XCTAssertTrue(supplier.contains("90"))
+        XCTAssertTrue(supplier.contains("4711"))
+        let practice = OrderMail.body(lines: [line], recipient: .practice, settings: settings)
+        XCTAssertFalse(practice.contains("4711"))
+        XCTAssertEqual(OrderMail.recipients(.both, settings: settings), ["a@example.org", "b@example.org"])
+    }
 }
