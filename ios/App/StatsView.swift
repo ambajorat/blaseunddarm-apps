@@ -63,6 +63,7 @@ struct StatsView: View {
                             averageCards
                             catheterCard
                             SupplyStatusCard(entries: store.entries)
+                            sortVolumeCard
                             palpationCard
                             symptomsCard
                             bowelCard
@@ -179,6 +180,48 @@ struct StatsView: View {
             .padding(16)
             .background(Color.cardBg, in: .rect(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+        }
+    }
+
+    @ViewBuilder
+    private var sortVolumeCard: some View {
+        let stock = CatheterStock.load()
+        if stock.enabled && stock.effectiveSorts.count > 1 {
+            let start = Calendar.current.date(byAdding: .day, value: -range.days, to: .now) ?? .distantPast
+            let rows = stock.averageMlPerSort(entries: store.entries, since: start)
+            if !rows.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "cross.vial.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.accent)
+                        Text("Ø Menge je Kathetersorte")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    ForEach(rows, id: \.sort.id) { row in
+                        HStack {
+                            Text(row.sort.name)
+                                .font(.caption)
+                                .lineLimit(1)
+                            Spacer()
+                            Text("Ø \(row.avgMl) ml")
+                                .font(.caption.weight(.semibold))
+                                .monospacedDigit()
+                            Text("(\(row.count)×)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                    Text("Durchschnittliche Urinmenge je Sorte im gewählten Zeitraum — nur Einträge mit hinterlegter Sorte.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .background(Color.cardBg, in: .rect(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+            }
         }
     }
 

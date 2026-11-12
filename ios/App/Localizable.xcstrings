@@ -2234,6 +2234,16 @@
         }
       }
     },
+    "Durchschnittliche Urinmenge je Sorte im gewählten Zeitraum — nur Einträge mit hinterlegter Sorte." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Average urine volume per type in the selected period — only entries with a recorded catheter type."
+          }
+        }
+      }
+    },
     "Durchsichtig" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4557,6 +4567,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ø %lld ml · Ø %@ voids (%lld days) · ±%lld %%"
+          }
+        }
+      }
+    },
+    "Ø Menge je Kathetersorte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avg. volume per catheter type"
           }
         }
       }

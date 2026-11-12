@@ -658,4 +658,33 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertFalse(practice.contains("4711"))
         XCTAssertEqual(OrderMail.recipients(.both, settings: settings), ["a@example.org", "b@example.org"])
     }
+
+    // MARK: - Ø Menge je Kathetersorte (4.22)
+
+    func testDurchschnittsmengeJeKathetersorte() {
+        var stock = CatheterStock()
+        stock.enabled = true
+        stock.sorts = [CatheterSort(name: "Tag"), CatheterSort(name: "Nacht"), CatheterSort(name: "Reise")]
+        let now = Date.now
+        func e(_ ml: Int, _ sort: String?, daysAgo: Double = 1) -> ToiletEntry {
+            ToiletEntry(timestamp: now.addingTimeInterval(-daysAgo * 86_400), urineMl: ml, catheterSort: sort)
+        }
+        let entries = [
+            e(300, "Tag"), e(400, "Tag"), e(350, "Tag"),
+            e(500, "Nacht"), e(600, "Nacht"), e(550, "Nacht"), e(551, "Nacht"),
+            e(200, "Reise"), e(250, "Reise"),          // nur 2 → keine Zeile
+            e(900, nil),                                 // ohne Sorte → zählt nirgends
+            e(0, "Tag"),                                 // kein Urin → zählt nicht
+            e(100, "Tag", daysAgo: 40)                   // außerhalb des Zeitraums
+        ]
+        let since = now.addingTimeInterval(-7 * 86_400)
+        let rows = stock.averageMlPerSort(entries: entries, since: since)
+        XCTAssertEqual(rows.map(\.sort.name), ["Tag", "Nacht"])
+        XCTAssertEqual(rows[0].avgMl, 350)
+        XCTAssertEqual(rows[0].count, 3)
+        XCTAssertEqual(rows[1].avgMl, 550)             // 2201 / 4 = 550,25
+        XCTAssertEqual(rows[1].count, 4)
+        // Ohne Zeitgrenze zählt der alte Eintrag mit: (300+400+350+100)/4 = 287,5 → 288
+        XCTAssertEqual(stock.averageMlPerSort(entries: entries).first?.avgMl, 288)
+    }
 }

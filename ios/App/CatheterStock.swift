@@ -134,6 +134,23 @@ struct CatheterStock: Codable, Equatable {
         return Calendar.current.date(byAdding: .day, value: days, to: .now)
     }
 
+    /// Ø Urinmenge je Kathetersorte (4.22). Zählt bewusst NUR Einträge, an denen
+    /// die Sorte ausdrücklich hinterlegt ist — nicht über belongs(), das Einträge
+    /// ohne Sortennamen der ersten Sorte zuschlägt und deren Schnitt verfälschen würde.
+    /// `since` = Beginn des Zeitraums (nil = alle Einträge). Mindestens `minCount`
+    /// Einträge je Sorte, sonst fehlt die Zeile.
+    func averageMlPerSort(entries: [ToiletEntry], since: Date? = nil, minCount: Int = 3)
+        -> [(sort: CatheterSort, avgMl: Int, count: Int)] {
+        effectiveSorts.compactMap { sort -> (sort: CatheterSort, avgMl: Int, count: Int)? in
+            let mls = entries.filter {
+                $0.urineMl > 0 && $0.catheterSort == sort.name && (since == nil || $0.timestamp >= since!)
+            }.map(\.urineMl)
+            guard mls.count >= minCount else { return nil }
+            let avg = Int((Double(mls.reduce(0, +)) / Double(mls.count)).rounded())
+            return (sort: sort, avgMl: avg, count: mls.count)
+        }
+    }
+
     /// Sortenbezogene Änderungen (selbstheilendes Prinzip je Sorte).
     mutating func setStock(_ value: Int, forSort id: UUID) {
         ensureSorts()
