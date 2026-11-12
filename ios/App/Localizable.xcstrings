@@ -2234,6 +2234,16 @@
         }
       }
     },
+    "Durchschnittliche Urinmenge je Entleerung in 3-Stunden-Blöcken, im gewählten Zeitraum." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Average urine volume per void in 3-hour blocks, for the selected period."
+          }
+        }
+      }
+    },
     "Durchschnittliche Urinmenge je Sorte im gewählten Zeitraum — nur Einträge mit hinterlegter Sorte." : {
       "localizations" : {
         "en" : {
@@ -2866,6 +2876,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "From"
+          }
+        }
+      }
+    },
+    "Frühmorgens" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Early morning"
           }
         }
       }
@@ -3988,6 +4008,16 @@
         }
       }
     },
+    "Menge nach Tageszeit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volume by time of day"
+          }
+        }
+      }
+    },
     "Mit Ausrichtung richtet sich der Plan nach deinen tatsächlichen Entleerungen: Der Tag beginnt mit der ersten am Morgen, und nach jeder Entleerung startet der Abstand neu." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4124,6 +4154,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Message"
+          }
+        }
+      }
+    },
+    "Nachts" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At night"
           }
         }
       }
@@ -6149,6 +6189,16 @@
         }
       }
     },
+    "Spätabends" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Late evening"
+          }
+        }
+      }
+    },
     "Standardsorte" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7289,6 +7339,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Before: %@"
+          }
+        }
+      }
+    },
+    "Vormittags" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Late morning"
           }
         }
       }

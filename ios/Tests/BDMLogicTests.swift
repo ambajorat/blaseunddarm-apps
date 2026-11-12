@@ -687,4 +687,32 @@ final class BDMLogicTests: XCTestCase {
         // Ohne Zeitgrenze zählt der alte Eintrag mit: (300+400+350+100)/4 = 287,5 → 288
         XCTAssertEqual(stock.averageMlPerSort(entries: entries).first?.avgMl, 288)
     }
+
+    // MARK: - Menge nach Tageszeit, 3-Stunden-Blöcke (4.22)
+
+    func testMengeInDreiStundenBloecken() {
+        let cal = Calendar.current
+        let base = cal.startOfDay(for: cal.date(byAdding: .day, value: -2, to: .now)!)
+        func e(_ h: Int, _ m: Int, _ ml: Int, dayOffset: Int = 0) -> ToiletEntry {
+            let day = cal.date(byAdding: .day, value: dayOffset, to: base)!
+            return ToiletEntry(timestamp: cal.date(bySettingHour: h, minute: m, second: 0, of: day)!, urineMl: ml)
+        }
+        let entries = [
+            e(6, 0, 300), e(7, 30, 400), e(8, 59, 350),        // 06–09 → Ø 350
+            e(9, 0, 200), e(11, 59, 250),                      // 09–12 nur 2 → fehlt
+            e(21, 0, 500), e(22, 15, 450), e(23, 59, 401),     // 21–24 → 1351/3 = 450,3
+            e(7, 0, 0),                                        // kein Urin
+            e(7, 0, 999, dayOffset: -60)                       // außerhalb des Zeitraums
+        ]
+        let since = cal.date(byAdding: .day, value: -7, to: .now)!
+        let blocks = SuggestionEngine.volumeBlocks(entries: entries, since: since)
+        XCTAssertEqual(blocks.map(\.id), [2, 7])
+        XCTAssertEqual(blocks[0].avgMl, 350)
+        XCTAssertEqual(blocks[0].count, 3)
+        XCTAssertEqual(blocks[0].rangeText, "06–09")
+        XCTAssertEqual(blocks[1].avgMl, 450)
+        XCTAssertEqual(blocks[1].rangeText, "21–24")
+        // Ohne Zeitgrenze zählt der alte Eintrag im Block 06–09 mit
+        XCTAssertEqual(SuggestionEngine.volumeBlocks(entries: entries).first?.count, 4)
+    }
 }

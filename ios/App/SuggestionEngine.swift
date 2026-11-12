@@ -294,3 +294,50 @@ extension SuggestionEngine {
         return s[s.count / 2]
     }
 }
+
+// MARK: - Menge nach Tageszeit in 3-Stunden-Blöcken (4.22)
+
+/// Ein 3-Stunden-Block des Tages mit der durchschnittlichen Urinmenge je Entleerung.
+struct VolumeBlock: Identifiable, Equatable {
+    /// 0…7 = 00–03, 03–06, … 21–24
+    let id: Int
+    let avgMl: Int
+    let count: Int
+
+    var startHour: Int { id * 3 }
+    var endHour: Int { id * 3 + 3 }
+    var rangeText: String { String(format: "%02d–%02d", startHour, endHour) }
+
+    var label: String {
+        switch id {
+        case 0: return String(localized: "Nachts")
+        case 1: return String(localized: "Frühmorgens")
+        case 2: return String(localized: "Morgens")
+        case 3: return String(localized: "Vormittags")
+        case 4: return String(localized: "Mittags")
+        case 5: return String(localized: "Nachmittags")
+        case 6: return String(localized: "Abends")
+        default: return String(localized: "Spätabends")
+        }
+    }
+}
+
+extension SuggestionEngine {
+    /// Ø Urinmenge je Entleerung in 3-Stunden-Blöcken, zugeordnet nach der Uhrzeit
+    /// des Eintrags. `since` = Beginn des Zeitraums (nil = alle). Blöcke mit weniger
+    /// als `minCount` Einträgen fehlen — rein beschreibend.
+    static func volumeBlocks(entries: [ToiletEntry], since: Date? = nil, minCount: Int = 3,
+                             calendar: Calendar = .current) -> [VolumeBlock] {
+        var buckets = Array(repeating: [Int](), count: 8)
+        for e in entries where e.urineMl > 0 {
+            if let since, e.timestamp < since { continue }
+            let h = calendar.component(.hour, from: e.timestamp)
+            buckets[min(7, max(0, h / 3))].append(e.urineMl)
+        }
+        return buckets.enumerated().compactMap { (i, mls) -> VolumeBlock? in
+            guard mls.count >= minCount else { return nil }
+            let avg = Int((Double(mls.reduce(0, +)) / Double(mls.count)).rounded())
+            return VolumeBlock(id: i, avgMl: avg, count: mls.count)
+        }
+    }
+}

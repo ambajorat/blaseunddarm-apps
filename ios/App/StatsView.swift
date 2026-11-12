@@ -64,6 +64,7 @@ struct StatsView: View {
                             catheterCard
                             SupplyStatusCard(entries: store.entries)
                             sortVolumeCard
+                            daytimeVolumeCard
                             palpationCard
                             symptomsCard
                             bowelCard
@@ -222,6 +223,58 @@ struct StatsView: View {
                 .background(Color.cardBg, in: .rect(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
             }
+        }
+    }
+
+    @ViewBuilder
+    private var daytimeVolumeCard: some View {
+        let start = Calendar.current.date(byAdding: .day, value: -range.days, to: .now) ?? .distantPast
+        let blocks = SuggestionEngine.volumeBlocks(entries: store.entries, since: start)
+        if !blocks.isEmpty {
+            let maxMl = max(blocks.map(\.avgMl).max() ?? 1, 1)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "clock.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.accent)
+                    Text("Menge nach Tageszeit")
+                        .font(.subheadline.weight(.semibold))
+                }
+                ForEach(blocks) { block in
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(verbatim: block.label)
+                                .font(.caption)
+                                .lineLimit(1)
+                            Text(verbatim: block.rangeText)
+                                .font(.caption2)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: 92, alignment: .leading)
+                        GeometryReader { geo in
+                            Capsule()
+                                .fill(Color.accent.opacity(0.7))
+                                .frame(width: max(4, geo.size.width * CGFloat(block.avgMl) / CGFloat(maxMl)))
+                        }
+                        .frame(height: 8)
+                        Text("Ø \(block.avgMl) ml")
+                            .font(.caption.weight(.semibold))
+                            .monospacedDigit()
+                        Text("(\(block.count)×)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                Text("Durchschnittliche Urinmenge je Entleerung in 3-Stunden-Blöcken, im gewählten Zeitraum.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(Color.cardBg, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
         }
     }
 
