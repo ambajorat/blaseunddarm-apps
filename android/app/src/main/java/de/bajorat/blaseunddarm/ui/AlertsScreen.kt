@@ -24,6 +24,7 @@ fun AlertsScreen(store: BDMDataStore) {
     val context = LocalContext.current
     var settings by remember { mutableStateOf(AlertSettings.load(context)) }
     val entries by store.entries.collectAsState()
+    val appSettings by store.settings.collectAsState()
 
     fun update(new: AlertSettings) {
         settings = new
@@ -39,6 +40,11 @@ fun AlertsScreen(store: BDMDataStore) {
         // Nachbestellung (2.9): nur wenn der Vorrat knapp ist und keine Bestellung läuft
         if (supplyOrderDue(context, entries)) {
             item { SupplyOrderAlertCard(entries) }
+        }
+
+        // Lernender Grundplan (2.10): Hinweis, wenn der Grundplan in den letzten 7 Tagen angepasst wurde
+        if (learnedTemplateRecent(appSettings)) {
+            item { LearnedTemplateCard(appSettings) }
         }
 
         // Heute-Ampel

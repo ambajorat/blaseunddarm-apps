@@ -109,8 +109,29 @@ data class AppSettings(
     // Wecker-Modus (iOS-4.7-Parität): feste Uhrzeiten als Minuten seit
     // Mitternacht; kotlinx-Defaults halten Alt-Daten decoding-sicher.
     val useFixedTimes: Boolean = false,
-    val fixedTimes: List<Int> = listOf(480, 720, 960, 1200)
+    val fixedTimes: List<Int> = listOf(480, 720, 960, 1200),
+    // 2.10 (Parität zu iOS 4.13–4.20) — alles mit Defaults, Alt-Daten bleiben lesbar.
+    /** Zielmenge je Entleerung für „Abstände nach Tageszeit“; 0 = Standard (400 ml). */
+    val targetVolumeMl: Int = 0,
+    /** Feste Zeiten an den Entleerungen ausrichten: fixedTimesTemplate = Grundplan
+     *  (erste Zeit = Aufwachzeit), fixedTimes = heute verschobene Fassung. */
+    val anchorToFirstVoid: Boolean = false,
+    val fixedTimesTemplate: List<Int> = emptyList(),
+    /** Tag (ISO) der letzten Ausrichtung. */
+    val anchorDayKey: String = "",
+    /** Lernender Grundplan: täglich aus der Füllrate der letzten 14 Tage. */
+    val autoLearnTemplate: Boolean = true,
+    val templateLearnDayKey: String = "",
+    /** Tag (ISO) der letzten tatsächlichen Anpassung + Grundplan davor (für die Anzeige). */
+    val templateLearnedAt: String = "",
+    val templateLearnedFrom: List<Int> = emptyList()
 ) {
+    val sortedFixedTimes: List<Int> get() = fixedTimes.distinct().sorted()
+    /** Grundplan der festen Zeiten — bei Ausrichtung die Vorlage, sonst die Zeiten selbst. */
+    val fixedTemplate: List<Int>
+        get() = if (anchorToFirstVoid) fixedTimesTemplate.ifEmpty { fixedTimes }.distinct().sorted() else sortedFixedTimes
+    val targetMl: Int get() = if (targetVolumeMl > 0) targetVolumeMl else 400
+
     fun isInQuietHours(): Boolean {
         val hour = LocalDateTime.now().hour
         return if (quietFrom < quietTo) {

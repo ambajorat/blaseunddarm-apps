@@ -75,8 +75,10 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
         while (true) {
             val last = dataStore.lastBladderEntry
             if (settings.reminderEnabled && settings.useFixedTimes) {
-                // Wecker-Modus: Countdown zur nächsten festen Zeit
-                timeRemaining = (FixedTimeMath.nextFixedTriggerMillis(settings.fixedTimes) - System.currentTimeMillis()) / 1000
+                // Wecker-Modus (2.10): erste geplante Zeit NACH der letzten Entleerung — eine verpasste Zeit ist überfällig
+                val nowLocal = LocalDateTime.now()
+                val due = FixedPlan.fixedDue(settings, last?.dateTime, nowLocal)
+                timeRemaining = due?.let { Duration.between(nowLocal, it).seconds } ?: 0L
             } else if (last != null && settings.reminderEnabled) {
                 val elapsed = Duration.between(last.dateTime, LocalDateTime.now()).seconds
                 timeRemaining = (settings.intervalMinutes * 60L) - elapsed

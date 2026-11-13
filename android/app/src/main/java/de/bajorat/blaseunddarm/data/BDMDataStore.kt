@@ -29,6 +29,74 @@ class BDMDataStore(private val context: Context) {
         saveEntries()
         AlertEngine.checkEntry(context, entry)
         AlertEngine.checkDay(context, _entries.value)
+        // Feste Zeiten ggf. an den Entleerungen ausrichten (2.10)
+        if (entry.urineMl > 0) alignFixedTimesIfNeeded()
+    }
+
+    // ---- Wecker-Modus (2.10, Parität zu iOS 4.13–4.20) ----
+
+    /**
+     * Richtet die festen Zeiten an den heutigen Entleerungen aus (idempotent) und heilt
+     * einmalig Lücken über 4 Stunden im Grundplan. true = Zeiten geändert → Erinnerungen neu planen.
+     */
+    fun alignFixedTimesIfNeeded(now: LocalDateTime = LocalDateTime.now()): Boolean {
+        val s = _settings.value
+        if (s.useFixedTimes) {
+            val healed = FixedPlan.filledFixedTimes(s.fixedTemplate)
+            if (healed != s.fixedTemplate) {
+                setFixedTemplate(healed, now)
+                return true
+            }
+        }
+        val aligned = FixedPlan.alignFixedTimes(s, _entries.value, now) ?: return false
+        updateSettings(aligned)
+        return true
+    }
+
+    /**
+     * Lernender Grundplan: einmal täglich, nur solange heute noch keine Entleerung eingetragen
+     * ist, den Grundplan aus der Füllrate der letzten 14 Tage neu ableiten. Nur im Wecker-Modus
+     * mit Ausrichtung. true = Grundplan geändert.
+     */
+    fun learnTemplateIfDue(now: LocalDateTime = LocalDateTime.now()): Boolean {
+        val s = _settings.value
+        if (!s.autoLearnTemplate || !s.anchorToFirstVoid || !s.useFixedTimes) return false
+        val today = now.toLocalDate()
+        val key = today.toString()
+        if (s.templateLearnDayKey == key) return false
+        if (_entries.value.any { it.urineMl > 0 && it.dateTime.toLocalDate() == today }) return false
+        val marked = s.copy(templateLearnDayKey = key)
+        val learned = IntervalPlanner.intervalPlan(_entries.value, s.targetMl, now, 14)
+            ?.let { FixedPlan.learnedTemplate(s.fixedTemplate, it.times) }
+        if (learned == null) {
+            updateSettings(marked)
+            return false
+        }
+        updateSettings(marked.copy(templateLearnedFrom = s.fixedTemplate, templateLearnedAt = key))
+        setFixedTemplate(learned, now)
+        return true
+    }
+
+    /** Grundplan setzen. Lücken über 4 Stunden schließt die App selbst; bei Ausrichtung wird sofort verschoben. */
+    fun setFixedTemplate(times: List<Int>, now: LocalDateTime = LocalDateTime.now()) {
+        val sorted = FixedPlan.filledFixedTimes(times)
+        var s = _settings.value
+        if (s.anchorToFirstVoid) s = s.copy(fixedTimesTemplate = sorted, anchorDayKey = "")
+        s = s.copy(fixedTimes = sorted)
+        s = FixedPlan.alignFixedTimes(s, _entries.value, now) ?: s
+        updateSettings(s)
+    }
+
+    fun setAnchorToFirstVoid(on: Boolean, now: LocalDateTime = LocalDateTime.now()) {
+        var s = _settings.value
+        if (on) {
+            val template = FixedPlan.filledFixedTimes(s.sortedFixedTimes)
+            s = s.copy(fixedTimesTemplate = template, fixedTimes = template, anchorToFirstVoid = true, anchorDayKey = "")
+            s = FixedPlan.alignFixedTimes(s, _entries.value, now) ?: s
+        } else {
+            s = s.copy(fixedTimes = s.fixedTemplate, anchorToFirstVoid = false, anchorDayKey = "")
+        }
+        updateSettings(s)
     }
 
     fun updateEntry(entry: ToiletEntry) {

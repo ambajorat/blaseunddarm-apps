@@ -182,6 +182,21 @@ class ReminderManager(private val context: Context) {
         )
     }
 
+    /// Wecker-Modus (2.10): plant den nächsten Alarm aus den Einstellungen — heute die
+    /// gültigen (ggf. an den Entleerungen ausgerichteten) Zeiten, danach die erste
+    /// Grundplanzeit morgen. Der Receiver kettet aus den GESPEICHERTEN Einstellungen an.
+    fun scheduleFixedPlan(settings: de.bajorat.blaseunddarm.data.AppSettings) {
+        val next = de.bajorat.blaseunddarm.data.FixedPlan.nextTrigger(settings, java.time.LocalDateTime.now()) ?: return
+        val triggerAt = next.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val intent = Intent(context, ReminderReceiver::class.java).apply { putExtra("fixedPlan", true) }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        context.getSystemService(AlarmManager::class.java)
+            .setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+    }
+
     fun cancelAll() {
         val intent = Intent(context, ReminderReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
@@ -298,9 +313,20 @@ class ReminderReceiver : BroadcastReceiver() {
         manager.notify(ReminderManager.NOTIFICATION_ID, notification)
 
         // Wecker-Modus: nächste feste Zeit anketten
-        val times = intent.getIntegerArrayListExtra("fixedTimes")
-        if (!times.isNullOrEmpty()) {
-            ReminderManager(context).scheduleFixedTimeReminders(times)
+        if (intent.getBooleanExtra("fixedPlan", false)) {
+            // 2.10: aus den gespeicherten Einstellungen — so gilt morgen wieder der Grundplan
+            runCatching {
+                val json = context.getSharedPreferences("bb_data", Context.MODE_PRIVATE).getString("settings", null)
+                val s = if (json != null) kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    .decodeFromString(de.bajorat.blaseunddarm.data.AppSettings.serializer(), json)
+                else de.bajorat.blaseunddarm.data.AppSettings()
+                if (s.reminderEnabled && s.useFixedTimes) ReminderManager(context).scheduleFixedPlan(s)
+            }
+        } else {
+            val times = intent.getIntegerArrayListExtra("fixedTimes")
+            if (!times.isNullOrEmpty()) {
+                ReminderManager(context).scheduleFixedTimeReminders(times)
+            }
         }
     }
 }

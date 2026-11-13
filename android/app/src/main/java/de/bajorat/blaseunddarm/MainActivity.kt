@@ -37,6 +37,16 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // 2.10: beim Zurückkehren in die App Grundplan lernen, an den Entleerungen ausrichten, Alarm sichern
+    override fun onResume() {
+        super.onResume()
+        if (!::dataStore.isInitialized) return
+        dataStore.learnTemplateIfDue()
+        dataStore.alignFixedTimesIfNeeded()
+        val s = dataStore.settings.value
+        if (s.reminderEnabled && s.useFixedTimes) reminderManager.scheduleFixedPlan(s)
+    }
 }
 
 @Composable
@@ -47,8 +57,8 @@ fun MainScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
     val scheduleReminder: () -> Unit = {
         if (settings.reminderEnabled) {
             if (settings.useFixedTimes) {
-                // Wecker-Modus: ein Eintrag verschiebt nichts — Kette nur sicherstellen.
-                reminderManager.scheduleFixedTimeReminders(settings.fixedTimes)
+                // Wecker-Modus: der Eintrag hat den Tagesplan ggf. neu getaktet (2.10) — aus dem aktuellen Stand planen.
+                reminderManager.scheduleFixedPlan(dataStore.settings.value)
             } else {
                 reminderManager.scheduleReminder(
                     afterMinutes = settings.intervalMinutes,
@@ -67,10 +77,12 @@ fun MainScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
     LaunchedEffect(Unit) {
         // Einnahme-Erinnerungen mit-heilen (Update/Reinstall verliert Alarme).
         reminderManager.scheduleMedicationReminders(MedicationSettings.load(appCtx))
+        dataStore.learnTemplateIfDue()
+        dataStore.alignFixedTimesIfNeeded()
         val s = dataStore.settings.value
         if (s.reminderEnabled) {
             if (s.useFixedTimes) {
-                reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
+                reminderManager.scheduleFixedPlan(s)
             } else {
                 dataStore.lastBladderEntry?.let { last ->
                     val elapsed = java.time.Duration.between(last.dateTime, java.time.LocalDateTime.now()).toMinutes().toInt()

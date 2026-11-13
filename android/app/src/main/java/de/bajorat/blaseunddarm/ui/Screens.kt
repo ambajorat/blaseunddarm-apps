@@ -423,6 +423,11 @@ fun StatsScreen(dataStore: BDMDataStore) {
                 }
             }
 
+            // Zielmenge + Füllrate nach Tageszeit (2.10)
+            val statsSettings by dataStore.settings.collectAsState()
+            TargetVolumeCard(filtered, statsSettings.targetMl)
+            FillRateCard(entries, statsSettings.targetMl)
+
             // Diagramme mit Trendlinie
             Spacer(Modifier.height(16.dp))
             BarTrendChart(tr("Urin-Menge (ml/Tag)"), buckets, gran, Orange, { it.avgMl })
@@ -571,34 +576,14 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                             }
                         }, label = { Text(tr("Intervall"), fontSize = 12.sp) })
                         FilterChip(selected = settings.useFixedTimes, onClick = {
-                            val s = settings.copy(useFixedTimes = true)
-                            dataStore.updateSettings(s)
-                            reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
+                            dataStore.updateSettings(settings.copy(useFixedTimes = true))
+                            dataStore.alignFixedTimesIfNeeded()
+                            reminderManager.scheduleFixedPlan(dataStore.settings.value)
                         }, label = { Text(tr("Feste Uhrzeiten"), fontSize = 12.sp) })
                     }
                     Spacer(Modifier.height(10.dp))
                     if (settings.useFixedTimes) {
-                        settings.fixedTimes.sorted().forEach { minutes ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text(String.format("%02d:%02d", minutes / 60, minutes % 60), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                if (settings.fixedTimes.size > 1) {
-                                    IconButton(onClick = {
-                                        val s = settings.copy(fixedTimes = settings.fixedTimes - minutes)
-                                        dataStore.updateSettings(s)
-                                        reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
-                                    }) { Icon(Icons.Filled.Close, tr("Entfernen"), Modifier.size(16.dp)) }
-                                }
-                            }
-                        }
-                        TextButton(onClick = {
-                            val now = java.util.Calendar.getInstance()
-                            android.app.TimePickerDialog(remCtx, { _, h, m ->
-                                val s = settings.copy(fixedTimes = (settings.fixedTimes + (h * 60 + m)).distinct().sorted())
-                                dataStore.updateSettings(s)
-                                reminderManager.scheduleFixedTimeReminders(s.fixedTimes)
-                            }, now.get(java.util.Calendar.HOUR_OF_DAY), 0, true).show()
-                        }) { Text(tr("Zeit hinzufügen"), fontSize = 13.sp) }
-                        Text(tr("Feste Zeiten erinnern unabhängig vom letzten Eintrag."), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        FixedTimesSettings(settings, entries, dataStore, reminderManager)
                     } else {
                     val hours = settings.intervalMinutes / 60
                     val mins = settings.intervalMinutes % 60
