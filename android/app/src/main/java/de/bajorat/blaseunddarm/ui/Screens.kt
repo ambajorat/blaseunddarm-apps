@@ -248,6 +248,11 @@ fun StatsScreen(dataStore: BDMDataStore) {
         val avgCount = if (activeDays.isNotEmpty()) filtered.size.toFloat() / activeDays.size else 0f
         val avgBowel = if (activeDays.isNotEmpty()) filtered.count { it.bowel }.toFloat() / activeDays.size else 0f
         val df = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+        // 2.7: Verdichtung (bis 30 Tage Tageswerte, 3 Monate Wochen-, 1 Jahr Monatsmittel) + Trend
+        val gran = StatsMath.granularity(range)
+        val buckets = remember(entries, range) { StatsMath.buckets(entries, range, StatsMath.granularity(range)) }
+        val volBlocks = remember(entries, range) { StatsMath.volumeBlocks(entries, LocalDate.now().minusDays(range.toLong() - 1)) }
+        val bowelStats = remember(entries, range) { StatsMath.bowelStats(entries, range) }
 
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -289,6 +294,12 @@ fun StatsScreen(dataStore: BDMDataStore) {
                         }
                     }
                 }
+            }
+
+            // Menge nach Tageszeit (3-Stunden-Blöcke, min. 3 Einträge je Block)
+            if (volBlocks.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                DaytimeVolumeCard(volBlocks)
             }
 
             // Tastbefund, kalibriert (Ø ml je Stufe, min. 3 Einträge)
@@ -336,6 +347,10 @@ fun StatsScreen(dataStore: BDMDataStore) {
                 }
             }
 
+            // Darm: Frequenz/Abstand, letzter Stuhlgang, Bristol-Bänder
+            Spacer(Modifier.height(12.dp))
+            BowelCard(bowelStats)
+
             // Ein- und Ausfuhr (nur Tage mit Trink-Einträgen, min. 3)
             val balDays = filtered.groupBy { it.dateTime.toLocalDate() }
                 .mapValues { (_, l) -> Pair(l.sumOf { it.drinkMl }, l.sumOf { it.urineMl }) }
@@ -351,7 +366,16 @@ fun StatsScreen(dataStore: BDMDataStore) {
                 }
             }
 
+            // Diagramme mit Trendlinie
             Spacer(Modifier.height(16.dp))
+            BarTrendChart(tr("Urin-Menge (ml/Tag)"), buckets, gran, Orange, { it.avgMl })
+            Spacer(Modifier.height(12.dp))
+            BarTrendChart(tr("Toilettengänge / Tag"), buckets, gran, Orange, { it.avgVisits }, Purple, { it.avgBowel })
+
+            Spacer(Modifier.height(16.dp))
+            if (gran != StatsGranularity.DAY) {
+                BucketTable(buckets, gran)
+            } else
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text(tr("Tagesübersicht"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
