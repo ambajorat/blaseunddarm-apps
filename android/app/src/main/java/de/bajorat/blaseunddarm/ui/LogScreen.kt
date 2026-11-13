@@ -53,6 +53,11 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
     val palpSettings = PalpationSettings.load(alarmContext)
     val medSettings = MedicationSettings.load(alarmContext)
     var selectedMeds by remember { mutableStateOf(setOf<String>()) }
+    // Kathetersorte (2.8): Chips nur bei mehr als einer Sorte; vorbelegt ist die Standardsorte.
+    val cathStock = CatheterStock.load(alarmContext)
+    val cathSorts = if (cathStock.enabled) cathStock.effectiveSorts else emptyList()
+    var selectedSort by remember { mutableStateOf<String?>(null) }
+    val activeSort = selectedSort?.takeIf { n -> cathSorts.any { it.name == n } } ?: cathStock.defaultSortName ?: ""
     var palpation by remember { mutableStateOf<PalpationFinding?>(null) }
     val adSettings = AdSettings.load(alarmContext)
     var adSigns by remember { mutableStateOf(setOf<AdSign>()) }
@@ -160,7 +165,8 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
         var lastQuickEntry by remember { mutableStateOf<ToiletEntry?>(null) }
         fun quickSave(urine: Int = 0, bowelQuick: Boolean = false, drink: Int = 0) {
             val e = ToiletEntry(urineMl = urine, bowel = bowelQuick, drinkMl = drink,
-                bristolType = BristolType.NONE.name, urineColor = UrineColor.NONE.name)
+                bristolType = BristolType.NONE.name, urineColor = UrineColor.NONE.name,
+                catheterSort = if (urine > 0) cathStock.defaultSortName ?: "" else "")
             dataStore.addEntry(e)
             lastQuickEntry = e
             if (urine > 0) onScheduleReminder()
@@ -305,6 +311,18 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                                 onClick = { palpation = if (palpation == f) null else f },
                                 label = { Text(tr(f.label), fontSize = 12.sp) }
                             )
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
+                // Kathetersorte (2.8): nur wenn mehr als eine Sorte im Bestand ist
+                if (cathSorts.size > 1) {
+                    Text(tr("Kathetersorte"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        cathSorts.forEach { sort ->
+                            FilterChip(selected = activeSort == sort.name, onClick = { selectedSort = sort.name }, label = { Text(sort.name, fontSize = 10.sp) })
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -457,9 +475,10 @@ fun LogScreen(dataStore: BDMDataStore, onScheduleReminder: () -> Unit) {
                         adSigns = adSigns.map { it.name },
                         systolicBp = bpText.toIntOrNull()?.takeIf { adSettings.enabled && adSettings.bpEnabled && it in 60..300 } ?: 0,
                         stoolAmount = if (bowel) stoolAmount?.name ?: "" else "",
-                        medications = selectedMeds.toList().sorted()))
+                        medications = selectedMeds.toList().sorted(),
+                        catheterSort = if ((urineMl.toIntOrNull() ?: 0) > 0) activeSort else ""))
                     if ((urineMl.toIntOrNull() ?: 0) > 0) onScheduleReminder()
-                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; symptoms = setOf(); palpation = null; adSigns = setOf(); bpText = ""; stoolAmount = null; drinkText = ""; selectedMeds = setOf(); showSaved = true
+                    urineMl = ""; urineColor = UrineColor.NONE; bowel = false; bristolType = BristolType.NONE; note = ""; symptoms = setOf(); palpation = null; adSigns = setOf(); bpText = ""; stoolAmount = null; drinkText = ""; selectedMeds = setOf(); selectedSort = null; showSaved = true
                 }, modifier = Modifier.fillMaxWidth().height(48.dp), enabled = canSave, colors = ButtonDefaults.buttonColors(containerColor = Orange)) {
                     Text(if (showSaved) tr("✓ Gespeichert") else tr("Speichern"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }

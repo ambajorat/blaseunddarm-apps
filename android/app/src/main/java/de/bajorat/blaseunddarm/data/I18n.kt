@@ -334,6 +334,22 @@ object I18n {
         "Unauffällig (Typ 3–5)" to "Unremarkable (type 3–5)",
         "Zu weich (Typ 6–7)" to "Too loose (type 6–7)",
         "Typ 3 bis 5 gilt als unauffällig. Häufungen bei Typ 1 und 2 sprechen für zu wenig Flüssigkeit oder zu lange Abstände." to "Types 3 to 5 are considered unremarkable. Clusters of types 1 and 2 suggest too little fluid or intervals that are too long.",
+        "Kathetersorte" to "Catheter type",
+        "Ø Menge je Kathetersorte" to "Avg. volume per catheter type",
+        "Durchschnittliche Urinmenge je Sorte im gewählten Zeitraum — nur Einträge mit hinterlegter Sorte." to "Average urine volume per type in the selected period — only entries with a recorded catheter type.",
+        "{0} Stück" to "{0} pcs",
+        "+ Sorte hinzufügen" to "+ Add type",
+        "Sorte entfernen" to "Remove type",
+        "Standardsorte" to "Default type",
+        "Name der Sorte" to "Name of the type",
+        "Bei mehreren Sorten wählst du die Sorte beim Erfassen. Vorbelegt ist die Standardsorte." to "With several types you choose the type when logging. The default type is preselected.",
+        "Lieferung erfassen (Stück)" to "Log delivery (pcs)",
+        "Charrière (Ch)" to "Charrière (Ch)",
+        "Material (optional)" to "Material (optional)",
+        "Rezept-Erinnerung" to "Prescription reminder",
+        "Rezept läuft aus (TT.MM.JJJJ)" to "Prescription expires (DD.MM.YYYY)",
+        "Rezept: noch {0} Tage (bis {1})" to "Prescription: {0} days left (until {1})",
+        "Rezept abgelaufen am {0}" to "Prescription expired on {0}",
     )
     val isGerman: Boolean get() = Locale.getDefault().language == "de"
     fun t(s: String): String = if (isGerman) s else en[s] ?: s

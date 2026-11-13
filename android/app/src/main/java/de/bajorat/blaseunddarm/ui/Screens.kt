@@ -40,6 +40,7 @@ fun HistoryScreen(dataStore: BDMDataStore) {
     var editEntry by remember { mutableStateOf<ToiletEntry?>(null) }
     var deleteEntry by remember { mutableStateOf<ToiletEntry?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
+    val showSorts = CatheterStock.load(LocalContext.current).let { it.enabled && it.effectiveSorts.size > 1 }
 
     if (entries.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -87,6 +88,7 @@ fun HistoryScreen(dataStore: BDMDataStore) {
                             Text(tr("✏️"), fontSize = 12.sp)
                         }
                         val details = buildList {
+                            if (showSorts && entry.catheterSort.isNotEmpty()) add("\uD83E\uDDF4 " + entry.catheterSort)
                             entry.palpationFinding?.let { add("Tastbefund: ${tr(it.label)}") }
                             if (entry.utiSymptoms.isNotEmpty()) add(tr("Auffällig: ") + entry.utiSymptoms.joinToString(", ") { tr(it.label) })
                             if (entry.adSignList.isNotEmpty()) add(tr("Vegetativ: ") + entry.adSignList.joinToString(", ") { tr(it.label) })
@@ -130,7 +132,11 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
     var adSigns by remember { mutableStateOf(entry.adSignList.toSet()) }
     var bpText by remember { mutableStateOf(if (entry.systolicBp > 0) entry.systolicBp.toString() else "") }
     var stoolAmount by remember { mutableStateOf(entry.stoolAmountValue) }
+    var editSort by remember { mutableStateOf(entry.catheterSort) }
     val editContext = androidx.compose.ui.platform.LocalContext.current
+    val editStock = CatheterStock.load(editContext)
+    val sortNames = ((if (editStock.enabled && editStock.effectiveSorts.size > 1) editStock.effectiveSorts.map { it.name } else emptyList()) +
+        listOf(editSort).filter { it.isNotEmpty() }).distinct()
     val palpOn = PalpationSettings.load(editContext).enabled || palpation != null
     val utiOn = UtiSettings.load(editContext).enabled || symptoms.isNotEmpty()
     val adOn = AdSettings.load(editContext).enabled || adSigns.isNotEmpty() || bpText.isNotEmpty()
@@ -148,6 +154,14 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     UrineColor.displayValues().forEach { color ->
                         FilterChip(selected = urineColor == color, onClick = { urineColor = if (urineColor == color) UrineColor.NONE else color }, label = { Text(color.emoji, fontSize = 14.sp) })
+                    }
+                }
+                if (sortNames.isNotEmpty()) {
+                    Text(tr("Kathetersorte"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        sortNames.forEach { name ->
+                            FilterChip(selected = editSort == name, onClick = { editSort = if (editSort == name) "" else name }, label = { Text(name, fontSize = 10.sp) })
+                        }
                     }
                 }
                 if (palpOn) {
@@ -218,7 +232,7 @@ fun EditEntryDialog(entry: ToiletEntry, dataStore: BDMDataStore, onDismiss: () -
         },
         confirmButton = {
             TextButton(onClick = {
-                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, drinkMl = drinkMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note, symptoms = symptoms.map { it.name }, palpation = palpation?.name ?: "", adSigns = adSigns.map { it.name }, systolicBp = bpText.toIntOrNull()?.takeIf { it in 60..300 } ?: 0, stoolAmount = if (bowel) stoolAmount?.name ?: "" else "", medications = editMeds.toList().sorted()))
+                dataStore.updateEntry(entry.copy(urineMl = urineMl.toIntOrNull() ?: 0, drinkMl = drinkMl.toIntOrNull() ?: 0, urineColor = urineColor.name, bowel = bowel, bristolType = bristolType.name, note = note, symptoms = symptoms.map { it.name }, palpation = palpation?.name ?: "", adSigns = adSigns.map { it.name }, systolicBp = bpText.toIntOrNull()?.takeIf { it in 60..300 } ?: 0, stoolAmount = if (bowel) stoolAmount?.name ?: "" else "", medications = editMeds.toList().sorted(), catheterSort = if ((urineMl.toIntOrNull() ?: 0) > 0) editSort else ""))
                 onDismiss()
             }) { Text(tr("Sichern")) }
         },
@@ -288,10 +302,50 @@ fun StatsScreen(dataStore: BDMDataStore) {
                         Text(trf("\uD83E\uDDF4 {0} ", catheterStats.currentStock(entries)) + tr("Katheter im Bestand"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         val cDays = catheterStats.daysRemaining(entries)
                         val cEmpty = catheterStats.estimatedEmptyDate(entries)
+                        val cSorts = catheterStats.effectiveSorts
+                        if (cSorts.size > 1) {
+                            cSorts.forEach { sort ->
+                                Row(Modifier.fillMaxWidth().padding(top = 2.dp)) {
+                                    Text(sort.name + (if (sort.specText.isNotEmpty()) " (${sort.specText})" else ""), fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                                    Text(trf("{0} Stück", catheterStats.stock(sort, entries)), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        } else if (cSorts.first().specText.isNotEmpty()) {
+                            Text(cSorts.first().specText, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         if (cDays != null && cEmpty != null) {
                             Text(trf("Reicht etwa {0} Tage — bis ca. {1}", cDays, cEmpty.format(DateTimeFormatter.ofPattern("d. MMM"))), fontSize = 12.sp,
                                 color = if (cDays <= catheterStats.warnDays) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        val rxDate = catheterStats.prescriptionLocalDate
+                        val rxLeft = catheterStats.prescriptionDaysLeft()
+                        if (rxDate != null && rxLeft != null) {
+                            Text(
+                                if (rxLeft >= 0) trf("Rezept: noch {0} Tage (bis {1})", rxLeft, rxDate.format(DateTimeFormatter.ofPattern("d. MMM")))
+                                else trf("Rezept abgelaufen am {0}", rxDate.format(DateTimeFormatter.ofPattern("d. MMM"))),
+                                fontSize = 12.sp,
+                                color = if (rxLeft <= 14) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            // Ø Menge je Kathetersorte (nur bei mehreren Sorten, min. 3 Einträge mit hinterlegter Sorte)
+            val sortVolumes = if (catheterStats.enabled && catheterStats.effectiveSorts.size > 1)
+                catheterStats.averageMlPerSort(entries, today.minusDays(range.toLong() - 1)) else emptyList()
+            if (sortVolumes.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text(tr("Ø Menge je Kathetersorte"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Spacer(Modifier.height(6.dp))
+                        sortVolumes.forEach { v ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                                Text(v.sort.name, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                                Text(trf("Ø {0} ml ({1}×)", v.avgMl, v.count), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Text(tr("Durchschnittliche Urinmenge je Sorte im gewählten Zeitraum — nur Einträge mit hinterlegter Sorte."), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -403,9 +457,9 @@ fun StatsScreen(dataStore: BDMDataStore) {
                     Button(onClick = {
                         val tf = DateTimeFormatter.ofPattern("dd.MM.yyyy;HH:mm")
                         val csv = buildString {
-                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge;Medikamente")
+                            appendLine("Datum;Uhrzeit;Urin_ml;Urinfarbe;Stuhlgang;Bristol;Notiz;Getrunken_ml;Symptome;Tastbefund;AD_Zeichen;RR_syst;Stuhlmenge;Medikamente;Kathetersorte")
                             filtered.sortedByDescending { it.timestamp }.forEach { e ->
-                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl};${e.utiSymptoms.joinToString(", ") { it.label }};${e.palpationFinding?.label ?: ""};${e.adSignList.joinToString(", ") { it.label }};${if (e.systolicBp > 0) e.systolicBp.toString() else ""};${e.stoolAmountValue?.label ?: ""};${e.medications.joinToString(", ")}")
+                                appendLine("${e.dateTime.format(tf)};${e.urineMl};${e.urineColor};${if (e.bowel) "Ja" else "Nein"};${e.bristolType};${e.note};${e.drinkMl};${e.utiSymptoms.joinToString(", ") { it.label }};${e.palpationFinding?.label ?: ""};${e.adSignList.joinToString(", ") { it.label }};${if (e.systolicBp > 0) e.systolicBp.toString() else ""};${e.stoolAmountValue?.label ?: ""};${e.medications.joinToString(", ")};${e.catheterSort}")
                             }
                         }
                         val file = File(context.cacheDir, "Blase_Darm_Export.csv")
@@ -652,72 +706,7 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
         Spacer(Modifier.height(16.dp))
 
         // Katheterbestand (optional)
-        var catheter by remember { mutableStateOf(CatheterStock.load(context)) }
-        var stockInput by remember { mutableStateOf("") }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("Katheterbestand"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    if (catheter.enabled) {
-                        ScanButton(category = ProductCategory.catheter) { /* Katalog füllen */ }
-                    }
-                    Switch(checked = catheter.enabled, onCheckedChange = {
-                        catheter = catheter.copy(enabled = it); catheter.save(context)
-                    })
-                }
-                if (catheter.enabled) {
-                    Spacer(Modifier.height(8.dp))
-                    val current = catheter.currentStock(entries)
-                    Text(trf("Aktueller Bestand: {0} Stück", current), fontSize = 14.sp)
-                    val days = catheter.daysRemaining(entries)
-                    val empty = catheter.estimatedEmptyDate(entries)
-                    if (days != null && empty != null) {
-                        Text(
-                            trf("Reicht etwa {0} Tage — bis ca. {1}", days, empty.format(java.time.format.DateTimeFormatter.ofPattern("d.M."))),
-                            fontSize = 12.sp,
-                            color = if (days <= catheter.warnDays) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else if (current == 0 && catheter.stockAtAdjustment == 0) {
-                        Text(tr("Trage deinen aktuellen Bestand ein, um zu starten."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        Text(tr("Reichweite erscheint nach ein paar Tagen mit Einträgen."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = stockInput,
-                            onValueChange = { stockInput = it.filter { c -> c.isDigit() } },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text(tr("Bestand eintragen")) },
-                            singleLine = true
-                        )
-                        Button(onClick = {
-                            stockInput.toIntOrNull()?.let {
-                                catheter = catheter.withStock(it); catheter.save(context); stockInput = ""
-                            }
-                        }, enabled = stockInput.toIntOrNull() != null) { Text(tr("OK")) }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = {
-                        catheter = catheter.withPackAdded(entries); catheter.save(context)
-                    }, modifier = Modifier.fillMaxWidth()) {
-                        Text(trf("+1 Packung ({0} Stück)", catheter.packSize))
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(trf("Warnen unter {0} Tagen", catheter.warnDays), fontSize = 14.sp, modifier = Modifier.weight(1f))
-                        OutlinedButton(onClick = {
-                            if (catheter.warnDays > 3) { catheter = catheter.copy(warnDays = catheter.warnDays - 1); catheter.save(context) }
-                        }, enabled = catheter.warnDays > 3, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp)) { Text(tr("−")) }
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedButton(onClick = {
-                            if (catheter.warnDays < 30) { catheter = catheter.copy(warnDays = catheter.warnDays + 1); catheter.save(context) }
-                        }, enabled = catheter.warnDays < 30, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp)) { Text(tr("+")) }
-                    }
-                    Text(tr("Jeder Blaseneintrag zählt als eine Katheterisierung."), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
+        CatheterSettingsCard(entries, dataStore)
         Spacer(Modifier.height(12.dp))
 
         // HWI-Frühwarnung (optional)
@@ -913,7 +902,8 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
                                             bristolType = p.getOrNull(5)?.trim()?.uppercase()?.replace(" ", "") ?: "NONE",
                                             note = p.getOrNull(6)?.trim() ?: "",
                                             drinkMl = p.getOrNull(7)?.trim()?.toIntOrNull() ?: 0,
-                                            medications = p.getOrNull(13)?.trim()?.takeIf { it.isNotEmpty() }?.split(", ")?.map { it.trim() } ?: emptyList()
+                                            medications = p.getOrNull(13)?.trim()?.takeIf { it.isNotEmpty() }?.split(", ")?.map { it.trim() } ?: emptyList(),
+                                            catheterSort = p.getOrNull(14)?.trim() ?: ""
                                         ))
                                     }
                                 }

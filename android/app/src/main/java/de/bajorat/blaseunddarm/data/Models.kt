@@ -81,7 +81,9 @@ data class ToiletEntry(
     val systolicBp: Int = 0,
     val stoolAmount: String = "",
     // Namen der genommenen Medikamente (2.5); kotlinx-Default = decoding-sicher.
-    val medications: List<String> = emptyList()
+    val medications: List<String> = emptyList(),
+    // Name der Kathetersorte (2.8); leer = keine Angabe → zählt auf die erste Sorte.
+    val catheterSort: String = ""
 ) {
     val utiSymptoms: List<UtiSymptom>
         get() = symptoms.mapNotNull { runCatching { UtiSymptom.valueOf(it) }.getOrNull() }

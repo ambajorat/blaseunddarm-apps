@@ -49,6 +49,14 @@ class BDMDataStore(private val context: Context) {
         saveEntries()
     }
 
+    /** Sorte umbenannt (2.8): Einträge referenzieren den Namen und ziehen mit. */
+    fun renameCatheterSort(oldName: String, newName: String) {
+        if (oldName.isEmpty() || oldName == newName) return
+        if (_entries.value.none { it.catheterSort == oldName }) return
+        _entries.value = _entries.value.map { if (it.catheterSort == oldName) it.copy(catheterSort = newName) else it }
+        saveEntries()
+    }
+
     fun deleteAll() {
         _entries.value = emptyList()
         saveEntries()
