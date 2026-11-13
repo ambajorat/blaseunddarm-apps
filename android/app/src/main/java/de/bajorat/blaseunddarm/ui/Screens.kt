@@ -330,6 +330,9 @@ fun StatsScreen(dataStore: BDMDataStore) {
                 }
             }
 
+            // Kompressenbestand + Bestellstatus (2.9)
+            SupplyStatusCard(entries)
+
             // Ø Menge je Kathetersorte (nur bei mehreren Sorten, min. 3 Einträge mit hinterlegter Sorte)
             val sortVolumes = if (catheterStats.enabled && catheterStats.effectiveSorts.size > 1)
                 catheterStats.averageMlPerSort(entries, today.minusDays(range.toLong() - 1)) else emptyList()
@@ -707,6 +710,10 @@ fun SettingsScreen(dataStore: BDMDataStore, reminderManager: ReminderManager) {
 
         // Katheterbestand (optional)
         CatheterSettingsCard(entries, dataStore)
+        Spacer(Modifier.height(12.dp))
+
+        // Kompressen + Nachbestellung (2.9)
+        SupplySettingsCards(entries)
         Spacer(Modifier.height(12.dp))
 
         // HWI-Frühwarnung (optional)

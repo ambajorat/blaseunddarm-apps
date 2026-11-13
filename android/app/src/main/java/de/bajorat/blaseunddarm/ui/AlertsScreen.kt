@@ -36,6 +36,11 @@ fun AlertsScreen(store: BDMDataStore) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Nachbestellung (2.9): nur wenn der Vorrat knapp ist und keine Bestellung läuft
+        if (supplyOrderDue(context, entries)) {
+            item { SupplyOrderAlertCard(entries) }
+        }
+
         // Heute-Ampel
         item {
             SectionCard(title = tr("Heute")) {

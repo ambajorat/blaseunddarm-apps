@@ -242,10 +242,29 @@ object AlertEngine {
 
     // MARK: Katheterbestand
 
-    fun checkCatheterStock(context: Context, entries: List<ToiletEntry>, dateKey: String, stock: CatheterStock = CatheterStock.load(context)) {
+    fun checkCatheterStock(context: Context, entries: List<ToiletEntry>, dateKey: String, stock: CatheterStock = CatheterStock.load(context),
+                           compress: CompressStock = CompressStock.load(context)) {
         if (!stock.enabled) return
-        val days = stock.daysRemaining(entries) ?: return
-        if (days > stock.warnDays) return
+        // 2.9: Katheter UND Kompressen gegen die gemeinsame Warnschwelle; still, solange eine Bestellung läuft.
+        val status = OrderPlan.status(stock, compress, entries)
+        if (!status.isDue) {
+            // Wieder genug da → Merker „bestellt am“ löschen
+            if (OrderState.orderedOn(context) != null) OrderState.clear(context)
+            return
+        }
+        if (OrderState.isPending(context)) return
+        val compDays = status.compressDays
+        if (status.compressLow && compDays != null) {
+            val cathDays = status.catheterDays
+            if (status.catheterLow && cathDays != null) {
+                notifyOnce(context, "cathLow_$dateKey", tr("Katheter und Kompressen werden knapp"),
+                    trf("Katheter reichen noch etwa {0} Tage, Kompressen etwa {1} Tage. Zeit zu bestellen.", cathDays, compDays))
+            } else {
+                notifyOnce(context, "cathLow_$dateKey", tr("Kompressen werden knapp"),
+                    trf("Noch {0} 2er-Packs Kompressen — reicht etwa {1} Tage. Zeit zu bestellen.", compress.currentStock(entries), compDays))
+            }
+            return
+        }
         val count = stock.currentStock(entries)
         val empty = stock.estimatedEmptyDate(entries)
         val body = if (empty != null)
