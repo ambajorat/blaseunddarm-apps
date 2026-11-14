@@ -135,8 +135,19 @@ object FixedPlan {
         val last = base.lastOrNull()
         if (last != null && last < lastTemplate - 90) {
             val lastVoid = done.maxOrNull() ?: 0
-            val tail = filledFixedTimes(base.filter { it >= lastVoid } + lastTemplate)
-            base = (base.filter { it < lastVoid } + tail).distinct().sorted()
+            // Anzahl halten: Rest des Tages bis zur letzten Grundplanzeit strecken
+            // (höchstens ein Viertel, kein Abstand über 4 h) — sonst Zeit anhängen.
+            val future = base.filter { it > lastVoid }
+            val den = (future.lastOrNull() ?: lastVoid) - lastVoid
+            val num = lastTemplate - lastVoid
+            val stretched = if (den > 0) future.map { lastVoid + ((it - lastVoid) * num + den / 2) / den } else emptyList()
+            val gaps = (listOf(lastVoid) + stretched).zip(stretched).map { it.second - it.first }
+            if (den > 0 && num * 4 <= den * 5 && gaps.all { it <= MAX_GAP }) {
+                base = (base.filter { it <= lastVoid } + stretched).distinct().sorted()
+            } else {
+                val tail = filledFixedTimes(base.filter { it >= lastVoid } + lastTemplate)
+                base = (base.filter { it < lastVoid } + tail).distinct().sorted()
+            }
         }
         if (base.isEmpty()) return null
 

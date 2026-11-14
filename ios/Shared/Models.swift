@@ -397,14 +397,27 @@ struct AppSettings: Codable, Equatable {
         // Tagesende-Anker = letzte Grundplanzeit (Erinnerung vor dem Schlafen):
         // 1. nichts wandert darüber hinaus — Überhang kollabiert in sie, statt
         //    über Mitternacht zu rutschen und gelöscht zu werden;
-        // 2. endet der Plan durch frühe Entleerungen mehr als 90 Min davor, kommt
-        //    sie wieder dazu (Lücken > 4 h bis dahin werden aufgefüllt).
+        // 2. endet der Plan durch frühe Entleerungen mehr als 90 Min davor, wird
+        //    der Rest des Tages bis zu ihr gestreckt — die Anzahl der
+        //    Erinnerungen bleibt wie im Grundplan. Nur wenn dafür mehr als ein
+        //    Viertel Streckung nötig wäre (oder ein Abstand über 4 h entstünde),
+        //    kommt sie als zusätzliche Zeit dazu (Lücken > 4 h werden aufgefüllt).
         let lastTemplate = template.max() ?? 1439
         var base = Array(Set(plan.map { min($0, lastTemplate) })).sorted()
         if let last = base.last, last < lastTemplate - 90 {
             let lastVoid = done.max() ?? 0
-            let tail = Self.filledFixedTimes(base.filter { $0 >= lastVoid } + [lastTemplate])
-            base = Array(Set(base.filter { $0 < lastVoid } + tail)).sorted()
+            let future = base.filter { $0 > lastVoid }
+            let den = (future.last ?? lastVoid) - lastVoid
+            let num = lastTemplate - lastVoid
+            let stretched = den > 0
+                ? future.map { lastVoid + (($0 - lastVoid) * num + den / 2) / den } : []
+            let gaps = zip([lastVoid] + stretched, stretched).map { $1 - $0 }
+            if den > 0, num * 4 <= den * 5, gaps.allSatisfy({ $0 <= Self.maxFixedGap }) {
+                base = Array(Set(base.filter { $0 <= lastVoid } + stretched)).sorted()
+            } else {
+                let tail = Self.filledFixedTimes(base.filter { $0 >= lastVoid } + [lastTemplate])
+                base = Array(Set(base.filter { $0 < lastVoid } + tail)).sorted()
+            }
         }
         guard !base.isEmpty else { return false }
 

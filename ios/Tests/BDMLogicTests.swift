@@ -228,7 +228,9 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertEqual(plan.slots.map(\.suggestedMinutes), [240, 180, 240, 240])
         XCTAssertEqual(plan.wakeMinutes, 480)
         XCTAssertEqual(plan.bedMinutes, 1380)
-        XCTAssertEqual(plan.times, [480, 720, 900, 1140, 1380])
+        // Über die Fenstergrenzen gerechnet: ab 08:00 sind um 11:00 erst 300 ml
+        // da, die restlichen 100 ml kommen mit der Mittagsrate → 11:45 statt 12:00.
+        XCTAssertEqual(plan.times, [480, 705, 885, 1125, 1365])
         XCTAssertEqual(plan.overTarget, 0)
     }
 
@@ -466,6 +468,39 @@ final class BDMLogicTests: XCTestCase {
                           "Nachmittag (480 ml je 3 h) braucht kürzeren Abstand als Mittag")
         XCTAssertLessThanOrEqual(plan.slots[2].suggestedMinutes, 150)
         XCTAssertNil(SuggestionEngine.intervalPlan(entries: entries, targetMl: 400, days: 5), "zu wenig Tage → nil")
+    }
+
+    /// Regression 14.11.26: morgens 100 ml/h, mittags 270 ml/h → der Schritt ab
+    /// 08:15 lief mit der Morgenrate volle 4 Std bis 12:15 (gut 600 ml).
+    /// Höchstens 8 Erinnerungen: bei 200 ml/h wären es alle 2 Std neun Zeiten.
+    func testIntervalPlanHoechstensAchtZeiten() throws {
+        var entries: [ToiletEntry] = []
+        for d in 1...10 {
+            for h in stride(from: 7, through: 23, by: 2) {
+                let t = cal.date(byAdding: .day, value: -d, to: cal.date(bySettingHour: h, minute: 0, second: 0, of: .now)!)!
+                entries.append(ToiletEntry(timestamp: t, urineMl: 400))
+            }
+        }
+        let plan = try XCTUnwrap(SuggestionEngine.intervalPlan(entries: entries, targetMl: 400))
+        XCTAssertEqual(plan.slots.map(\.suggestedMinutes), [120, 120, 120, 120])
+        XCTAssertEqual(plan.times, [420, 555, 690, 825, 960, 1095, 1230, 1365],
+                       "135 statt 120 Minuten → 8 statt 9 Zeiten")
+    }
+
+    /// 14.11.26: 07:50 wach, 10:38 früh dran → Plan endete 22:08, 23:45 kam als
+    /// neunte Zeit dazu. Jetzt wird der Rest bis 23:45 gestreckt, es bleiben 8.
+    func testFrueheEntleerungStrecktStattZeitAnzuhaengen() {
+        var s = AppSettings()
+        s.useFixedTimes = true
+        s.anchorToFirstVoid = true
+        let plan = [495, 735, 825, 915, 1050, 1185, 1320, 1425]   // 08:15 … 23:45
+        s.fixedTimesTemplate = plan
+        s.fixedTimes = plan
+        let entries = [today(7, 50, urine: 300), today(10, 38, urine: 300)]
+        let now = cal.date(bySettingHour: 11, minute: 0, second: 0, of: .now)!
+        _ = s.alignFixedTimes(entries: entries, now: now)
+        XCTAssertEqual(s.fixedTimes, [470, 638, 741, 843, 997, 1151, 1305, 1425])
+        XCTAssertFalse(s.alignFixedTimes(entries: entries, now: now), "idempotent")
     }
 
     // MARK: - Wöchentliches iCloud-Backup
@@ -714,5 +749,53 @@ final class BDMLogicTests: XCTestCase {
         XCTAssertEqual(blocks[1].rangeText, "21–24")
         // Ohne Zeitgrenze zählt der alte Eintrag im Block 06–09 mit
         XCTAssertEqual(SuggestionEngine.volumeBlocks(entries: entries).first?.count, 4)
+    }
+
+    // MARK: - Statistik: Verdichtung + Trend (4.22)
+
+    func testStatistikVerdichtungUndTrend() {
+        XCTAssertEqual(StatsTrend.granularity(forDays: 7, spanDays: 7), .day)
+        XCTAssertEqual(StatsTrend.granularity(forDays: 30, spanDays: 30), .day)
+        XCTAssertEqual(StatsTrend.granularity(forDays: 90, spanDays: 90), .week)
+        XCTAssertEqual(StatsTrend.granularity(forDays: 365, spanDays: 365), .month)
+        XCTAssertEqual(StatsTrend.granularity(forDays: 9999, spanDays: 20), .day)
+        XCTAssertEqual(StatsTrend.granularity(forDays: 9999, spanDays: 120), .week)
+        XCTAssertEqual(StatsTrend.granularity(forDays: 9999, spanDays: 400), .month)
+
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Berlin")!
+        cal.firstWeekday = 2
+        // Montag, 05.10.2026
+        let monday = cal.date(from: DateComponents(year: 2026, month: 10, day: 5))!
+        func day(_ offset: Int, _ mls: [Int]) -> DaySummary {
+            let d = cal.date(byAdding: .day, value: offset, to: monday)!
+            let es = mls.map { ToiletEntry(timestamp: d.addingTimeInterval(36_000), urineMl: $0) }
+            return DaySummary(id: "\(offset)", date: d, entries: es)
+        }
+        // Woche 1: 2 Tage mit Einträgen (800 + 1000 ml), 1 leerer Tag · Woche 2: 1200 · Woche 3: 1400 · Woche 4: leer
+        let summaries = [day(0, [400, 400]), day(1, [1000]), day(2, []),
+                         day(7, [600, 600]), day(14, [1400]), day(21, [])]
+        let weeks = StatsTrend.buckets(summaries, by: .week, calendar: cal)
+        XCTAssertEqual(weeks.count, 3)                       // leere Woche fällt weg
+        XCTAssertEqual(weeks[0].start, monday)
+        XCTAssertEqual(weeks[0].activeDays, 2)
+        XCTAssertEqual(weeks[0].avgMl, 900, accuracy: 0.001) // Ø pro Tag MIT Einträgen
+        XCTAssertEqual(weeks[0].avgVisits, 1.5, accuracy: 0.001)
+        XCTAssertEqual(weeks.map { Int($0.avgMl) }, [900, 1200, 1400])
+
+        let days = StatsTrend.buckets(summaries, by: .day, calendar: cal)
+        XCTAssertEqual(days.count, 6)                        // Tagesansicht behält leere Tage
+        XCTAssertEqual(days[2].activeDays, 0)
+
+        // Exakt lineare Reihe → Gerade trifft die Punkte: 900 → 1200 → 1500
+        let linear = [day(0, [900]), day(7, [1200]), day(14, [1500])]
+        let trend = StatsTrend.trend(StatsTrend.buckets(linear, by: .week, calendar: cal)) { $0.avgMl }
+        XCTAssertNotNil(trend)
+        XCTAssertEqual(trend!.startValue, 900, accuracy: 0.01)
+        XCTAssertEqual(trend!.endValue, 1500, accuracy: 0.01)
+        XCTAssertEqual(trend!.changePercent, 67)
+        XCTAssertEqual(trend!.points.count, 2)
+        // Unter 3 Abschnitten mit Einträgen gibt es keinen Trend
+        XCTAssertNil(StatsTrend.trend(StatsTrend.buckets([day(0, [900]), day(7, [1200])], by: .week, calendar: cal)) { $0.avgMl })
     }
 }

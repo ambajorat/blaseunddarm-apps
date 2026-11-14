@@ -62,6 +62,8 @@ object IntervalPlanner {
     /** Längster Abstand, der noch als Tagesabstand zählt (darüber = Nachtpause). */
     const val MAX_DAY_GAP = 360
     const val MIN_NIGHT_GAP = 300
+    /** Höchstens so viele Erinnerungen am Tag; darüber werden die Abstände leicht gestreckt. */
+    const val MAX_TIMES_PER_DAY = 8
 
     fun slotName(id: Int): String = when (id) {
         0 -> "Morgens"
@@ -124,7 +126,8 @@ object IntervalPlanner {
                 continue
             }
             if (gap !in 20..MAX_DAY_GAP || aMin < slotBounds[0].first * 60) continue
-            val idx = slotIndex(aMin)
+            // Der Abstand zählt für das Fenster, in dem seine Mitte liegt.
+            val idx = slotIndex(minOf(aMin + gap / 2, 1439))
             slotRates[idx].add(b.second.toDouble() / gap * 60)
             if (b.second > targetMl) slotOver[idx] += 1
         }
@@ -138,10 +141,12 @@ object IntervalPlanner {
             return minOf(240, maxOf(60, roundTo((targetMl * 60 / rate).toInt(), 15)))
         }
 
+        val rates = DoubleArray(slotBounds.size)
         val slots = slotBounds.mapIndexed { i, b ->
             val r = slotRates[i].sorted()
             val fallback = r.size < 8
             val rate = if (fallback) pooledP75 else percentile(r, 0.75)
+            rates[i] = rate
             DaytimeSlot(i, b.first, b.second, Math.round(rate).toInt(), r.size, minutesFor(rate), slotOver[i], fallback)
         }
 
@@ -151,15 +156,44 @@ object IntervalPlanner {
         bed = minOf(bed, 1425)
         if (bed <= wake + 120) return null
 
-        val times = mutableListOf(wake)
-        var t = wake
-        while (times.size < 16) {
-            val next = t + slots[slotIndex(t)].suggestedMinutes
-            if (next > bed) break
-            times.add(next)
-            t = next
+        // Minuten ab t, bis target ml zusammenkommen — über die Fenstergrenzen hinweg
+        // gerechnet (60…240 min, auf 15 min). Port von iOS.
+        fun step(t: Int, target: Double): Int {
+            var ml = 0.0
+            var cur = t.toDouble()
+            while (true) {
+                val idx = slotIndex(cur.toInt())
+                val rate = rates[idx]
+                if (rate <= 0) { cur = (t + 240).toDouble(); break }
+                val end = (slotBounds[idx].second * 60).toDouble()
+                val need = (target - ml) / rate * 60
+                if (end >= 1440 || cur + need <= end) { cur += need; break }
+                ml += (end - cur) * rate / 60
+                cur = end
+            }
+            return minOf(240, maxOf(60, roundTo(cur.toInt() - t, 15)))
         }
-        if (bed - times.last() >= 75 && bed < 1440) times.add(bed)
+        fun build(target: Double): List<Int> {
+            val out = mutableListOf(wake)
+            var t = wake
+            while (out.size < 16) {
+                val next = t + step(t, target)
+                if (next > bed) break
+                out.add(next)
+                t = next
+            }
+            if (bed - out.last() >= 75 && bed < 1440) out.add(bed)
+            return out
+        }
+        // Höchstens MAX_TIMES_PER_DAY Erinnerungen: sonst in 5-%-Schritten strecken.
+        var effTarget = targetMl.toDouble()
+        var times = build(effTarget)
+        var rounds = 0
+        while (times.size > MAX_TIMES_PER_DAY && rounds < 5) {
+            effTarget *= 1.05
+            times = build(effTarget)
+            rounds += 1
+        }
 
         val vols = pts.map { it.second }
         return IntervalPlan(

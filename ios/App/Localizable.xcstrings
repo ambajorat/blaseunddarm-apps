@@ -2881,6 +2881,7 @@
       }
     },
     "Frühmorgens" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3079,6 +3080,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Yesterday %lld ml — below your limit of %lld ml. Drinking enough?"
+          }
+        }
+      }
+    },
+    "Gestrichelte Linie: Trend im Zeitraum" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dashed line: trend over the period"
           }
         }
       }
@@ -4083,6 +4095,28 @@
         }
       }
     },
+    "Monat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Month"
+          }
+        }
+      }
+    },
+    "Monatsübersicht (Ø pro Tag)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monthly overview (avg. per day)"
+          }
+        }
+      }
+    },
     "Morgens" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4158,16 +4192,6 @@
         }
       }
     },
-    "Nachts" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "At night"
-          }
-        }
-      }
-    },
     "Nächste" : {
       "localizations" : {
         "en" : {
@@ -4217,6 +4241,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Next automatic backup"
+          }
+        }
+      }
+    },
+    "Nachts" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At night"
           }
         }
       }
@@ -4611,16 +4646,6 @@
         }
       }
     },
-    "Ø Menge je Kathetersorte" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Avg. volume per catheter type"
-          }
-        }
-      }
-    },
     "Ø Abstand %@ Tage" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4645,6 +4670,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ø intake %lld ml · Ø output %lld ml"
+          }
+        }
+      }
+    },
+    "Ø je Monat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "avg. per month"
+          }
+        }
+      }
+    },
+    "Ø je Woche" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "avg. per week"
+          }
+        }
+      }
+    },
+    "Ø Menge je Kathetersorte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avg. volume per catheter type"
           }
         }
       }
@@ -6178,6 +6235,17 @@
         }
       }
     },
+    "Spätabends" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Late evening"
+          }
+        }
+      }
+    },
     "Speichern" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6185,16 +6253,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save"
-          }
-        }
-      }
-    },
-    "Spätabends" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Late evening"
           }
         }
       }
@@ -6754,6 +6812,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enter your current stock in packs of 2 to get started."
+          }
+        }
+      }
+    },
+    "Trend (gestrichelte Linie): %@ im Zeitraum" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trend (dashed line): %@ over the period"
+          }
+        }
+      }
+    },
+    "Trend (gestrichelte Linie): gleichbleibend" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trend (dashed line): steady"
           }
         }
       }
@@ -7344,6 +7424,7 @@
       }
     },
     "Vormittags" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7536,6 +7617,17 @@
         }
       }
     },
+    "Woche ab" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week of"
+          }
+        }
+      }
+    },
     "Wöchentlich automatisch sichern" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7543,6 +7635,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Back up automatically every week"
+          }
+        }
+      }
+    },
+    "Wochenübersicht (Ø pro Tag)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly overview (avg. per day)"
           }
         }
       }

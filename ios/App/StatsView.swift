@@ -31,6 +31,57 @@ struct StatsView: View {
     private var avgCount: Double { guard !activeDays.isEmpty else { return 0 }; return Double(activeDays.reduce(0) { $0 + $1.visitCount }) / Double(activeDays.count) }
     private var avgBowel: Double { let w = activeDays.filter { $0.bowelCount > 0 }; guard !w.isEmpty else { return 0 }; return Double(w.reduce(0) { $0 + $1.bowelCount }) / Double(w.count) }
 
+    // Verdichtung (4.22): bis 30 Tage Tageswerte, 3 Monate Wochenmittel, ab 1 Jahr Monatsmittel.
+    private var granularity: StatsGranularity {
+        var span = range.days
+        if range == .all, let oldest = store.entries.map(\.timestamp).min() {
+            span = (Calendar.current.dateComponents([.day], from: oldest, to: .now).day ?? 0) + 1
+        }
+        return StatsTrend.granularity(forDays: range.days, spanDays: span)
+    }
+    private var chartPoints: [StatsBucket] { StatsTrend.buckets(summaries, by: granularity) }
+    private var chartUnit: Calendar.Component {
+        switch granularity {
+        case .day: .day
+        case .week: .weekOfYear
+        case .month: .month
+        }
+    }
+    private var xAxisValues: AxisMarkValues {
+        (range == .week || range == .month) ? .stride(by: xAxisStride) : .automatic(desiredCount: 6)
+    }
+    private var xAxisLabelFormat: Date.FormatStyle {
+        granularity == .month ? .dateTime.month(.abbreviated) : xAxisFormat
+    }
+
+    private func chartTitle(_ title: String) -> some View {
+        HStack(spacing: 4) {
+            Text(verbatim: title)
+            switch granularity {
+            case .day: EmptyView()
+            case .week: Text(verbatim: "· " + String(localized: "Ø je Woche"))
+            case .month: Text(verbatim: "· " + String(localized: "Ø je Monat"))
+            }
+        }
+        .font(.caption.weight(.bold)).foregroundStyle(Color.subtleText)
+    }
+
+    private func trendText(_ t: StatsTrendLine) -> String {
+        guard let pct = t.changePercent else { return String(localized: "Gestrichelte Linie: Trend im Zeitraum") }
+        if abs(pct) < 3 { return String(localized: "Trend (gestrichelte Linie): gleichbleibend") }
+        let change = (pct > 0 ? "+" : "−") + "\(abs(pct)) %"
+        return String(format: String(localized: "Trend (gestrichelte Linie): %@ im Zeitraum"), change)
+    }
+
+    @ViewBuilder
+    private func trendCaption(_ trend: StatsTrendLine?) -> some View {
+        if let trend {
+            Text(verbatim: trendText(trend))
+                .font(.caption2)
+                .foregroundStyle(Color.subtleText)
+        }
+    }
+
     private var xAxisStride: Calendar.Component {
         switch range {
         case .week: .day
@@ -73,7 +124,7 @@ struct StatsView: View {
                             FillRateCard()
                             urineChart
                             toiletCountChart
-                            dailyTable
+                            overviewTable
                             exportButton
                         }
                         .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 40)
@@ -580,42 +631,105 @@ struct StatsView: View {
     }
 
     private var urineChart: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "urine_per_day")).font(.caption.weight(.bold)).foregroundStyle(Color.subtleText)
-            Chart(summaries) { day in
-                BarMark(x: .value("Tag", day.date, unit: .day), y: .value("ml", day.totalMl))
-                    .foregroundStyle(Color.accent.gradient).cornerRadius(2)
+        let pts = chartPoints
+        let unit = chartUnit
+        let trend = StatsTrend.trend(pts) { $0.avgMl }
+        let trendPts = trend?.points ?? []
+        return VStack(alignment: .leading, spacing: 8) {
+            chartTitle(String(localized: "urine_per_day"))
+            Chart {
+                ForEach(pts) { p in
+                    BarMark(x: .value("Tag", p.start, unit: unit), y: .value("ml", p.avgMl))
+                        .foregroundStyle(Color.accent.gradient).cornerRadius(2)
+                }
+                ForEach(trendPts) { t in
+                    LineMark(x: .value("Tag", t.date), y: .value("ml", t.value), series: .value("Reihe", "Trend"))
+                        .foregroundStyle(Color.primary.opacity(0.65))
+                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                }
             }
-            .chartXAxis { AxisMarks(values: .stride(by: xAxisStride)) { _ in AxisValueLabel(format: xAxisFormat); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2)) } }
+            .chartXAxis { AxisMarks(values: xAxisValues) { _ in AxisValueLabel(format: xAxisLabelFormat); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2)) } }
             .chartYAxis { AxisMarks { _ in AxisValueLabel(); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2, dash: [4])) } }
             .frame(height: 150)
+            trendCaption(trend)
         }
         .padding(16).background(Color.cardBg, in: .rect(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
     }
 
     private var toiletCountChart: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "visits_per_day")).font(.caption.weight(.bold)).foregroundStyle(Color.subtleText)
-            Chart(summaries) { day in
-                // Nebeneinander statt gestapelt — die Stapelung mischte
-                // Urin- und Stuhl-Gänge und widersprach der Tagesübersicht.
-                BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Anzahl", day.visitCount))
-                    .foregroundStyle(Color.accent.gradient).cornerRadius(2)
-                    .position(by: .value("Art", "gesamt"))
-                if day.bowelCount > 0 {
-                    BarMark(x: .value("Tag", day.date, unit: .day), y: .value("Anzahl", day.bowelCount))
-                        .foregroundStyle(Color.bowel.gradient).cornerRadius(2)
-                        .position(by: .value("Art", "stuhl"))
+        let pts = chartPoints
+        let unit = chartUnit
+        let trend = StatsTrend.trend(pts) { $0.avgVisits }
+        let trendPts = trend?.points ?? []
+        return VStack(alignment: .leading, spacing: 8) {
+            chartTitle(String(localized: "visits_per_day"))
+            Chart {
+                ForEach(pts) { p in
+                    // Nebeneinander statt gestapelt — die Stapelung mischte
+                    // Urin- und Stuhl-Gänge und widersprach der Tagesübersicht.
+                    BarMark(x: .value("Tag", p.start, unit: unit), y: .value("Anzahl", p.avgVisits))
+                        .foregroundStyle(Color.accent.gradient).cornerRadius(2)
+                        .position(by: .value("Art", "gesamt"))
+                    if p.avgBowel > 0 {
+                        BarMark(x: .value("Tag", p.start, unit: unit), y: .value("Anzahl", p.avgBowel))
+                            .foregroundStyle(Color.bowel.gradient).cornerRadius(2)
+                            .position(by: .value("Art", "stuhl"))
+                    }
+                }
+                ForEach(trendPts) { t in
+                    LineMark(x: .value("Tag", t.date), y: .value("Anzahl", t.value), series: .value("Reihe", "Trend"))
+                        .foregroundStyle(Color.primary.opacity(0.65))
+                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
                 }
             }
-            .chartXAxis { AxisMarks(values: .stride(by: xAxisStride)) { _ in AxisValueLabel(format: xAxisFormat); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2)) } }
+            .chartXAxis { AxisMarks(values: xAxisValues) { _ in AxisValueLabel(format: xAxisLabelFormat); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2)) } }
             .chartYAxis { AxisMarks { _ in AxisValueLabel(); AxisGridLine(stroke: StrokeStyle(lineWidth: 0.2, dash: [4])) } }
             .frame(height: 150)
+            trendCaption(trend)
             HStack(spacing: 14) {
                 HStack(spacing: 4) { Circle().fill(Color.accent).frame(width: 6, height: 6); Text(String(localized: "Gänge gesamt")).font(.caption2).foregroundStyle(Color.subtleText) }
                 HStack(spacing: 4) { Circle().fill(Color.bowel).frame(width: 6, height: 6); Text(String(localized: "davon mit Stuhl")).font(.caption2).foregroundStyle(Color.subtleText) }
             }.frame(maxWidth: .infinity)
+        }
+        .padding(16).background(Color.cardBg, in: .rect(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))
+    }
+
+    @ViewBuilder
+    private var overviewTable: some View {
+        if granularity == .day { dailyTable } else { bucketTable }
+    }
+
+    /// Wochen-/Monatsübersicht ab 3 Monaten: Durchschnitt pro Tag mit Einträgen.
+    private var bucketTable: some View {
+        let weekly = granularity == .week
+        let rows = chartPoints.filter { $0.activeDays > 0 }
+        let title = weekly ? String(localized: "Wochenübersicht (Ø pro Tag)") : String(localized: "Monatsübersicht (Ø pro Tag)")
+        let head = weekly ? String(localized: "Woche ab") : String(localized: "Monat")
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: title).font(.caption.weight(.bold)).foregroundStyle(Color.subtleText)
+            VStack(spacing: 0) {
+                HStack {
+                    Text(verbatim: head).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(String(localized: "urine")).frame(width: 64, alignment: .trailing)
+                    Text("Gänge").frame(width: 46, alignment: .trailing)
+                    Text(String(localized: "stool")).frame(width: 42, alignment: .trailing)
+                }.font(.caption2.weight(.bold)).foregroundStyle(Color.subtleText).padding(.bottom, 6)
+                Divider()
+                ForEach(rows) { p in
+                    HStack {
+                        Text(verbatim: weekly
+                             ? p.start.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
+                             : p.start.formatted(.dateTime.month(.abbreviated).year(.twoDigits)))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("\(Int(p.avgMl.rounded())) ml").foregroundStyle(Color.accent).fontWeight(.semibold).frame(width: 64, alignment: .trailing)
+                        Text(verbatim: p.avgVisits.formatted(.number.precision(.fractionLength(1)))).fontWeight(.semibold).frame(width: 46, alignment: .trailing)
+                        Text(verbatim: p.avgBowel.formatted(.number.precision(.fractionLength(1)))).foregroundStyle(Color.bowel).fontWeight(.semibold).frame(width: 42, alignment: .trailing)
+                    }.font(.caption).monospacedDigit().padding(.vertical, 5)
+                    Divider()
+                }
+            }
         }
         .padding(16).background(Color.cardBg, in: .rect(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.pillBorder, lineWidth: 0.5))

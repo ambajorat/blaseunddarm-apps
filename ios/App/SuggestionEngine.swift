@@ -177,6 +177,9 @@ extension SuggestionEngine {
     /// Längster Abstand, der noch als Tagesabstand zählt (darüber = Nachtpause).
     static let maxDayGap = 360
     static let minNightGap = 300
+    /// Höchstens so viele Erinnerungen am Tag schlägt der Plan vor; darüber
+    /// werden die Abstände leicht gestreckt (bis rund ein Viertel).
+    static let maxTimesPerDay = 8
 
     static func slotIndex(forMinute minute: Int) -> Int {
         let h = (minute / 60) % 24
@@ -228,7 +231,9 @@ extension SuggestionEngine {
                 continue
             }
             guard (20...maxDayGap).contains(gap), aMin >= slotBounds[0].0 * 60 else { continue }
-            let idx = slotIndex(forMinute: aMin)
+            // Der Abstand zählt für das Fenster, in dem seine Mitte liegt —
+            // dort ist der größte Teil der Menge entstanden.
+            let idx = slotIndex(forMinute: min(aMin + gap / 2, 1439))
             slotRates[idx].append(Double(b.ml) / Double(gap) * 60)
             if b.ml > targetMl { slotOver[idx] += 1 }
         }
@@ -243,10 +248,12 @@ extension SuggestionEngine {
         }
 
         var slots: [DaytimeSlot] = []
+        var rates: [Double] = []
         for (i, b) in slotBounds.enumerated() {
             let r = slotRates[i].sorted()
             let fallback = r.count < 8
             let rate = fallback ? pooledP75 : percentileD(r, 0.75)
+            rates.append(rate)
             slots.append(DaytimeSlot(
                 id: i, startHour: b.0, endHour: b.1,
                 rateMlPerHour: Int(rate.rounded()), samples: r.count,
@@ -260,15 +267,47 @@ extension SuggestionEngine {
         bed = min(bed, 1425)
         guard bed > wake + 120 else { return nil }
 
-        var times = [wake]
-        var t = wake
-        while times.count < 16 {
-            let next = t + slots[slotIndex(forMinute: t)].suggestedMinutes
-            if next > bed { break }
-            times.append(next)
-            t = next
+        /// Minuten ab `t`, bis `target` ml zusammenkommen — über die
+        /// Fenstergrenzen hinweg gerechnet: ein Abstand, der morgens beginnt
+        /// und in den Mittag reicht, füllt sich dort mit der Mittagsrate
+        /// (60…240 min, auf 15 min).
+        func step(from t: Int, target: Double) -> Int {
+            var ml = 0.0
+            var cur = Double(t)
+            while true {
+                let idx = slotIndex(forMinute: Int(cur))
+                let rate = rates[idx]
+                guard rate > 0 else { cur = Double(t + 240); break }
+                let end = Double(slotBounds[idx].1 * 60)
+                let need = (target - ml) / rate * 60
+                if end >= 1440 || cur + need <= end { cur += need; break }
+                ml += (end - cur) * rate / 60
+                cur = end
+            }
+            return min(240, max(60, roundTo(Int(cur) - t, 15)))
         }
-        if let last = times.last, bed - last >= 75, bed < 1440 { times.append(bed) }
+        func build(_ target: Double) -> [Int] {
+            var out = [wake]
+            var t = wake
+            while out.count < 16 {
+                let next = t + step(from: t, target: target)
+                if next > bed { break }
+                out.append(next)
+                t = next
+            }
+            if let last = out.last, bed - last >= 75, bed < 1440 { out.append(bed) }
+            return out
+        }
+        // Höchstens maxTimesPerDay Erinnerungen: sonst die Abstände in
+        // 5-%-Schritten strecken (höchstens fünfmal, rund +28 %).
+        var effTarget = Double(targetMl)
+        var times = build(effTarget)
+        var rounds = 0
+        while times.count > maxTimesPerDay && rounds < 5 {
+            effTarget *= 1.05
+            times = build(effTarget)
+            rounds += 1
+        }
 
         let vols = pts.map(\.ml)
         return IntervalPlan(
@@ -339,5 +378,109 @@ extension SuggestionEngine {
             let avg = Int((Double(mls.reduce(0, +)) / Double(mls.count)).rounded())
             return VolumeBlock(id: i, avgMl: avg, count: mls.count)
         }
+    }
+}
+
+// MARK: - Statistik: Verdichtung und Trendlinie (4.22)
+
+enum StatsGranularity: Equatable { case day, week, month }
+
+/// Ein Balken der Statistik-Diagramme: ein Tag, eine Woche oder ein Monat.
+/// Bei Woche/Monat sind die Werte Durchschnitte pro Tag MIT Einträgen.
+struct StatsBucket: Identifiable, Equatable {
+    let start: Date
+    /// Mitte des Abschnitts — Stützpunkt der Trendlinie.
+    let mid: Date
+    let activeDays: Int
+    let avgMl: Double
+    let avgVisits: Double
+    let avgBowel: Double
+    var id: Date { start }
+}
+
+struct StatsTrendPoint: Identifiable, Equatable {
+    let date: Date
+    let value: Double
+    var id: Date { date }
+}
+
+/// Ausgleichsgerade (kleinste Quadrate) über die Abschnitte mit Einträgen.
+struct StatsTrendLine: Equatable {
+    let startDate: Date
+    let endDate: Date
+    let startValue: Double
+    let endValue: Double
+
+    var points: [StatsTrendPoint] {
+        [StatsTrendPoint(date: startDate, value: startValue), StatsTrendPoint(date: endDate, value: endValue)]
+    }
+
+    /// Veränderung vom Anfang zum Ende der Geraden in Prozent; nil, wenn der Anfangswert 0 ist.
+    var changePercent: Int? {
+        guard startValue > 0 else { return nil }
+        return Int(((endValue - startValue) / startValue * 100).rounded())
+    }
+}
+
+enum StatsTrend {
+    /// Bis 30 Tage Tageswerte, 3 Monate Wochen, 1 Jahr Monate.
+    /// „Alle“ (days ≥ 9999) richtet sich nach der tatsächlichen Spanne.
+    static func granularity(forDays days: Int, spanDays: Int) -> StatsGranularity {
+        let effective = days >= 9999 ? spanDays : days
+        if effective <= 45 { return .day }
+        if effective <= 180 { return .week }
+        return .month
+    }
+
+    static func buckets(_ summaries: [DaySummary], by granularity: StatsGranularity,
+                        calendar: Calendar = .current) -> [StatsBucket] {
+        func make(start: Date, mid: Date, days: [DaySummary]) -> StatsBucket {
+            let active = days.filter { $0.visitCount > 0 }
+            let n = Double(max(active.count, 1))
+            return StatsBucket(start: start, mid: mid, activeDays: active.count,
+                               avgMl: Double(active.reduce(0) { $0 + $1.totalMl }) / n,
+                               avgVisits: Double(active.reduce(0) { $0 + $1.visitCount }) / n,
+                               avgBowel: Double(active.reduce(0) { $0 + $1.bowelCount }) / n)
+        }
+        switch granularity {
+        case .day:
+            // Jeder Tag bleibt ein Balken (auch leere Tage) — wie bisher.
+            return summaries.sorted { $0.date < $1.date }.map {
+                make(start: $0.date, mid: $0.date.addingTimeInterval(43_200), days: [$0])
+            }
+        case .week, .month:
+            let component: Calendar.Component = granularity == .week ? .weekOfYear : .month
+            let halfDays: Double = granularity == .week ? 3.5 : 15
+            let groups = Dictionary(grouping: summaries) { day in
+                calendar.dateInterval(of: component, for: day.date)?.start ?? day.date
+            }
+            return groups.compactMap { (start, days) -> StatsBucket? in
+                let bucket = make(start: start, mid: start.addingTimeInterval(halfDays * 86_400), days: days)
+                return bucket.activeDays > 0 ? bucket : nil
+            }.sorted { $0.start < $1.start }
+        }
+    }
+
+    /// nil bei weniger als 3 Abschnitten mit Einträgen. Werte werden bei 0 gekappt.
+    static func trend(_ buckets: [StatsBucket], value: (StatsBucket) -> Double) -> StatsTrendLine? {
+        let pts = buckets.filter { $0.activeDays > 0 }
+        guard pts.count >= 3, let first = pts.first, let last = pts.last else { return nil }
+        let xs = pts.map { $0.mid.timeIntervalSince(first.mid) / 86_400 }
+        let ys = pts.map(value)
+        let n = Double(pts.count)
+        let mx = xs.reduce(0, +) / n
+        let my = ys.reduce(0, +) / n
+        var sxx = 0.0
+        var sxy = 0.0
+        for i in 0..<pts.count {
+            sxx += (xs[i] - mx) * (xs[i] - mx)
+            sxy += (xs[i] - mx) * (ys[i] - my)
+        }
+        guard sxx > 0 else { return nil }
+        let slope = sxy / sxx
+        let intercept = my - slope * mx
+        return StatsTrendLine(startDate: first.mid, endDate: last.mid,
+                              startValue: max(0, intercept),
+                              endValue: max(0, intercept + slope * (xs.last ?? 0)))
     }
 }
